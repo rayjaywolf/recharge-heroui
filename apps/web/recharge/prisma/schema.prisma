@@ -1,0 +1,181 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  DISTRIBUTOR
+  RETAILER
+}
+
+enum TxStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum Provider {
+  A1TOPUP
+  REALROBO
+  MROBOTICS
+  TEST
+}
+
+enum FundRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+
+model User {
+  id            String        @id
+  name          String
+  email               String
+  emailVerified       Boolean       @default(false)
+  phoneNumber         String?       @unique
+  phoneNumberVerified Boolean       @default(false)
+  image         String?
+  role          Role          @default(RETAILER)
+  balance       Int           @default(0)
+  earnings      Float         @default(0.0)
+  isSuspended   Boolean       @default(false)
+  isApproved    Boolean       @default(false)
+  isRejected    Boolean       @default(false)
+  whatsappNumber String?
+  address        String?
+  pincode        String?
+  state          String?
+  aadharNumber   String?
+  panNumber      String?
+  gstNumber      String?
+  businessType   String?
+  distributorId String?
+  distributor   User?         @relation("DistributorToRetailer", fields: [distributorId], references: [id])
+  retailers     User[]        @relation("DistributorToRetailer")
+  transactions       Transaction[]
+  fundRequests       FundRequest[] @relation("RetailerFundRequests")
+  distributorRequests FundRequest[] @relation("DistributorFundRequests")
+  sessions      Session[]
+  accounts      Account[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Transaction {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetPhone    String
+  operator       String
+  amount         Int
+  circleCode     String?
+  provider       Provider @default(REALROBO)
+  status         TxStatus @default(PENDING)
+  apiReferenceId String?  @unique
+  apiMessage     String?
+  idempotencyKey String?  @unique
+  retailerCommission    Float @default(0)
+  distributorCommission Float @default(0)
+  adminCommission       Float @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("transaction")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model CommissionRule {
+  id                String   @id @default(cuid())
+  operator          String   @unique
+  providerMargin    Float    @default(0.0)
+  adminMargin       Float    @default(0.0)
+  distributorMargin Float    @default(0.0)
+  retailerMargin    Float    @default(0.0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("commission_rule")
+}
+
+model FundRequest {
+  id            String            @id @default(cuid())
+  retailerId    String
+  retailer      User              @relation("RetailerFundRequests", fields: [retailerId], references: [id], onDelete: Cascade)
+  distributorId String
+  distributor   User              @relation("DistributorFundRequests", fields: [distributorId], references: [id], onDelete: Cascade)
+  amount        Int
+  remarks       String?
+  status        FundRequestStatus @default(PENDING)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([retailerId])
+  @@index([distributorId])
+  @@index([status])
+  @@map("fund_request")
+}

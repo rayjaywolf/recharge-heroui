@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -14,13 +14,14 @@
 /coverage
 
 # next.js
-/.next/
+.next/
 /out/
 
 # production
 /build
 
 # misc
+PROJECT.md
 .DS_Store
 *.pem
 llms-full.txt
@@ -34,6 +35,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env
 .env*
+.env.local
 
 # recharge app (nested project)
 /recharge/
@@ -41,8 +43,8 @@ yarn-error.log*
 # vercel
 .vercel
 
-# prisma client
-/generated/
+# legacy prisma client (reference app)
+apps/web/generated/
 
 # typescript
 *.tsbuildinfo

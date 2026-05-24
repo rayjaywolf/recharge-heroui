@@ -1,6 +1,10 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
 allowBuilds:
-  '@prisma/engines': true
-  prisma: true
+  core-js: set this to true or false
+  esbuild: true
   sharp: true
   unrs-resolver: true
 ignoredBuiltDependencies:
