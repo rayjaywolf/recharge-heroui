@@ -14,6 +14,7 @@ function pickSearchParams(
     dateFrom: resolved.dateFrom as string | undefined,
     dateTo: resolved.dateTo as string | undefined,
     type: resolved.type as string | undefined,
+    sort: resolved.sort as string | undefined,
   };
 }
 
@@ -24,7 +25,7 @@ export default async function AdminTransactionsPage({
 }) {
   const resolvedParams = await searchParams;
   const query = pickSearchParams(resolvedParams);
-  const { rows, type, status } = await fetchAdminTransactions(query);
+  const { rows, type, status, sort } = await fetchAdminTransactions(query);
 
   return (
     <div className="min-w-0 max-w-full space-y-6">
@@ -34,8 +35,7 @@ export default async function AdminTransactionsPage({
             Ledger
           </h1>
           <p className="mt-1 text-sm text-muted">
-            View recharge and ledger activity. Use &quot;Recharges only&quot; to
-            hide fund transfers and manual entries.
+            View recharge and ledger activity.
           </p>
         </div>
         <TransactionsDownloadButton data={rows} />
@@ -46,6 +46,7 @@ export default async function AdminTransactionsPage({
         initialDateTo={query.dateTo || ""}
         initialOperator={query.operator || "ALL"}
         initialSearch={query.search || ""}
+        initialSort={sort}
         initialStatus={status}
         initialType={type}
       />

@@ -18,7 +18,6 @@ import {
 } from "@heroui/react";
 
 import {
-  AdminTableCard,
   AdminTableEmpty,
 } from "@/components/admin/admin-table-card";
 import { apiFetch } from "@/lib/api-client";
@@ -278,78 +277,76 @@ export function CommissionRulesTable({
         </Button>
       </div>
 
-      <AdminTableCard>
-        {sortedRules.length === 0 ? (
-          <AdminTableEmpty message="No commission rules defined yet." />
-        ) : (
-          <Table>
-            <Table.ScrollContainer>
-              <Table.Content
-                aria-label="Commission rules"
-                className="min-w-[720px]"
-              >
-                  <Table.Header>
-                    <Table.Column isRowHeader>Operator</Table.Column>
-                    <Table.Column className="text-right">
-                      Provider API (%)
-                    </Table.Column>
-                    <Table.Column className="text-right">Admin (%)</Table.Column>
-                    <Table.Column className="text-right">
-                      Distributor (%)
-                    </Table.Column>
-                    <Table.Column className="text-right">
-                      Retailer (%)
-                    </Table.Column>
-                    <Table.Column className="text-right">Actions</Table.Column>
-                  </Table.Header>
-                  <Table.Body>
-                    {sortedRules.map((rule) => (
-                      <Table.Row key={rule.id}>
-                        <Table.Cell className="font-semibold">
-                          {rule.operator}
-                        </Table.Cell>
-                        <Table.Cell className="text-right text-muted">
-                          {rule.providerMargin.toFixed(2)}%
-                        </Table.Cell>
-                        <Table.Cell className="text-right font-semibold">
-                          {rule.adminMargin.toFixed(2)}%
-                        </Table.Cell>
-                        <Table.Cell className="text-right font-medium">
-                          {rule.distributorMargin.toFixed(2)}%
-                        </Table.Cell>
-                        <Table.Cell className="text-right font-medium">
-                          {rule.retailerMargin.toFixed(2)}%
-                        </Table.Cell>
-                        <Table.Cell>
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              aria-label={`Edit ${rule.operator}`}
-                              isIconOnly
-                              size="sm"
-                              variant="secondary"
-                              onPress={() => openEdit(rule)}
-                            >
-                              <Pencil className="size-4" />
-                            </Button>
-                            <Button
-                              aria-label={`Delete ${rule.operator}`}
-                              isIconOnly
-                              size="sm"
-                              variant="danger"
-                              onPress={() => openDelete(rule)}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        </Table.Cell>
-                      </Table.Row>
-                    ))}
-                  </Table.Body>
-              </Table.Content>
-            </Table.ScrollContainer>
-          </Table>
-        )}
-      </AdminTableCard>
+      {sortedRules.length === 0 ? (
+        <AdminTableEmpty message="No commission rules defined yet." />
+      ) : (
+        <Table>
+          <Table.ScrollContainer>
+            <Table.Content
+              aria-label="Commission rules"
+              className="min-w-[720px]"
+            >
+                <Table.Header>
+                  <Table.Column isRowHeader>Operator</Table.Column>
+                  <Table.Column className="text-right">
+                    Provider API (%)
+                  </Table.Column>
+                  <Table.Column className="text-right">Admin (%)</Table.Column>
+                  <Table.Column className="text-right">
+                    Distributor (%)
+                  </Table.Column>
+                  <Table.Column className="text-right">
+                    Retailer (%)
+                  </Table.Column>
+                  <Table.Column className="text-right">Actions</Table.Column>
+                </Table.Header>
+                <Table.Body>
+                  {sortedRules.map((rule) => (
+                    <Table.Row key={rule.id}>
+                      <Table.Cell className="font-semibold">
+                        {rule.operator}
+                      </Table.Cell>
+                      <Table.Cell className="text-right text-muted">
+                        {rule.providerMargin.toFixed(2)}%
+                      </Table.Cell>
+                      <Table.Cell className="text-right font-semibold">
+                        {rule.adminMargin.toFixed(2)}%
+                      </Table.Cell>
+                      <Table.Cell className="text-right font-medium">
+                        {rule.distributorMargin.toFixed(2)}%
+                      </Table.Cell>
+                      <Table.Cell className="text-right font-medium">
+                        {rule.retailerMargin.toFixed(2)}%
+                      </Table.Cell>
+                      <Table.Cell>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            aria-label={`Edit ${rule.operator}`}
+                            isIconOnly
+                            size="sm"
+                            variant="secondary"
+                            onPress={() => openEdit(rule)}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            aria-label={`Delete ${rule.operator}`}
+                            isIconOnly
+                            size="sm"
+                            variant="danger"
+                            onPress={() => openDelete(rule)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+            </Table.Content>
+          </Table.ScrollContainer>
+        </Table>
+      )}
 
       <Modal>
         <Modal.Backdrop

@@ -2,6 +2,7 @@
 
 import { Tooltip } from "@heroui/react";
 
+import { BrandMark } from "@/components/brand-mark";
 import { useDashboardSidebar } from "@/components/dashboard-sidebar-context";
 import { NavLinksList } from "@/components/nav-links";
 import { cn } from "@/lib/utils";
@@ -30,16 +31,11 @@ export function AppSidebar({
         )}
       >
         {!collapsed ? (
-          <span className="truncate text-base font-semibold tracking-tight text-foreground">
-            RechargePro
-          </span>
+          <BrandMark />
         ) : (
           <Tooltip delay={0}>
-            <Tooltip.Trigger
-              aria-label="RechargePro"
-              className="cursor-default text-sm font-bold text-foreground"
-            >
-              R
+            <Tooltip.Trigger aria-label="RechargePro" className="cursor-default">
+              <BrandMark collapsed />
             </Tooltip.Trigger>
             <Tooltip.Content placement="right" showArrow>
               <Tooltip.Arrow />

@@ -37,8 +37,9 @@ yarn-error.log*
 .env*
 .env.local
 
-# recharge app (nested project)
+# recharge app (nested legacy project)
 /recharge/
+apps/web/recharge/
 
 # vercel
 .vercel

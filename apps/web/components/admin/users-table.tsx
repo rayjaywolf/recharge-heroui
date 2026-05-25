@@ -95,6 +95,8 @@ export function UsersTable({
     });
   }, [data, query]);
 
+  const titleWithCount = `${title} (${data.length})`;
+
   const toggleSuspension = async (
     userId: string,
     currentlySuspended: boolean
@@ -214,7 +216,7 @@ export function UsersTable({
           </SearchField.Group>
         </SearchField>
       }
-      title={title}
+      title={titleWithCount}
     >
       {filteredData.length === 0 ? (
         <AdminTableEmpty message="No users match your search." />
@@ -222,7 +224,7 @@ export function UsersTable({
         <Table>
           <Table.ScrollContainer>
             <Table.Content
-              aria-label={title}
+              aria-label={titleWithCount}
               className="min-w-[820px]"
             >
               <Table.Header>

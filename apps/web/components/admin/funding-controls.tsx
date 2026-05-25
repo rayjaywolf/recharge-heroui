@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import {
   Button,
   Card,
-  Description,
   Input,
   Label,
   ListBox,
@@ -206,7 +205,6 @@ export function FundingControls({ users }: { users: FundingUserOption[] }) {
               variant="secondary"
               onChange={(e) => setRemarks(e.target.value)}
             />
-            <Description>Stored on the funding ledger entry.</Description>
           </TextField>
         </form>
       </Card.Content>

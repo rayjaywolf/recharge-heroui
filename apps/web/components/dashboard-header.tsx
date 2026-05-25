@@ -1,9 +1,10 @@
 "use client";
 
-import { Menu, PanelLeftClose, PanelLeftOpen, Wallet } from "lucide-react";
+import { Menu, Wallet } from "lucide-react";
 import { Button, Chip, Header, Separator } from "@heroui/react";
 
 import { Money } from "@/components/money";
+import { SidebarPanelIcon } from "@/components/sidebar-panel-icon";
 import { useDashboardSidebar } from "@/components/dashboard-sidebar-context";
 import { LogoutButton } from "@/components/logout-button";
 import { MobileNavDrawer } from "@/components/mobile-nav-drawer";
@@ -37,11 +38,7 @@ export function DashboardHeader({
         variant="ghost"
         onPress={toggle}
       >
-        {collapsed ? (
-          <PanelLeftOpen className="size-5" />
-        ) : (
-          <PanelLeftClose className="size-5" />
-        )}
+        <SidebarPanelIcon className="size-4" />
       </Button>
 
       <MobileNavDrawer

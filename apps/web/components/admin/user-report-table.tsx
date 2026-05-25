@@ -161,7 +161,7 @@ export function UserReportTable({
                           Suspended
                         </Chip>
                       ) : (
-                        <Chip size="sm" variant="success">
+                        <Chip color="success" size="sm" variant="soft">
                           Active
                         </Chip>
                       )}

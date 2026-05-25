@@ -12,7 +12,8 @@ import {
   FundingDownloadButton,
   type FundingLedgerRow,
 } from "@/components/admin/funding-download-button";
-import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
+import { getDisplayPhone } from "@/lib/phone";
+import { formatTableDateTime } from "@/lib/utils";
 
 export default async function AdminFundingPage() {
   const usersList = await db
@@ -94,7 +95,6 @@ export default async function AdminFundingPage() {
                     <Table.Column isRowHeader>Time</Table.Column>
                     <Table.Column>User</Table.Column>
                     <Table.Column>Phone</Table.Column>
-                    <Table.Column>Email</Table.Column>
                     <Table.Column>Action</Table.Column>
                     <Table.Column>Notes</Table.Column>
                   </Table.Header>
@@ -103,28 +103,15 @@ export default async function AdminFundingPage() {
                       const isCredit = tx.operator === "MANUAL_CREDIT";
 
                       return (
-                        <Table.Row key={tx.id}>
-                          <Table.Cell>
-                            <div className="flex flex-col text-sm">
-                              <span className="text-foreground">
-                                {new Date(tx.createdAt).toLocaleDateString("en-IN")}
-                              </span>
-                              <span className="text-xs text-muted">
-                                {new Date(tx.createdAt).toLocaleTimeString("en-IN", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </div>
+                        <Table.Row key={tx.id} className="whitespace-nowrap">
+                          <Table.Cell className="whitespace-nowrap text-sm text-muted">
+                            {formatTableDateTime(tx.createdAt)}
                           </Table.Cell>
                           <Table.Cell className="max-w-[140px] truncate font-medium">
                             {tx.user.name}
                           </Table.Cell>
                           <Table.Cell className="max-w-[120px] truncate text-sm text-muted">
                             {getDisplayPhone(tx.user) ?? "—"}
-                          </Table.Cell>
-                          <Table.Cell className="max-w-[160px] truncate text-sm text-muted">
-                            {getDisplayEmail(tx.user.email) ?? "—"}
                           </Table.Cell>
                           <Table.Cell>
                             <Chip

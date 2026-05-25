@@ -26,8 +26,8 @@ export default function AdminReportsHubPage() {
                 variant="secondary"
               >
                 <Card.Header className="flex-row items-start gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
-                    <Icon className="size-5" />
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-soft-foreground">
+                    <Icon className="size-5" strokeWidth={2.25} />
                   </span>
                   <div className="min-w-0">
                     <Card.Title className="text-base">{report.name}</Card.Title>

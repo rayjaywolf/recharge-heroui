@@ -24,15 +24,15 @@ export async function ReportTransactionsView({
   searchParams: AdminTransactionsSearchParams;
   fetchOptions?: FetchAdminTransactionsOptions;
   filterOptions?: {
-    lockedType?: "RECHARGE" | "ALL";
+    lockedType?: "RECHARGE" | "FUNDS" | "ALL";
     lockedStatus?: string;
-    showRechargesOnlyCheckbox?: boolean;
-    defaultType?: "RECHARGE" | "ALL";
+    showCategoryDropdown?: boolean;
+    defaultType?: "RECHARGE" | "FUNDS" | "ALL";
     emphasizeSearch?: boolean;
   };
   downloadFileName: string;
 }) {
-  const { rows, type, status } = await fetchAdminTransactions(
+  const { rows, type, status, sort } = await fetchAdminTransactions(
     searchParams,
     fetchOptions
   );
@@ -58,11 +58,12 @@ export async function ReportTransactionsView({
         initialDateTo={searchParams.dateTo || ""}
         initialOperator={searchParams.operator || "ALL"}
         initialSearch={searchParams.search || ""}
+        initialSort={sort}
         initialStatus={status}
         initialType={type}
         lockedStatus={filterOptions?.lockedStatus}
         lockedType={filterOptions?.lockedType}
-        showRechargesOnlyCheckbox={filterOptions?.showRechargesOnlyCheckbox ?? true}
+        showCategoryDropdown={filterOptions?.showCategoryDropdown ?? !filterOptions?.lockedType}
       />
 
       <TransactionsTable transactions={rows} />

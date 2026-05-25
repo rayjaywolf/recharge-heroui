@@ -18,8 +18,7 @@ import {
   type RangeValue,
 } from "@heroui/react";
 
-import type { TransactionsSort } from "@/lib/admin-transactions-query";
-import type { AdminTransactionTypeFilter } from "@/lib/transaction-filters";
+import type { EarningsSort } from "@/lib/admin-earnings-query";
 
 const STATUS_OPTIONS = [
   { id: "ALL", label: "All outcomes" },
@@ -37,16 +36,13 @@ const OPERATOR_OPTIONS = [
   { id: "BSNL", label: "BSNL" },
 ] as const;
 
-const CATEGORY_OPTIONS: { id: AdminTransactionTypeFilter; label: string }[] = [
-  { id: "RECHARGE", label: "Recharges only" },
-  { id: "FUNDS", label: "Funds transfer" },
-];
-
-const SORT_OPTIONS: { id: TransactionsSort; label: string }[] = [
+const SORT_OPTIONS: { id: EarningsSort; label: string }[] = [
   { id: "date_desc", label: "Newest first" },
   { id: "date_asc", label: "Oldest first" },
-  { id: "amount_desc", label: "Highest amount" },
-  { id: "amount_asc", label: "Lowest amount" },
+  { id: "commission_desc", label: "Highest platform cut" },
+  { id: "commission_asc", label: "Lowest platform cut" },
+  { id: "amount_desc", label: "Highest recharge" },
+  { id: "amount_asc", label: "Lowest recharge" },
   { id: "retailer_asc", label: "Retailer A–Z" },
   { id: "operator_asc", label: "Carrier A–Z" },
 ];
@@ -77,41 +73,26 @@ function rangeToQueryStrings(range: RangeValue<DateValue> | null): {
   };
 }
 
-export function TransactionsFilterBar({
+export function EarningsFilterBar({
   initialStatus,
   initialOperator,
   initialSearch,
   initialDateFrom,
   initialDateTo,
-  initialType,
   initialSort,
-  basePath = "/admin/transactions",
-  defaultType = "RECHARGE",
-  lockedType,
-  lockedStatus,
-  showCategoryDropdown = true,
-  emphasizeSearch = false,
 }: {
   initialStatus: string;
   initialOperator: string;
   initialSearch: string;
   initialDateFrom: string;
   initialDateTo: string;
-  initialType: AdminTransactionTypeFilter;
-  initialSort: TransactionsSort;
-  basePath?: string;
-  defaultType?: AdminTransactionTypeFilter;
-  lockedType?: AdminTransactionTypeFilter;
-  lockedStatus?: string;
-  showCategoryDropdown?: boolean;
-  emphasizeSearch?: boolean;
+  initialSort: EarningsSort;
 }) {
   const router = useRouter();
-  const [type, setType] = useState<AdminTransactionTypeFilter>(initialType);
   const [status, setStatus] = useState(initialStatus);
   const [operator, setOperator] = useState(initialOperator);
   const [search, setSearch] = useState(initialSearch);
-  const [sort, setSort] = useState<TransactionsSort>(initialSort);
+  const [sort, setSort] = useState<EarningsSort>(initialSort);
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
   const [dateTo, setDateTo] = useState(initialDateTo);
   const [dateRange, setDateRange] = useState<RangeValue<DateValue> | null>(() =>
@@ -119,7 +100,6 @@ export function TransactionsFilterBar({
   );
 
   useEffect(() => {
-    setType(initialType);
     setStatus(initialStatus);
     setOperator(initialOperator);
     setSearch(initialSearch);
@@ -128,7 +108,6 @@ export function TransactionsFilterBar({
     setDateTo(initialDateTo);
     setDateRange(toDateRange(initialDateFrom, initialDateTo));
   }, [
-    initialType,
     initialStatus,
     initialOperator,
     initialSearch,
@@ -138,22 +117,19 @@ export function TransactionsFilterBar({
   ]);
 
   const pushFilters = (overrides?: {
-    type?: AdminTransactionTypeFilter;
     status?: string;
     operator?: string;
-    sort?: TransactionsSort;
+    sort?: EarningsSort;
     dateFrom?: string;
     dateTo?: string;
   }) => {
     const params = new URLSearchParams();
-    const applyType = lockedType ?? overrides?.type ?? type;
-    const applyStatus = lockedStatus ?? overrides?.status ?? status;
+    const applyStatus = overrides?.status ?? status;
     const applyOperator = overrides?.operator ?? operator;
     const applySort = overrides?.sort ?? sort;
     const applyDateFrom = overrides?.dateFrom ?? dateFrom;
     const applyDateTo = overrides?.dateTo ?? dateTo;
 
-    if (applyType !== defaultType) params.set("type", applyType);
     if (applyStatus !== "ALL") params.set("status", applyStatus);
     if (applyOperator !== "ALL") params.set("operator", applyOperator);
     if (applySort !== "date_desc") params.set("sort", applySort);
@@ -162,42 +138,29 @@ export function TransactionsFilterBar({
     if (applyDateTo) params.set("dateTo", applyDateTo);
 
     const qs = params.toString();
-    router.push(qs ? `${basePath}?${qs}` : basePath);
+    router.push(qs ? `/admin/earnings?${qs}` : "/admin/earnings");
   };
 
   const clearFilters = () => {
-    const resetType = lockedType ?? defaultType;
-    const resetStatus = lockedStatus ?? "ALL";
-    setType(resetType);
-    setStatus(resetStatus);
+    setStatus("ALL");
     setOperator("ALL");
     setSearch("");
     setSort("date_desc");
     setDateFrom("");
     setDateTo("");
     setDateRange(null);
-    const params = new URLSearchParams();
-    if (resetType !== defaultType) params.set("type", resetType);
-    if (resetStatus !== "ALL") params.set("status", resetStatus);
-    const qs = params.toString();
-    router.push(qs ? `${basePath}?${qs}` : basePath);
+    router.push("/admin/earnings");
   };
 
   return (
     <Card className="flex flex-col gap-3" variant="secondary">
       <div className="flex flex-wrap items-end gap-3">
-        <SearchField
-          className={
-            emphasizeSearch
-              ? "min-w-[200px] flex-1 basis-[280px]"
-              : "min-w-[200px] flex-1 basis-[240px]"
-          }
-        >
-          <Label className="sr-only">Search transactions</Label>
+        <SearchField className="min-w-[200px] flex-1 basis-[240px]">
+          <Label className="sr-only">Search earnings</Label>
           <SearchField.Group>
             <SearchField.SearchIcon />
             <SearchField.Input
-              placeholder="Phone, user, or reference ID…"
+              placeholder="Retailer, carrier, phone…"
               value={search}
               onKeyDown={(e) => {
                 if (e.key === "Enter") pushFilters();
@@ -208,65 +171,32 @@ export function TransactionsFilterBar({
           </SearchField.Group>
         </SearchField>
 
-        {showCategoryDropdown && !lockedType ? (
-          <Select
-            className="w-full min-w-[160px] flex-1 basis-[160px] sm:max-w-[200px]"
-            placeholder="Category"
-            value={type}
-            onChange={(value) => {
-              const next = (
-                value != null ? String(value) : defaultType
-              ) as AdminTransactionTypeFilter;
-              setType(next);
-              pushFilters({ type: next });
-            }}
-          >
-            <Label>Category</Label>
-            <Select.Trigger>
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <ListBox>
-                {CATEGORY_OPTIONS.map((opt) => (
-                  <ListBox.Item key={opt.id} id={opt.id} textValue={opt.label}>
-                    {opt.label}
-                    <ListBox.ItemIndicator />
-                  </ListBox.Item>
-                ))}
-              </ListBox>
-            </Select.Popover>
-          </Select>
-        ) : null}
-
-        {!lockedStatus ? (
-          <Select
-            className="w-full min-w-[140px] flex-1 basis-[140px] sm:max-w-[180px]"
-            placeholder="Status"
-            value={status}
-            onChange={(value) => {
-              const next = value != null ? String(value) : "ALL";
-              setStatus(next);
-              pushFilters({ status: next });
-            }}
-          >
-            <Label>Status</Label>
-            <Select.Trigger>
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <ListBox>
-                {STATUS_OPTIONS.map((opt) => (
-                  <ListBox.Item key={opt.id} id={opt.id} textValue={opt.label}>
-                    {opt.label}
-                    <ListBox.ItemIndicator />
-                  </ListBox.Item>
-                ))}
-              </ListBox>
-            </Select.Popover>
-          </Select>
-        ) : null}
+        <Select
+          className="w-full min-w-[140px] flex-1 basis-[140px] sm:max-w-[180px]"
+          placeholder="Status"
+          value={status}
+          onChange={(value) => {
+            const next = value != null ? String(value) : "ALL";
+            setStatus(next);
+            pushFilters({ status: next });
+          }}
+        >
+          <Label>Status</Label>
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Popover>
+            <ListBox>
+              {STATUS_OPTIONS.map((opt) => (
+                <ListBox.Item key={opt.id} id={opt.id} textValue={opt.label}>
+                  {opt.label}
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              ))}
+            </ListBox>
+          </Select.Popover>
+        </Select>
 
         <Select
           className="w-full min-w-[140px] flex-1 basis-[140px] sm:max-w-[180px]"
@@ -300,9 +230,7 @@ export function TransactionsFilterBar({
           placeholder="Sort"
           value={sort}
           onChange={(value) => {
-            const next = (
-              value != null ? String(value) : "date_desc"
-            ) as TransactionsSort;
+            const next = (value != null ? String(value) : "date_desc") as EarningsSort;
             setSort(next);
             pushFilters({ sort: next });
           }}
@@ -357,7 +285,7 @@ export function TransactionsFilterBar({
             </DateField.Suffix>
           </DateField.Group>
           <DateRangePicker.Popover>
-            <RangeCalendar aria-label="Transaction date range">
+            <RangeCalendar aria-label="Earnings date range">
               <RangeCalendar.Header>
                 <RangeCalendar.YearPickerTrigger>
                   <RangeCalendar.YearPickerTriggerHeading />

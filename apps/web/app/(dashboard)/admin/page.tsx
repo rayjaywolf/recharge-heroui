@@ -10,10 +10,11 @@ import {
   sum,
 } from "drizzle-orm";
 import {
-  Activity,
   AlertCircle,
   ArrowRight,
   ArrowRightLeft,
+  CheckCircle2,
+  Clock,
   Wallet,
 } from "lucide-react";
 import { Link, Table } from "@heroui/react";
@@ -27,25 +28,18 @@ import { Money } from "@/components/money";
 import { StatCard } from "@/components/admin/stat-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 import { formatInr } from "@/lib/format-money";
+import { formatTableDateTime } from "@/lib/utils";
 
 export default async function AdminOverviewPage() {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const [[totalLiabilityRow], [distLiabilityRow]] = await Promise.all([
-    db
-      .select({ total: sum(user.balance) })
-      .from(user)
-      .where(inArray(user.role, ["RETAILER", "DISTRIBUTOR"])),
-    db
-      .select({ total: sum(user.balance) })
-      .from(user)
-      .where(eq(user.role, "DISTRIBUTOR")),
-  ]);
+  const [totalLiabilityRow] = await db
+    .select({ total: sum(user.balance) })
+    .from(user)
+    .where(inArray(user.role, ["RETAILER", "DISTRIBUTOR"]));
 
   const totalLiability = Number(totalLiabilityRow?.total ?? 0);
-  const distLiability = Number(distLiabilityRow?.total ?? 0);
-  const retLiability = totalLiability - distLiability;
 
   const [todaysVolumeRow] = await db
     .select({ total: sum(transaction.amount) })
@@ -97,7 +91,7 @@ export default async function AdminOverviewPage() {
     .innerJoin(user, eq(transaction.userId, user.id))
     .where(notInArray(transaction.operator, ["MANUAL_CREDIT", "MANUAL_DEBIT"]))
     .orderBy(desc(transaction.createdAt))
-    .limit(5);
+    .limit(20);
 
   return (
     <div className="space-y-8">
@@ -106,33 +100,29 @@ export default async function AdminOverviewPage() {
           Overview
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Monitor system activity and manage operations.
+          Today's analytics and overview of the platform
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          description={`Distributors: ${formatInr(distLiability)} · Retailers: ${formatInr(retLiability)}`}
           icon={Wallet}
-          title="Total balance"
+          title="Balance"
           value={formatInr(totalLiability)}
         />
         <StatCard
-          description="Successful transactions today"
           icon={ArrowRightLeft}
-          title="Today's volume"
+          title="Volume"
           value={formatInr(todaysVolume)}
         />
         <StatCard
-          description="Transactions in progress"
           highlight={pendingTransactions > 5 ? "danger" : "default"}
-          icon={pendingTransactions > 5 ? AlertCircle : Activity}
+          icon={pendingTransactions > 5 ? AlertCircle : Clock}
           title="Pending transactions"
           value={String(pendingTransactions)}
         />
         <StatCard
-          description={`Success over ${totalResolved} resolved calls`}
-          icon={Activity}
+          icon={CheckCircle2}
           title="Success rate"
           value={`${successRate}%`}
         />
@@ -170,16 +160,9 @@ export default async function AdminOverviewPage() {
                 </Table.Header>
                 <Table.Body>
                   {recentLedger.map((tx) => (
-                    <Table.Row key={tx.id}>
-                      <Table.Cell>
-                        <div className="flex flex-col text-sm">
-                          <span className="text-foreground">
-                            {tx.createdAt.toLocaleDateString("en-IN")}
-                          </span>
-                          <span className="text-xs text-muted">
-                            {tx.createdAt.toLocaleTimeString("en-IN")}
-                          </span>
-                        </div>
+                    <Table.Row key={tx.id} className="whitespace-nowrap">
+                      <Table.Cell className="whitespace-nowrap text-sm text-muted">
+                        {formatTableDateTime(tx.createdAt)}
                       </Table.Cell>
                       <Table.Cell className="font-medium">{tx.userName}</Table.Cell>
                       <Table.Cell>{tx.operator}</Table.Cell>

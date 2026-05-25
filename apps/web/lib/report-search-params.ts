@@ -10,5 +10,6 @@ export function parseReportSearchParams(
     dateFrom: resolved.dateFrom as string | undefined,
     dateTo: resolved.dateTo as string | undefined,
     type: resolved.type as string | undefined,
+    sort: resolved.sort as string | undefined,
   };
 }

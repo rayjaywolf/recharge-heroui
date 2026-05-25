@@ -1,8 +1,15 @@
-import { eq } from "drizzle-orm";
-import { ArrowLeft, ShieldAlert, User as UserIcon, Users, Wallet } from "lucide-react";
+import { and, count, eq, notInArray, sum } from "drizzle-orm";
+import {
+  ArrowLeft,
+  ArrowRightLeft,
+  ShieldAlert,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { notFound } from "next/navigation";
 import { Card, Chip, Link as HeroLink, Table } from "@heroui/react";
-import { db, user } from "@repo/db";
+import { db, transaction, user } from "@repo/db";
+import { RECHARGE_EXCLUDED_OPERATORS } from "@/lib/transaction-filters";
 
 import {
   AdminTableCard,
@@ -14,6 +21,7 @@ import { TransactionStatusChip } from "@/components/admin/transaction-status-chi
 import { formatInr } from "@/lib/format-money";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
 import { formatRechargeProvider } from "@/lib/recharge-provider";
+import { formatTableDateTime } from "@/lib/utils";
 
 function transactionLabel(operator: string, targetPhone: string) {
   if (operator === "MANUAL_CREDIT") {
@@ -45,12 +53,33 @@ export default async function AdminUserDetailPage({
       retailers: { columns: { id: true } },
       transactions: {
         orderBy: (transactions, { desc }) => [desc(transactions.createdAt)],
-        limit: 50,
+        limit: 20,
       },
     },
   });
 
   if (!found) notFound();
+
+  const rechargeFilter = notInArray(transaction.operator, [
+    ...RECHARGE_EXCLUDED_OPERATORS,
+  ]);
+
+  const successRechargeFilter = and(
+    eq(transaction.userId, id),
+    eq(transaction.status, "SUCCESS"),
+    rechargeFilter,
+  );
+
+  const [[volumeRow], [txCountRow]] = await Promise.all([
+    db
+      .select({ total: sum(transaction.amount) })
+      .from(transaction)
+      .where(successRechargeFilter),
+    db.select({ total: count() }).from(transaction).where(successRechargeFilter),
+  ]);
+
+  const allTimeVolume = Number(volumeRow?.total ?? 0);
+  const transactionCount = txCountRow?.total ?? 0;
 
   const contactPhone = getDisplayPhone(found);
   const contactEmail = getDisplayEmail(found.email);
@@ -102,10 +131,10 @@ export default async function AdminUserDetailPage({
           value={formatInr(Math.round(found.earnings))}
         />
         <StatCard
-          description="All-time transaction count"
-          icon={UserIcon}
-          title="Transactions"
-          value={String(found.transactions.length)}
+          description={`All-time volume with ${transactionCount} transactions`}
+          icon={ArrowRightLeft}
+          title="Volume"
+          value={formatInr(allTimeVolume)}
         />
         {found.role === "DISTRIBUTOR" ? (
           <StatCard
@@ -251,18 +280,23 @@ export default async function AdminUserDetailPage({
                     const label = transactionLabel(tx.operator, tx.targetPhone);
 
                     return (
-                      <Table.Row key={tx.id}>
+                      <Table.Row key={tx.id} className="whitespace-nowrap">
                         <Table.Cell className="whitespace-nowrap text-sm text-muted">
-                          {tx.createdAt.toLocaleString("en-IN", {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                          })}
+                          {formatTableDateTime(tx.createdAt)}
                         </Table.Cell>
-                        <Table.Cell>
-                          <span className="block font-semibold">{label.title}</span>
-                          {label.sub ? (
-                            <span className="text-xs text-muted">{label.sub}</span>
-                          ) : null}
+                        <Table.Cell className="max-w-[220px]">
+                          <span
+                            className="block truncate text-sm font-semibold"
+                            title={
+                              label.sub
+                                ? `${label.title} · ${label.sub}`
+                                : label.title
+                            }
+                          >
+                            {label.sub
+                              ? `${label.title} · ${label.sub}`
+                              : label.title}
+                          </span>
                         </Table.Cell>
                         <Table.Cell className="font-semibold">
                           <Money amount={tx.amount} />
@@ -280,10 +314,8 @@ export default async function AdminUserDetailPage({
                         <Table.Cell>
                           <TransactionStatusChip status={tx.status} />
                         </Table.Cell>
-                        <Table.Cell className="min-w-[200px] font-mono text-xs text-muted">
-                          <span className="block break-all">
-                            {tx.apiReferenceId ?? tx.id}
-                          </span>
+                        <Table.Cell className="font-mono text-xs text-muted">
+                          {tx.apiReferenceId ?? tx.id}
                         </Table.Cell>
                       </Table.Row>
                     );

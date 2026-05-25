@@ -18,7 +18,6 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  // /api/* is proxied to Koyeb at runtime in proxy.ts (uses API_URL from Vercel env).
 };
 
 export default nextConfig;

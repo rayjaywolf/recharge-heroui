@@ -5,6 +5,7 @@ import {
   FileBarChart,
   History,
   LayoutDashboard,
+  LifeBuoy,
   PieChart,
   Plug,
   TrendingUp,
@@ -28,14 +29,15 @@ export function getDashboardNavLinks(role: string): NavLink[] {
   if (role === "ADMIN") {
     return [
       { name: "Overview", href: "/admin", icon: LayoutDashboard },
-      { name: "Approvals", href: "/admin/approvals", icon: ClipboardCheck },
-      { name: "Users", href: "/admin/users", icon: Users },
-      { name: "Funding", href: "/admin/funding", icon: Wallet },
       { name: "Ledger", href: "/admin/transactions", icon: History },
-      { name: "Reports", href: "/admin/reports", icon: FileBarChart },
-      { name: "API", href: "/admin/api", icon: Plug },
-      { name: "Commissions", href: "/admin/commissions", icon: PieChart },
       { name: "Earnings", href: "/admin/earnings", icon: TrendingUp },
+      { name: "Reports", href: "/admin/reports", icon: FileBarChart },
+      { name: "Users", href: "/admin/users", icon: Users },
+      { name: "Approvals", href: "/admin/approvals", icon: ClipboardCheck },
+      { name: "Funding", href: "/admin/funding", icon: Wallet },
+      { name: "Commissions", href: "/admin/commissions", icon: PieChart },
+      { name: "API", href: "/admin/api", icon: Plug },
+      { name: "Support", href: "/admin/support", icon: LifeBuoy },
     ];
   }
 

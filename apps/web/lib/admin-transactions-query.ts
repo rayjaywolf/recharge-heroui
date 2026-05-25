@@ -1,9 +1,11 @@
 import {
   and,
+  asc,
   desc,
   eq,
   gte,
   ilike,
+  inArray,
   lte,
   notInArray,
   or,
@@ -11,7 +13,9 @@ import {
 } from "drizzle-orm";
 import { db, transaction, user, type TxStatus } from "@repo/db";
 import {
-  getExcludedOperatorsForType,
+  FUND_TRANSFER_OPERATORS,
+  LEDGER_EXCLUDED_OPERATORS,
+  RECHARGE_EXCLUDED_OPERATORS,
   type AdminTransactionTypeFilter,
 } from "@/lib/transaction-filters";
 
@@ -24,7 +28,18 @@ export type AdminTransactionsSearchParams = {
   dateFrom?: string;
   dateTo?: string;
   type?: string;
+  sort?: string;
 };
+
+export type TransactionsSort =
+  | "date_desc"
+  | "date_asc"
+  | "amount_desc"
+  | "amount_asc"
+  | "retailer_asc"
+  | "operator_asc";
+
+const DEFAULT_SORT: TransactionsSort = "date_desc";
 
 export type FetchAdminTransactionsOptions = {
   defaultType?: AdminTransactionTypeFilter;
@@ -37,7 +52,62 @@ export function resolveTransactionTypeFilter(
   options?: FetchAdminTransactionsOptions,
 ): AdminTransactionTypeFilter {
   if (options?.lockedType) return options.lockedType;
-  return typeParam === "ALL" ? "ALL" : (options?.defaultType ?? "RECHARGE");
+  if (typeParam === "FUNDS" || typeParam === "ALL") return typeParam;
+  return options?.defaultType ?? "RECHARGE";
+}
+
+export function resolveTransactionsSort(
+  sortParam: string | undefined,
+): TransactionsSort {
+  const allowed: TransactionsSort[] = [
+    "date_desc",
+    "date_asc",
+    "amount_desc",
+    "amount_asc",
+    "retailer_asc",
+    "operator_asc",
+  ];
+  if (sortParam && allowed.includes(sortParam as TransactionsSort)) {
+    return sortParam as TransactionsSort;
+  }
+  return DEFAULT_SORT;
+}
+
+function transactionsOrderBy(sort: TransactionsSort) {
+  switch (sort) {
+    case "date_asc":
+      return asc(transaction.createdAt);
+    case "amount_desc":
+      return desc(transaction.amount);
+    case "amount_asc":
+      return asc(transaction.amount);
+    case "retailer_asc":
+      return asc(user.name);
+    case "operator_asc":
+      return asc(transaction.operator);
+    case "date_desc":
+    default:
+      return desc(transaction.createdAt);
+  }
+}
+
+function applyTransactionTypeCondition(
+  conditions: SQL[],
+  type: AdminTransactionTypeFilter,
+) {
+  if (type === "FUNDS") {
+    conditions.push(
+      inArray(transaction.operator, [...FUND_TRANSFER_OPERATORS]),
+    );
+  } else if (type === "RECHARGE") {
+    conditions.push(
+      notInArray(transaction.operator, [...RECHARGE_EXCLUDED_OPERATORS]),
+    );
+  } else {
+    conditions.push(
+      notInArray(transaction.operator, [...LEDGER_EXCLUDED_OPERATORS]),
+    );
+  }
 }
 
 export function buildTransactionWhereClause(
@@ -49,16 +119,11 @@ export function buildTransactionWhereClause(
     options?.lockedStatus ??
     (params.status && params.status !== "ALL" ? params.status : undefined);
 
-  const conditions: SQL[] = [
-    notInArray(transaction.operator, [
-      ...getExcludedOperatorsForType(type),
-    ]),
-  ];
+  const conditions: SQL[] = [];
+  applyTransactionTypeCondition(conditions, type);
 
   if (status) {
-    conditions.push(
-      eq(transaction.status, status as TxStatus),
-    );
+    conditions.push(eq(transaction.status, status as TxStatus));
   }
 
   if (params.operator && params.operator !== "ALL") {
@@ -99,11 +164,12 @@ export async function fetchAdminTransactions(
   rows: AdminTransactionRow[];
   type: AdminTransactionTypeFilter;
   status: string;
+  sort: TransactionsSort;
 }> {
   const type = resolveTransactionTypeFilter(params.type, options);
   const status =
     options?.lockedStatus ?? (params.status && params.status !== "ALL" ? params.status : "ALL");
-
+  const sort = resolveTransactionsSort(params.sort);
   const whereClause = buildTransactionWhereClause(params, options);
 
   const transactions = await db
@@ -132,7 +198,7 @@ export async function fetchAdminTransactions(
     .from(transaction)
     .innerJoin(user, eq(transaction.userId, user.id))
     .where(whereClause)
-    .orderBy(desc(transaction.createdAt))
+    .orderBy(transactionsOrderBy(sort))
     .limit(150);
 
   const rows: AdminTransactionRow[] = transactions.map((tx) => ({
@@ -160,5 +226,5 @@ export async function fetchAdminTransactions(
     },
   }));
 
-  return { rows, type, status };
+  return { rows, type, status, sort };
 }

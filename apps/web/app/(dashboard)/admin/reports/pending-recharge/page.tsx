@@ -19,7 +19,7 @@ export default async function PendingRechargeReportPage({
       filterOptions={{
         lockedType: "RECHARGE",
         lockedStatus: "PENDING",
-        showRechargesOnlyCheckbox: false,
+        showCategoryDropdown: false,
       }}
       searchParams={query}
       title="Pending recharge"

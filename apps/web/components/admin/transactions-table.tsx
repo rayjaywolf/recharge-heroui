@@ -10,15 +10,13 @@ import {
   useOverlayState,
 } from "@heroui/react";
 
-import {
-  AdminTableCard,
-  AdminTableEmpty,
-} from "@/components/admin/admin-table-card";
+import { AdminTableEmpty } from "@/components/admin/admin-table-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 import { TransactionPdfDownloadButton } from "@/components/admin/transaction-pdf-download-button";
 import { Money } from "@/components/money";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
 import { formatRechargeProvider } from "@/lib/recharge-provider";
+import { formatTableDateTime } from "@/lib/utils";
 
 export type AdminTransactionRow = {
   id: string;
@@ -93,24 +91,20 @@ export function TransactionsTable({
 
   if (transactions.length === 0) {
     return (
-      <AdminTableCard>
-        <AdminTableEmpty message="No transactions match your filters." />
-      </AdminTableCard>
+      <AdminTableEmpty message="No transactions match your filters." />
     );
   }
 
   return (
     <>
-      <AdminTableCard>
-        <Table>
+      <Table>
           <Table.ScrollContainer className="max-h-[min(70vh,720px)]">
             <Table.Content
               aria-label="Transactions ledger"
               className="min-w-[1200px]"
             >
               <Table.Header>
-                <Table.Column isRowHeader>Date</Table.Column>
-                <Table.Column>Time</Table.Column>
+                <Table.Column isRowHeader>Date & time</Table.Column>
                 <Table.Column>Retailer</Table.Column>
                 <Table.Column>Contact</Table.Column>
                 <Table.Column>Carrier</Table.Column>
@@ -118,29 +112,18 @@ export function TransactionsTable({
                 <Table.Column>Amount</Table.Column>
                 <Table.Column>API</Table.Column>
                 <Table.Column>Status</Table.Column>
-                <Table.Column className="min-w-[240px]">Ref ID</Table.Column>
+                <Table.Column className="min-w-[280px]">Ref ID</Table.Column>
                 <Table.Column className="w-[72px]">PDF</Table.Column>
               </Table.Header>
               <Table.Body>
                 {transactions.map((tx) => (
                   <Table.Row
                     key={tx.id}
-                    className="cursor-pointer"
+                    className="cursor-pointer whitespace-nowrap"
                     onAction={() => openDetails(tx)}
                   >
-                    <Table.Cell>
-                      <span className="text-sm font-medium text-foreground">
-                        {new Date(tx.createdAt).toLocaleDateString("en-IN", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </Table.Cell>
                     <Table.Cell className="text-sm text-muted">
-                      {new Date(tx.createdAt).toLocaleTimeString("en-IN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatTableDateTime(tx.createdAt)}
                     </Table.Cell>
                     <Table.Cell>
                       <span className="block max-w-[120px] truncate font-semibold">
@@ -167,12 +150,10 @@ export function TransactionsTable({
                     <Table.Cell>
                       <TransactionStatusChip status={tx.status} />
                     </Table.Cell>
-                    <Table.Cell className="min-w-[240px] align-top font-mono text-xs text-muted">
-                      <span className="block whitespace-normal break-all leading-relaxed">
-                        {tx.apiReferenceId || tx.id}
-                      </span>
+                    <Table.Cell className="font-mono text-xs text-muted">
+                      {tx.apiReferenceId || tx.id}
                     </Table.Cell>
-                    <Table.Cell className="align-top">
+                    <Table.Cell>
                       <div
                         className="inline-flex"
                         onClick={(event) => event.stopPropagation()}
@@ -187,8 +168,7 @@ export function TransactionsTable({
               </Table.Body>
             </Table.Content>
           </Table.ScrollContainer>
-        </Table>
-      </AdminTableCard>
+      </Table>
 
       <Modal>
         <Modal.Backdrop

@@ -1,54 +1,85 @@
-import { desc, eq, gt, sum } from "drizzle-orm";
-import { Landmark } from "lucide-react";
+import { and, eq, gt, gte, ne, sum } from "drizzle-orm";
 import { Table } from "@heroui/react";
-import { db, transaction, user } from "@repo/db";
+import { db, transaction } from "@repo/db";
 
 import {
   AdminTableCard,
   AdminTableEmpty,
 } from "@/components/admin/admin-table-card";
-import {
-  EarningsDownloadButton,
-  type AdminEarningRow,
-} from "@/components/admin/earnings-download-button";
+import { EarningsFilterBar } from "@/components/admin/earnings-filter-bar";
+import { EarningsDownloadButton } from "@/components/admin/earnings-download-button";
 import { Money } from "@/components/money";
 import { StatCard } from "@/components/admin/stat-card";
+import { fetchAdminEarnings } from "@/lib/admin-earnings-query";
 import { formatInr } from "@/lib/format-money";
+import { formatTableDateTime } from "@/lib/utils";
+import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 
-export default async function AdminEarningsPage() {
-  const transactions = await db
-    .select({
-      id: transaction.id,
-      createdAt: transaction.createdAt,
-      amount: transaction.amount,
-      status: transaction.status,
-      operator: transaction.operator,
-      adminCommission: transaction.adminCommission,
-      userName: user.name,
-      userEmail: user.email,
-    })
-    .from(transaction)
-    .innerJoin(user, eq(transaction.userId, user.id))
-    .where(gt(transaction.adminCommission, 0))
-    .orderBy(desc(transaction.createdAt))
-    .limit(50);
+function pickSearchParams(
+  resolved: { [key: string]: string | string[] | undefined },
+) {
+  return {
+    status: resolved.status as string | undefined,
+    operator: resolved.operator as string | undefined,
+    search: resolved.search as string | undefined,
+    dateFrom: resolved.dateFrom as string | undefined,
+    dateTo: resolved.dateTo as string | undefined,
+    sort: resolved.sort as string | undefined,
+  };
+}
 
-  const [aggregate] = await db
-    .select({ total: sum(transaction.adminCommission) })
-    .from(transaction)
-    .where(gt(transaction.adminCommission, 0));
+export default async function AdminEarningsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const resolvedParams = await searchParams;
+  const query = pickSearchParams(resolvedParams);
+  const { rows, status, sort } = await fetchAdminEarnings(query);
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const successRechargeVolumeFilter = and(
+    eq(transaction.status, "SUCCESS"),
+    ne(transaction.operator, "MANUAL_CREDIT"),
+  );
+
+  const [
+    [aggregate],
+    [todayAggregate],
+    [totalVolumeRow],
+    [todaysVolumeRow],
+  ] = await Promise.all([
+    db
+      .select({ total: sum(transaction.adminCommission) })
+      .from(transaction)
+      .where(gt(transaction.adminCommission, 0)),
+    db
+      .select({ total: sum(transaction.adminCommission) })
+      .from(transaction)
+      .where(
+        and(
+          gt(transaction.adminCommission, 0),
+          gte(transaction.createdAt, todayStart),
+        ),
+      ),
+    db
+      .select({ total: sum(transaction.amount) })
+      .from(transaction)
+      .where(successRechargeVolumeFilter),
+    db
+      .select({ total: sum(transaction.amount) })
+      .from(transaction)
+      .where(
+        and(successRechargeVolumeFilter, gte(transaction.createdAt, todayStart)),
+      ),
+  ]);
 
   const totalEarnings = Number(aggregate?.total ?? 0);
-
-  const rows: AdminEarningRow[] = transactions.map((tx) => ({
-    id: tx.id,
-    createdAt: tx.createdAt.toISOString(),
-    amount: tx.amount,
-    status: tx.status,
-    operator: tx.operator,
-    adminCommission: tx.adminCommission,
-    user: { name: tx.userName, email: tx.userEmail },
-  }));
+  const todaysEarnings = Number(todayAggregate?.total ?? 0);
+  const totalVolume = Number(totalVolumeRow?.total ?? 0);
+  const todaysVolume = Number(todaysVolumeRow?.total ?? 0);
 
   return (
     <div className="space-y-6">
@@ -61,55 +92,72 @@ export default async function AdminEarningsPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          description="Accumulated from all transactions"
-          icon={Landmark}
           title="Total platform earnings"
           value={formatInr(totalEarnings, { fractionDigits: 2 })}
         />
+        <StatCard
+          title="Today's earnings"
+          value={formatInr(todaysEarnings, { fractionDigits: 2 })}
+        />
+        <StatCard
+          title="Total volume"
+          value={formatInr(totalVolume, { fractionDigits: 0 })}
+        />
+        <StatCard
+          title="Today's volume"
+          value={formatInr(todaysVolume, { fractionDigits: 0 })}
+        />
       </div>
 
+      <EarningsFilterBar
+        initialDateFrom={query.dateFrom || ""}
+        initialDateTo={query.dateTo || ""}
+        initialOperator={query.operator || "ALL"}
+        initialSearch={query.search || ""}
+        initialSort={sort}
+        initialStatus={status}
+      />
+
       <AdminTableCard
-        description="The last 50 transactions that generated platform revenue."
+        description={
+          rows.length > 0
+            ? `Showing up to ${rows.length} matching transactions.`
+            : "Adjust filters to find earning transactions."
+        }
         headerAction={<EarningsDownloadButton data={rows} />}
-        title="Recent earnings ledger"
+        title="Earnings ledger"
       >
         {rows.length === 0 ? (
-          <AdminTableEmpty message="No earnings recorded yet." />
+          <AdminTableEmpty message="No earnings match your filters." />
         ) : (
           <Table>
-            <Table.ScrollContainer>
+            <Table.ScrollContainer className="max-h-[min(70vh,720px)]">
               <Table.Content
-                aria-label="Recent platform earnings"
-                className="min-w-[720px]"
+                aria-label="Platform earnings"
+                className="min-w-[800px]"
               >
                 <Table.Header>
                   <Table.Column isRowHeader>Date & time</Table.Column>
                   <Table.Column>Retailer</Table.Column>
                   <Table.Column>Operator</Table.Column>
-                  <Table.Column className="text-right">Recharge amt</Table.Column>
+                  <Table.Column>Status</Table.Column>
+                  <Table.Column className="text-right">Recharge amount</Table.Column>
                   <Table.Column className="text-right">Platform cut</Table.Column>
                 </Table.Header>
                 <Table.Body>
                   {rows.map((tx) => (
-                    <Table.Row key={tx.id}>
-                      <Table.Cell>
-                        <div className="flex flex-col text-sm">
-                          <span className="text-foreground">
-                            {new Date(tx.createdAt).toLocaleDateString("en-IN")}
-                          </span>
-                          <span className="text-xs text-muted">
-                            {new Date(tx.createdAt).toLocaleTimeString("en-IN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
+                    <Table.Row key={tx.id} className="whitespace-nowrap">
+                      <Table.Cell className="whitespace-nowrap text-sm text-muted">
+                        {formatTableDateTime(tx.createdAt)}
                       </Table.Cell>
                       <Table.Cell className="font-medium">{tx.user.name}</Table.Cell>
                       <Table.Cell>{tx.operator}</Table.Cell>
-                      <Table.Cell className="text-right font-mono text-sm text-muted">
+                      <Table.Cell>
+                        <TransactionStatusChip status={tx.status} />
+                      </Table.Cell>
+                      <Table.Cell className="text-right">
                         <Money amount={tx.amount} fractionDigits={0} />
                       </Table.Cell>
                       <Table.Cell className="text-right font-semibold text-success">

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Geist_Mono } from "next/font/google";
 
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const bricolageGrotesque = Bricolage_Grotesque({
+  variable: "--font-bricolage-grotesque",
   subsets: ["latin"],
 });
 
@@ -27,10 +27,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full font-sans antialiased`}
+      className={`${bricolageGrotesque.variable} ${geistMono.variable} h-full font-sans antialiased`}
       suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-full flex-col bg-background text-foreground">
         <Providers>{children}</Providers>
       </body>
     </html>
