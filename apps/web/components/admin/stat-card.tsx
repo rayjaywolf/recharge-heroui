@@ -27,7 +27,7 @@ export function StatCard({
       </Card.Header>
       <Card.Content className="pt-2">
         <p
-          className={`text-2xl font-semibold tracking-tight text-foreground ${highlight === "danger" ? "text-danger" : ""}`}
+          className={`text-2xl font-semibold tracking-tight tabular-nums text-foreground ${highlight === "danger" ? "text-danger" : ""}`}
         >
           {value}
         </p>

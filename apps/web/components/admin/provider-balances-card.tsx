@@ -1,6 +1,7 @@
 import { Wallet } from "lucide-react";
 import { Card } from "@heroui/react";
 
+import { amountClassName } from "@/lib/format-money";
 import {
   formatProviderBalance,
   type ProviderBalanceResult,
@@ -39,7 +40,7 @@ export function ProviderBalancesCard({
             </Card.Header>
             <Card.Content className="pt-2">
               <p
-                className={`text-2xl font-semibold tracking-tight ${
+                className={`text-2xl font-semibold tracking-tight ${amountClassName} ${
                   item.status === "error" ? "text-danger" : "text-foreground"
                 }`}
               >

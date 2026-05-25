@@ -3,10 +3,7 @@ packages:
   - "packages/*"
 
 allowBuilds:
-  core-js: set this to true or false
+  core-js: false
   esbuild: true
   sharp: true
   unrs-resolver: true
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver

@@ -11,14 +11,9 @@ import {
   EarningsDownloadButton,
   type AdminEarningRow,
 } from "@/components/admin/earnings-download-button";
+import { Money } from "@/components/money";
 import { StatCard } from "@/components/admin/stat-card";
-
-function formatInr(amount: number, fractionDigits = 2): string {
-  return `₹${amount.toLocaleString("en-IN", {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  })}`;
-}
+import { formatInr } from "@/lib/format-money";
 
 export default async function AdminEarningsPage() {
   const transactions = await db
@@ -71,7 +66,7 @@ export default async function AdminEarningsPage() {
           description="Accumulated from all transactions"
           icon={Landmark}
           title="Total platform earnings"
-          value={formatInr(totalEarnings)}
+          value={formatInr(totalEarnings, { fractionDigits: 2 })}
         />
       </div>
 
@@ -115,10 +110,10 @@ export default async function AdminEarningsPage() {
                       <Table.Cell className="font-medium">{tx.user.name}</Table.Cell>
                       <Table.Cell>{tx.operator}</Table.Cell>
                       <Table.Cell className="text-right font-mono text-sm text-muted">
-                        {formatInr(tx.amount, 0)}
+                        <Money amount={tx.amount} fractionDigits={0} />
                       </Table.Cell>
                       <Table.Cell className="text-right font-semibold text-success">
-                        +{formatInr(tx.adminCommission)}
+                        <Money amount={tx.adminCommission} sign="+" />
                       </Table.Cell>
                     </Table.Row>
                   ))}

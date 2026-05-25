@@ -3,6 +3,7 @@
 import { Menu, PanelLeftClose, PanelLeftOpen, Wallet } from "lucide-react";
 import { Button, Chip, Header, Separator } from "@heroui/react";
 
+import { Money } from "@/components/money";
 import { useDashboardSidebar } from "@/components/dashboard-sidebar-context";
 import { LogoutButton } from "@/components/logout-button";
 import { MobileNavDrawer } from "@/components/mobile-nav-drawer";
@@ -70,7 +71,11 @@ export function DashboardHeader({
           variant="secondary"
         >
           <Wallet className="size-3.5 shrink-0" aria-hidden />
-          ₹ {balance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <Money
+            amount={balance}
+            className="text-inherit"
+            fractionDigits={2}
+          />
         </Chip>
 
         <div className="min-w-0 sm:hidden">

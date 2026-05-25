@@ -16,6 +16,7 @@ import {
 } from "@/components/admin/admin-table-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 import { TransactionPdfDownloadButton } from "@/components/admin/transaction-pdf-download-button";
+import { Money } from "@/components/money";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
 import { formatRechargeProvider } from "@/lib/recharge-provider";
 
@@ -63,10 +64,6 @@ function DetailItem({
       </p>
     </div>
   );
-}
-
-function formatInr(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
 }
 
 function formatDateTime(iso: string): string {
@@ -162,7 +159,7 @@ export function TransactionsTable({
                       {tx.targetPhone}
                     </Table.Cell>
                     <Table.Cell className="font-semibold">
-                      {formatInr(tx.amount)}
+                      <Money amount={tx.amount} />
                     </Table.Cell>
                     <Table.Cell>
                       {formatRechargeProvider(tx.provider)}
@@ -217,7 +214,7 @@ export function TransactionsTable({
                     <div className="flex flex-wrap items-center gap-2">
                       <TransactionStatusChip status={selected.status} />
                       <Chip size="md" variant="secondary">
-                        {formatInr(selected.amount)}
+                        <Money amount={selected.amount} />
                       </Chip>
                     </div>
 
@@ -277,15 +274,15 @@ export function TransactionsTable({
                       <div className="grid gap-3 sm:grid-cols-3">
                         <DetailItem
                           label="Retailer"
-                          value={formatInr(selected.retailerCommission)}
+                          value={<Money amount={selected.retailerCommission} />}
                         />
                         <DetailItem
                           label="Distributor"
-                          value={formatInr(selected.distributorCommission)}
+                          value={<Money amount={selected.distributorCommission} />}
                         />
                         <DetailItem
                           label="Admin"
-                          value={formatInr(selected.adminCommission)}
+                          value={<Money amount={selected.adminCommission} />}
                         />
                       </div>
                     </Surface>

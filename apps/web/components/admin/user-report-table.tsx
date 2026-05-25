@@ -9,13 +9,10 @@ import {
   AdminTableCard,
   AdminTableEmpty,
 } from "@/components/admin/admin-table-card";
+import { Money, TabularNumber } from "@/components/money";
 import type { UserReportRow } from "@/lib/user-report";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
 import { exportUserReport } from "@/lib/excel-export";
-
-function formatInr(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
-}
 
 export function UserReportTable({
   title,
@@ -135,17 +132,27 @@ export function UserReportTable({
                     {showRetailerCount ? (
                       <Table.Cell>{row.retailerCount}</Table.Cell>
                     ) : null}
-                    <Table.Cell>{formatInr(row.balance)}</Table.Cell>
-                    <Table.Cell>{formatInr(row.earnings)}</Table.Cell>
-                    <Table.Cell>{row.successCount.toLocaleString("en-IN")}</Table.Cell>
-                    <Table.Cell>{formatInr(row.successVolume)}</Table.Cell>
+                    <Table.Cell>
+                      <Money amount={row.balance} />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <Money amount={row.earnings} />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <TabularNumber>
+                        {row.successCount.toLocaleString("en-IN")}
+                      </TabularNumber>
+                    </Table.Cell>
+                    <Table.Cell>
+                      <Money amount={row.successVolume} />
+                    </Table.Cell>
                     <Table.Cell>
                       {row.pendingCount > 0 ? (
                         <Chip size="sm" variant="warning">
-                          {row.pendingCount}
+                          <TabularNumber>{row.pendingCount}</TabularNumber>
                         </Chip>
                       ) : (
-                        "0"
+                        <TabularNumber>0</TabularNumber>
                       )}
                     </Table.Cell>
                     <Table.Cell>

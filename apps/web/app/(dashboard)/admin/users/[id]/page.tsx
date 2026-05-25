@@ -8,14 +8,12 @@ import {
   AdminTableCard,
   AdminTableEmpty,
 } from "@/components/admin/admin-table-card";
+import { Money } from "@/components/money";
 import { StatCard } from "@/components/admin/stat-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
+import { formatInr } from "@/lib/format-money";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
 import { formatRechargeProvider } from "@/lib/recharge-provider";
-
-function formatInr(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
-}
 
 function transactionLabel(operator: string, targetPhone: string) {
   if (operator === "MANUAL_CREDIT") {
@@ -267,7 +265,7 @@ export default async function AdminUserDetailPage({
                           ) : null}
                         </Table.Cell>
                         <Table.Cell className="font-semibold">
-                          {formatInr(tx.amount)}
+                          <Money amount={tx.amount} />
                         </Table.Cell>
                         <Table.Cell className="text-sm">
                           {[

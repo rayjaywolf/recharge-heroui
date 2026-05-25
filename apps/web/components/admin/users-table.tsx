@@ -22,6 +22,7 @@ import {
   AdminTableCard,
   AdminTableEmpty,
 } from "@/components/admin/admin-table-card";
+import { Money } from "@/components/money";
 import { apiFetch } from "@/lib/api-client";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
 
@@ -49,10 +50,6 @@ const ROLE_OPTIONS = [
 ] as const;
 
 const NO_DISTRIBUTOR = "none";
-
-function formatInr(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
-}
 
 export function UsersTable({
   title,
@@ -267,7 +264,7 @@ export function UsersTable({
                         </Table.Cell>
                       ) : null}
                       <Table.Cell className="font-semibold">
-                        {formatInr(user.balance)}
+                        <Money amount={user.balance} />
                       </Table.Cell>
                       <Table.Cell className="text-sm text-muted">
                         {user._count.transactions} total

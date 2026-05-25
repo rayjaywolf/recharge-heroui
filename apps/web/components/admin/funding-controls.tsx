@@ -22,6 +22,7 @@ import {
   toast,
 } from "@heroui/react";
 
+import { Money } from "@/components/money";
 import { apiFetch } from "@/lib/api-client";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
 
@@ -34,10 +35,6 @@ export type FundingUserOption = {
   balance: number;
   role: string;
 };
-
-function formatInr(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
-}
 
 export function FundingControls({ users }: { users: FundingUserOption[] }) {
   const router = useRouter();
@@ -180,9 +177,10 @@ export function FundingControls({ users }: { users: FundingUserOption[] }) {
             <Surface className="p-3" variant="tertiary">
               <p className="text-xs text-muted">
                 Current balance:{" "}
-                <span className="font-semibold text-foreground">
-                  {formatInr(selectedUser.balance)}
-                </span>
+                <Money
+                  amount={selectedUser.balance}
+                  className="font-semibold text-foreground"
+                />
               </p>
             </Surface>
           ) : null}

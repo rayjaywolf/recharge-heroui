@@ -23,12 +23,10 @@ import {
   AdminTableCard,
   AdminTableEmpty,
 } from "@/components/admin/admin-table-card";
+import { Money } from "@/components/money";
 import { StatCard } from "@/components/admin/stat-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
-
-function formatInr(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
-}
+import { formatInr } from "@/lib/format-money";
 
 export default async function AdminOverviewPage() {
   const now = new Date();
@@ -189,7 +187,7 @@ export default async function AdminOverviewPage() {
                         {tx.targetPhone}
                       </Table.Cell>
                       <Table.Cell className="font-semibold">
-                        {formatInr(tx.amount)}
+                        <Money amount={tx.amount} />
                       </Table.Cell>
                       <Table.Cell>
                         <TransactionStatusChip status={tx.status} />

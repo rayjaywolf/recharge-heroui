@@ -6,16 +6,13 @@ import {
   AdminTableCard,
   AdminTableEmpty,
 } from "@/components/admin/admin-table-card";
+import { Money } from "@/components/money";
 import { FundingControls } from "@/components/admin/funding-controls";
 import {
   FundingDownloadButton,
   type FundingLedgerRow,
 } from "@/components/admin/funding-download-button";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
-
-function formatInr(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
-}
 
 export default async function AdminFundingPage() {
   const usersList = await db
@@ -136,7 +133,7 @@ export default async function AdminFundingPage() {
                               variant="soft"
                             >
                               {isCredit ? "+" : "−"}
-                              {formatInr(tx.amount)}
+                              <Money amount={tx.amount} />
                             </Chip>
                           </Table.Cell>
                           <Table.Cell className="max-w-[180px] truncate text-xs text-muted">
