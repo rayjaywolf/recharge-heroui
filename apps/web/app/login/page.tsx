@@ -39,39 +39,54 @@ export default function LoginPage() {
       return;
     }
 
+    if (!password) {
+      setError("Enter your password.");
+      return;
+    }
+
     const fetchOptions = {
-      onResponse: () => setLoading(false),
       onSuccess: () => {
         router.push("/");
         router.refresh();
       },
       onError: (ctx: { error: { message: string } }) => {
-        setError(ctx.error.message);
+        setError(ctx.error.message || "Sign in failed. Check your credentials.");
       },
     };
 
-    if (isEmailLoginIdentifier(trimmed)) {
-      setLoading(true);
-      await authClient.signIn.email({
-        email: trimmed,
+    setLoading(true);
+
+    try {
+      if (isEmailLoginIdentifier(trimmed)) {
+        await authClient.signIn.email({
+          email: trimmed,
+          password,
+          fetchOptions,
+        });
+        return;
+      }
+
+      const normalized = normalizePhoneNumber(trimmed);
+      if (!validatePhoneNumber(normalized)) {
+        setError("Enter a valid 10-digit mobile number or your account email.");
+        return;
+      }
+
+      await authClient.signIn.phoneNumber({
+        phoneNumber: normalized,
         password,
         fetchOptions,
       });
-      return;
+    } catch (err) {
+      console.error("Sign in error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not reach the server. Check API_URL on Vercel and redeploy.",
+      );
+    } finally {
+      setLoading(false);
     }
-
-    const normalized = normalizePhoneNumber(trimmed);
-    if (!validatePhoneNumber(normalized)) {
-      setError("Enter a valid 10-digit mobile number or your account email.");
-      return;
-    }
-
-    setLoading(true);
-    await authClient.signIn.phoneNumber({
-      phoneNumber: normalized,
-      password,
-      fetchOptions,
-    });
   };
 
   return (
@@ -93,7 +108,7 @@ export default function LoginPage() {
           </Card.Description>
         </Card.Header>
 
-        <Form onSubmit={handleLogin}>
+        <Form noValidate onSubmit={handleLogin}>
           <Card.Content>
             <div className="flex flex-col gap-4">
               {error ? (

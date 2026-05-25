@@ -1,8 +1,17 @@
+"use client";
+
 import { createAuthClient } from "better-auth/react";
 import { phoneNumberClient } from "better-auth/client/plugins";
 
+/** Same-origin in production so /api/auth hits Vercel and is proxied to Koyeb. */
+function getAuthBaseURL(): string {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "") ?? "";
+}
+
 export const authClient = createAuthClient({
-    /** The base URL of the server (optional if you're using the same domain) */
-    baseURL: process.env.NEXT_PUBLIC_BASE_URL,
-    plugins: [phoneNumberClient()],
+  baseURL: getAuthBaseURL(),
+  plugins: [phoneNumberClient()],
 });

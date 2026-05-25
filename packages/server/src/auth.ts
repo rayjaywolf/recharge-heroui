@@ -18,7 +18,13 @@ import "./startup-validation";
 
 export { db } from "@repo/db";
 
+const publicAppUrl =
+  process.env.WEB_ORIGIN?.replace(/\/$/, "") ??
+  process.env.BETTER_AUTH_URL?.replace(/\/$/, "") ??
+  "http://localhost:3000";
+
 export const auth = betterAuth({
+  baseURL: publicAppUrl,
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {

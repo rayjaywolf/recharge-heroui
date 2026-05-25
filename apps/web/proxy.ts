@@ -3,8 +3,36 @@ import type { NextRequest } from "next/server";
 import { betterFetch } from "@better-fetch/fetch";
 import type { Session } from "better-auth/types";
 
+function proxyApiToBackend(request: NextRequest) {
+  const apiBase = process.env.API_URL?.replace(/\/$/, "");
+  if (!apiBase) {
+    return NextResponse.json(
+      { error: "API_URL is not configured on the web app." },
+      { status: 503 },
+    );
+  }
+
+  const target = new URL(
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    apiBase,
+  );
+
+  const headers = new Headers(request.headers);
+  const host = request.headers.get("host");
+  if (host) {
+    headers.set("x-forwarded-host", host);
+  }
+  headers.set("x-forwarded-proto", request.nextUrl.protocol.replace(":", ""));
+
+  return NextResponse.rewrite(target, { request: { headers } });
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/api/")) {
+    return proxyApiToBackend(request);
+  }
 
   const isDashboardRoute =
     pathname.startsWith("/admin") ||
@@ -56,5 +84,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/retailer/:path*", "/distributor/:path*"],
+  matcher: ["/api/:path*", "/admin/:path*", "/retailer/:path*", "/distributor/:path*"],
 };

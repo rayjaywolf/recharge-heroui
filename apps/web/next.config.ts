@@ -6,7 +6,6 @@ const monorepoRoot = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "../..",
 );
-const apiUrl = process.env.API_URL ?? "http://localhost:3001";
 
 const nextConfig: NextConfig = {
   turbopack: {
@@ -19,14 +18,7 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${apiUrl}/api/:path*`,
-      },
-    ];
-  },
+  // /api/* is proxied to Koyeb at runtime in proxy.ts (uses API_URL from Vercel env).
 };
 
 export default nextConfig;
