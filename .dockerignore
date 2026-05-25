@@ -1,0 +1,32 @@
+# Dependencies and build output (reinstalled in the image)
+node_modules
+**/node_modules
+.next
+**/.next
+out
+**/out
+dist
+**/dist
+.turbo
+
+# Git and local tooling
+.git
+.gitignore
+.cursor
+**/.DS_Store
+
+# Secrets (set in Koyeb / host env, not baked into the image)
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Web app and legacy reference — not needed for the API image
+apps/web
+apps/web/recharge
+
+# Docs and misc
+*.md
+!apps/api/DEPLOY.md
+llms-full.txt
+coverage
