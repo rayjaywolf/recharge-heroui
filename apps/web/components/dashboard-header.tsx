@@ -5,6 +5,7 @@ import { Button, Chip, Header, Separator } from "@heroui/react";
 
 import { Money } from "@/components/money";
 import { SidebarPanelIcon } from "@/components/sidebar-panel-icon";
+import { WalletBalanceMenu } from "@/components/wallet-balance-menu";
 import { useDashboardSidebar } from "@/components/dashboard-sidebar-context";
 import { LogoutButton } from "@/components/logout-button";
 import { MobileNavDrawer } from "@/components/mobile-nav-drawer";
@@ -28,6 +29,7 @@ export function DashboardHeader({
   pendingApprovalsCount = 0,
 }: DashboardHeaderProps) {
   const { collapsed, toggle } = useDashboardSidebar();
+  const showWalletMenu = userRole === "DISTRIBUTOR" || userRole === "RETAILER";
 
   return (
     <Header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-separator bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -62,18 +64,18 @@ export function DashboardHeader({
 
         <ThemeToggle />
 
-        <Chip
-          className="gap-1 font-medium"
-          size="md"
-          variant="secondary"
-        >
-          <Wallet className="size-3.5 shrink-0" aria-hidden />
-          <Money
-            amount={balance}
-            className="text-inherit"
-            fractionDigits={2}
-          />
-        </Chip>
+        {showWalletMenu ? (
+          <WalletBalanceMenu balance={balance} userRole={userRole} />
+        ) : (
+          <Chip className="gap-1 font-medium" size="md" variant="secondary">
+            <Wallet className="size-3.5 shrink-0" aria-hidden />
+            <Money
+              amount={balance}
+              className="text-inherit"
+              fractionDigits={2}
+            />
+          </Chip>
+        )}
 
         <div className="min-w-0 sm:hidden">
           <p className="truncate text-sm font-medium text-foreground">

@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm";
 import { db, transaction, user, type TxStatus } from "@repo/db";
 
-import type { AdminEarningRow } from "@/components/admin/earnings-download-button";
+import type { EarningRow } from "@/components/admin/earnings-download-button";
 
 export type AdminEarningsSearchParams = {
   status?: string;
@@ -52,14 +52,25 @@ export function resolveEarningsSort(sortParam: string | undefined): EarningsSort
   return DEFAULT_SORT;
 }
 
-function earningsOrderBy(sort: EarningsSort) {
+export type EarningsScope = "admin" | "distributor";
+
+export type FetchEarningsOptions = {
+  distributorId?: string;
+};
+
+function earningsOrderBy(sort: EarningsSort, scope: EarningsScope) {
+  const commission =
+    scope === "distributor"
+      ? transaction.distributorCommission
+      : transaction.adminCommission;
+
   switch (sort) {
     case "date_asc":
       return asc(transaction.createdAt);
     case "commission_desc":
-      return desc(transaction.adminCommission);
+      return desc(commission);
     case "commission_asc":
-      return asc(transaction.adminCommission);
+      return asc(commission);
     case "amount_desc":
       return desc(transaction.amount);
     case "amount_asc":
@@ -76,8 +87,30 @@ function earningsOrderBy(sort: EarningsSort) {
 
 export function buildEarningsWhereClause(
   params: AdminEarningsSearchParams,
+  options?: FetchEarningsOptions,
 ): SQL | undefined {
-  const conditions: SQL[] = [gt(transaction.adminCommission, 0)];
+  const scope: EarningsScope = options?.distributorId ? "distributor" : "admin";
+
+  const conditions: SQL[] = [];
+
+  if (options?.distributorId) {
+    // Network: commission from retailers under this distributor.
+    // Self: distributor recharges earn the retailer margin on their own account.
+    conditions.push(
+      or(
+        and(
+          eq(user.distributorId, options.distributorId),
+          gt(transaction.distributorCommission, 0),
+        ),
+        and(
+          eq(transaction.userId, options.distributorId),
+          gt(transaction.retailerCommission, 0),
+        ),
+      )!,
+    );
+  } else {
+    conditions.push(gt(transaction.adminCommission, 0));
+  }
 
   if (params.status && params.status !== "ALL") {
     conditions.push(eq(transaction.status, params.status as TxStatus));
@@ -114,44 +147,75 @@ export function buildEarningsWhereClause(
   return and(...conditions);
 }
 
-export async function fetchAdminEarnings(
+export async function fetchEarnings(
   params: AdminEarningsSearchParams,
+  options?: FetchEarningsOptions,
 ): Promise<{
-  rows: AdminEarningRow[];
+  rows: EarningRow[];
   status: string;
   sort: EarningsSort;
+  scope: EarningsScope;
 }> {
+  const scope: EarningsScope = options?.distributorId ? "distributor" : "admin";
   const status =
     params.status && params.status !== "ALL" ? params.status : "ALL";
   const sort = resolveEarningsSort(params.sort);
-  const whereClause = buildEarningsWhereClause(params);
+  const whereClause = buildEarningsWhereClause(params, options);
 
   const transactions = await db
     .select({
       id: transaction.id,
+      userId: transaction.userId,
       createdAt: transaction.createdAt,
       amount: transaction.amount,
       status: transaction.status,
       operator: transaction.operator,
       adminCommission: transaction.adminCommission,
+      distributorCommission: transaction.distributorCommission,
+      retailerCommission: transaction.retailerCommission,
       userName: user.name,
       userEmail: user.email,
     })
     .from(transaction)
     .innerJoin(user, eq(transaction.userId, user.id))
     .where(whereClause)
-    .orderBy(earningsOrderBy(sort))
+    .orderBy(earningsOrderBy(sort, scope))
     .limit(150);
 
-  const rows: AdminEarningRow[] = transactions.map((tx) => ({
-    id: tx.id,
-    createdAt: tx.createdAt.toISOString(),
-    amount: tx.amount,
-    status: tx.status,
-    operator: tx.operator,
-    adminCommission: tx.adminCommission,
-    user: { name: tx.userName, email: tx.userEmail },
-  }));
+  const distributorId = options?.distributorId;
 
-  return { rows, status, sort };
+  const rows: EarningRow[] = transactions.map((tx) => {
+    const isOwnRecharge =
+      scope === "distributor" &&
+      distributorId != null &&
+      tx.userId === distributorId;
+
+    return {
+      id: tx.id,
+      createdAt: tx.createdAt.toISOString(),
+      amount: tx.amount,
+      status: tx.status,
+      operator: tx.operator,
+      commission: isOwnRecharge
+        ? tx.retailerCommission
+        : scope === "distributor"
+          ? tx.distributorCommission
+          : tx.adminCommission,
+      user: {
+        name: isOwnRecharge ? "You" : tx.userName,
+        email: tx.userEmail,
+      },
+    };
+  });
+
+  return { rows, status, sort, scope };
+}
+
+export async function fetchAdminEarnings(params: AdminEarningsSearchParams) {
+  const result = await fetchEarnings(params);
+  return {
+    rows: result.rows,
+    status: result.status,
+    sort: result.sort,
+  };
 }

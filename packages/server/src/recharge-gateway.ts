@@ -195,11 +195,33 @@ export function parseRechargeProviderResponse(
       txid?: string;
       req_id?: string;
     };
-    const ref = `${response.txid ?? ""} [REQ_ID: ${response.req_id ?? ""}]`;
+    const ref = `${response.txid ?? ""} [REQ_ID: ${response.req_id ?? ""}]`.trim();
+    const detail = response.remark || response.message || "";
+    const isPendingDetail = (text: string) => {
+      const lower = text.toLowerCase();
+      return (
+        lower.includes("pending") ||
+        lower.includes("in process") ||
+        lower.includes("processing")
+      );
+    };
+
+    if (
+      response.status === "pending" ||
+      isPendingDetail(detail)
+    ) {
+      return {
+        finalStatus: "PENDING",
+        apiMessage: detail || "Recharge is pending at provider",
+        apiReferenceId: ref,
+        shouldRefund: false,
+      };
+    }
+
     if (response.status === "success") {
       return {
         finalStatus: "SUCCESS",
-        apiMessage: response.remark || response.message || "Recharge successful",
+        apiMessage: detail || "Recharge successful",
         apiReferenceId: ref,
         shouldRefund: false,
       };

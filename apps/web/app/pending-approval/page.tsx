@@ -1,6 +1,7 @@
-import { Alert, Button } from "@heroui/react";
+import { Alert } from "@heroui/react";
 
 import { AuthLayout } from "@/components/auth-layout";
+import { ButtonLink } from "@/components/button-link";
 
 export default function PendingApprovalPage() {
   return (
@@ -16,9 +17,9 @@ export default function PendingApprovalPage() {
         </Alert.Content>
       </Alert>
 
-      <Button className="mt-6" href="/login" variant="secondary">
+      <ButtonLink className="mt-6" href="/login" variant="secondary">
         Back to sign in
-      </Button>
+      </ButtonLink>
     </AuthLayout>
   );
 }

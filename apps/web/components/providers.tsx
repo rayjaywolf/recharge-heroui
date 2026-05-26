@@ -1,6 +1,6 @@
 "use client";
 
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@teispace/next-themes";
 import type { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {

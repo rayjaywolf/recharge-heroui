@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { betterFetch } from "@better-fetch/fetch";
-import type { Session } from "better-auth/types";
+
+import type { AuthGetSessionResponse } from "@/lib/auth-session";
+import { getDashboardPath } from "@/lib/dashboard-path";
 
 function proxyApiToBackend(request: NextRequest) {
   const apiBase = process.env.API_URL?.replace(/\/$/, "");
@@ -27,11 +29,39 @@ function proxyApiToBackend(request: NextRequest) {
   return NextResponse.rewrite(target, { request: { headers } });
 }
 
+async function fetchAuthSession(
+  request: NextRequest,
+): Promise<AuthGetSessionResponse> {
+  const { data } = await betterFetch<AuthGetSessionResponse>(
+    "/api/auth/get-session",
+    {
+      baseURL: request.nextUrl.origin,
+      headers: {
+        cookie: request.headers.get("cookie") || "",
+      },
+    },
+  );
+
+  return data ?? null;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api/")) {
     return proxyApiToBackend(request);
+  }
+
+  const authSession = await fetchAuthSession(request);
+
+  if (pathname === "/") {
+    const role = authSession?.user?.role;
+    if (role) {
+      return NextResponse.redirect(
+        new URL(getDashboardPath(role), request.url),
+      );
+    }
+    return NextResponse.next();
   }
 
   const isDashboardRoute =
@@ -43,21 +73,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const { data: session } = await betterFetch<Session>(
-    "/api/auth/get-session",
-    {
-      baseURL: request.nextUrl.origin,
-      headers: {
-        cookie: request.headers.get("cookie") || "",
-      },
-    }
-  );
-
-  if (!session || !session.user) {
+  if (!authSession?.user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const role = session.user.role as string;
+  const role = authSession.user.role as string | undefined;
+
+  if (!role) {
+    return NextResponse.next();
+  }
 
   if (role === "RETAILER") {
     if (pathname.startsWith("/admin") || pathname.startsWith("/distributor")) {
@@ -84,5 +108,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*", "/admin/:path*", "/retailer/:path*", "/distributor/:path*"],
+  matcher: [
+    "/",
+    "/api/:path*",
+    "/admin/:path*",
+    "/retailer/:path*",
+    "/distributor/:path*",
+  ],
 };

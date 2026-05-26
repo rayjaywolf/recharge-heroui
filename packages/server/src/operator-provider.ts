@@ -67,11 +67,14 @@ export async function syncOperatorProviderConfigsFromCommissionRules() {
 
   if (missing.length === 0) return;
 
+  const now = new Date();
   await db.insert(operatorProviderConfig).values(
     missing.map((operator) => ({
       id: createId(),
       operator,
       provider: "REALROBO" as Provider,
+      createdAt: now,
+      updatedAt: now,
     })),
   ).onConflictDoNothing({ target: operatorProviderConfig.operator });
 }

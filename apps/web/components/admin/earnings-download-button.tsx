@@ -5,28 +5,34 @@ import { Button } from "@heroui/react";
 
 import {
   exportAdminEarnings,
+  exportDistributorEarnings,
   type BaseTransactionData,
 } from "@/lib/excel-export";
 
-export type AdminEarningRow = {
+export type EarningRow = {
   id: string;
   createdAt: string;
   amount: number;
   status: string;
   operator: string;
-  adminCommission: number;
+  commission: number;
   user: {
     name: string;
     email: string;
   };
 };
 
+/** @deprecated Use EarningRow */
+export type AdminEarningRow = EarningRow & { adminCommission: number };
+
 export function EarningsDownloadButton({
   data,
   fileName,
+  variant = "admin",
 }: {
-  data: AdminEarningRow[];
+  data: EarningRow[];
   fileName?: string;
+  variant?: "admin" | "distributor";
 }) {
   const handleDownload = () => {
     const exportData: BaseTransactionData[] = data.map((tx) => ({
@@ -35,11 +41,17 @@ export function EarningsDownloadButton({
       amount: tx.amount,
       status: tx.status,
       operator: tx.operator,
-      adminCommission: tx.adminCommission,
+      adminCommission: variant === "admin" ? tx.commission : undefined,
+      distributorCommission:
+        variant === "distributor" ? tx.commission : undefined,
       user: tx.user,
     }));
 
-    exportAdminEarnings(exportData, fileName);
+    if (variant === "distributor") {
+      exportDistributorEarnings(exportData, fileName);
+    } else {
+      exportAdminEarnings(exportData, fileName);
+    }
   };
 
   return (

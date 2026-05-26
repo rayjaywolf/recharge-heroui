@@ -11,10 +11,12 @@ export { BACKUP_NONE, normalizeOperatorKey };
 export type { BackupSlot };
 
 export function assertProvider(provider: string): RechargeProviderId {
-  if (!RECHARGE_PROVIDER_IDS.includes(provider as RechargeProviderId)) {
+  const normalized = provider.trim().toUpperCase();
+  if (normalized === "TEST") return "TEST";
+  if (!RECHARGE_PROVIDER_IDS.includes(normalized as RechargeProviderId)) {
     throw new Error("Invalid provider");
   }
-  return provider as RechargeProviderId;
+  return normalized as RechargeProviderId;
 }
 
 export function parseBackupValue(backup: string): Provider | null {

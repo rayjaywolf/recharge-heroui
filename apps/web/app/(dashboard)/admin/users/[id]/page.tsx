@@ -21,23 +21,8 @@ import { TransactionStatusChip } from "@/components/admin/transaction-status-chi
 import { formatInr } from "@/lib/format-money";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
 import { formatRechargeProvider } from "@/lib/recharge-provider";
+import { transactionLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
-
-function transactionLabel(operator: string, targetPhone: string) {
-  if (operator === "MANUAL_CREDIT") {
-    return { title: "Wallet top-up", sub: null as string | null };
-  }
-  if (operator === "MANUAL_DEBIT") {
-    return { title: "Wallet debit", sub: null };
-  }
-  if (operator === "FUNDS_SENT") {
-    return { title: "Funds sent", sub: null };
-  }
-  if (operator === "FUNDS_RECEIVED") {
-    return { title: "Funds received", sub: null };
-  }
-  return { title: operator, sub: targetPhone };
-}
 
 export default async function AdminUserDetailPage({
   params,

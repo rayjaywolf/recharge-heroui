@@ -29,6 +29,7 @@ import {
   parseRechargeProviderResponse,
   type ParsedRechargeResponse,
 } from "@repo/server/recharge-gateway";
+import { validateRealRoboCircle } from "@repo/server/realrobo";
 import { CIRCLES_BY_PROVIDER, getClientProviders } from "@repo/shared/recharge-config";
 import { requireSession, type AppVariables } from "../middleware";
 
@@ -221,6 +222,16 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
     const routing = await resolveProvidersForOperator(operator);
     const providerChain = buildProviderAttemptChain(routing);
     const primaryProvider = routing.primary;
+
+    if (providerChain.includes("REALROBO")) {
+      try {
+        validateRealRoboCircle(circleCode);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Circle is required for recharge.";
+        return c.json({ error: message }, 400);
+      }
+    }
 
     if (idempotencyKey) {
       const [existing] = await db

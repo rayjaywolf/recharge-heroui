@@ -106,3 +106,57 @@ export function downloadTransactionPdf(tx: AdminTransactionRow): void {
   const safeId = tx.id.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 12);
   doc.save(`transaction-${safeId || "receipt"}.pdf`);
 }
+
+export type RechargeReceiptInput = {
+  transactionId: string;
+  status: string;
+  phone: string;
+  operator: string;
+  amount: number;
+  referenceId?: string;
+  apiMessage?: string;
+  provider?: string;
+  circleCode?: string;
+  createdAt?: string;
+};
+
+export function downloadRechargeReceiptPdf(input: RechargeReceiptInput): void {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  let y = 18;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Recharge receipt", 14, y);
+  y += 10;
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100);
+  doc.text(`Generated ${formatDateTime(new Date())}`, 14, y);
+  doc.setTextColor(0);
+  y += 10;
+
+  y = addField(doc, y, "Transaction ID", input.transactionId);
+  y = addField(doc, y, "Status", input.status);
+  y = addField(doc, y, "Amount", formatInr(input.amount));
+  y = addField(
+    doc,
+    y,
+    "Date & time",
+    input.createdAt ? formatDateTime(input.createdAt) : formatDateTime(new Date()),
+  );
+  y = addField(doc, y, "Carrier", input.operator);
+  y = addField(doc, y, "Recharge phone", input.phone);
+  y = addField(doc, y, "Circle", input.circleCode ?? "—");
+  y = addField(
+    doc,
+    y,
+    "API gateway",
+    input.provider ? formatRechargeProvider(input.provider) : "—",
+  );
+  y = addField(doc, y, "Reference ID", input.referenceId ?? "—");
+  y = addField(doc, y, "API message", input.apiMessage ?? "—");
+
+  const safeId = input.transactionId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 12);
+  doc.save(`recharge-${safeId || "receipt"}.pdf`);
+}

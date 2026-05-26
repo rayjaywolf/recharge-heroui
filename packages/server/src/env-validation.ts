@@ -18,6 +18,17 @@ const ENV_VARS: EnvVarConfig[] = [
   { name: 'A1TOPUP_USERNAME', required: false, description: 'A1TopUp API username' },
   { name: 'A1TOPUP_PASSWORD', required: false, description: 'A1TopUp API password' },
   { name: 'REALROBO_API_TOKEN', required: false, description: 'RealRobo API token' },
+  {
+    name: 'REALROBO_AIRTEL_MONEY_SUB_OPERATOR_ID',
+    required: false,
+    description:
+      'Optional override for RealRobo sub_operator_id on Airtel Money lapu (11); default uses biller codes in realrobo-sub-operators.ts',
+  },
+  {
+    name: 'REALROBO_LAPU_ID',
+    required: false,
+    description: 'RealRobo lapu_id sent on recharge requests',
+  },
   { name: 'MROBOTICS_API_TOKEN', required: false, description: 'MRobotics API token' },
   
   // Application

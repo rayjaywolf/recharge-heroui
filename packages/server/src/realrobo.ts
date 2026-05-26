@@ -1,5 +1,10 @@
 // RealRobo API integration functions
 import { validateProviderCredentials } from './env-validation';
+import {
+  REALROBO_AIRTEL_POSTPAID_SUB_OPERATOR_IDS,
+  REALROBO_WALLET_ROUTE_MOBILE_OPERATOR_IDS,
+  REALROBO_WALLET_SUB_OPERATOR_BY_OPERATOR_ID,
+} from './realrobo-sub-operators';
 
 export interface RealRoboRechargeResponse {
   status: 'success' | 'failure';
@@ -121,7 +126,119 @@ export function getRealRoboStateId(circleCode: string): number {
     'CH': 24,
   };
   
-  return stateMap[normalized] || 0; // 0 for All States (Universal)
+  return stateMap[normalized] || 0;
+}
+
+/** RealRobo (especially operator 11) needs a valid `state_id`; omitting circle triggers auto-lookup failures. */
+export function validateRealRoboCircle(
+  circleCode: string | null | undefined,
+): number {
+  const trimmed = circleCode?.trim();
+  if (!trimmed) {
+    throw new Error(
+      "Circle is required. Select the mobile number's telecom circle (e.g. RJ, DL, MH).",
+    );
+  }
+
+  const stateId = getRealRoboStateId(trimmed);
+  if (stateId === 0) {
+    throw new Error(
+      `Unknown circle code "${trimmed}". Choose a circle from the list (e.g. RJ, DL, MH).`,
+    );
+  }
+
+  return stateId;
+}
+
+export const REALROBO_DEFAULT_WALLET_OPERATOR_ID = 11;
+
+function isMobileWalletRouteOperator(operatorName: string): boolean {
+  try {
+    const operatorId = getRealRoboOperatorId(operatorName);
+    return REALROBO_WALLET_ROUTE_MOBILE_OPERATOR_IDS.includes(
+      operatorId as (typeof REALROBO_WALLET_ROUTE_MOBILE_OPERATOR_IDS)[number],
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * RealRobo biller code for wallet-lapu route (operator 11 + sub_operator_id).
+ * Env `REALROBO_AIRTEL_MONEY_SUB_OPERATOR_ID` overrides when set.
+ */
+export function getRealRoboWalletSubOperatorId(
+  operatorName: string,
+): string | null {
+  const fromEnv = process.env.REALROBO_AIRTEL_MONEY_SUB_OPERATOR_ID?.trim();
+  if (fromEnv) return fromEnv;
+
+  const normalized = operatorName.toLowerCase();
+  if (normalized.includes("postpaid") && normalized.includes("airtel")) {
+    if (normalized.includes("fetch")) {
+      return REALROBO_AIRTEL_POSTPAID_SUB_OPERATOR_IDS.fetchAndPay;
+    }
+    if (normalized.includes("airtel postpaid")) {
+      return REALROBO_AIRTEL_POSTPAID_SUB_OPERATOR_IDS.postpaid;
+    }
+    return REALROBO_AIRTEL_POSTPAID_SUB_OPERATOR_IDS.default;
+  }
+
+  try {
+    const operatorId = getRealRoboOperatorId(operatorName);
+    return REALROBO_WALLET_SUB_OPERATOR_BY_OPERATOR_ID[operatorId] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function callRealRoboRechargeApi(params: {
+  apiToken: string;
+  phoneNumber: string;
+  amount: number;
+  operatorId: number;
+  requestId: string;
+  stateId: number;
+  subOperatorId?: string;
+  lapuId?: string;
+}): Promise<RealRoboRechargeResponse> {
+  const url = new URL("https://realrobo.in/api/recharge");
+
+  url.searchParams.append("api_token", params.apiToken);
+  url.searchParams.append("number", params.phoneNumber);
+  url.searchParams.append("amount", params.amount.toString());
+  url.searchParams.append("operator_id", params.operatorId.toString());
+  url.searchParams.append("req_id", params.requestId);
+
+  url.searchParams.append("state_id", params.stateId.toString());
+
+  if (params.subOperatorId) {
+    url.searchParams.append("sub_operator_id", params.subOperatorId);
+  }
+
+  if (params.lapuId) {
+    url.searchParams.append("lapu_id", params.lapuId);
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    signal: AbortSignal.timeout(30000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`RealRobo API error: ${response.status} ${response.statusText}`);
+  }
+
+  const textResponse = await response.text();
+
+  try {
+    return JSON.parse(textResponse) as RealRoboRechargeResponse;
+  } catch {
+    throw new Error(`Invalid JSON response from RealRobo: ${textResponse}`);
+  }
 }
 
 export async function performRealRoboRecharge(
@@ -134,45 +251,43 @@ export async function performRealRoboRecharge(
   validateProviderCredentials('REALROBO');
   const apiToken = process.env.REALROBO_API_TOKEN!;
 
-  const baseUrl = 'https://realrobo.in/api/recharge';
-  const url = new URL(baseUrl);
-  
+  const stateId = validateRealRoboCircle(circleCode);
+  const baseRequestId =
+    transactionId || `TX_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  const lapuId = process.env.REALROBO_LAPU_ID?.trim() || undefined;
+
+  const requestParams = {
+    apiToken,
+    phoneNumber,
+    amount,
+    stateId,
+    lapuId,
+  };
+
+  const subOperatorId = getRealRoboWalletSubOperatorId(operatorName);
+
+  if (subOperatorId) {
+    return callRealRoboRechargeApi({
+      ...requestParams,
+      operatorId: REALROBO_DEFAULT_WALLET_OPERATOR_ID,
+      requestId: baseRequestId,
+      subOperatorId,
+    });
+  }
+
+  if (isMobileWalletRouteOperator(operatorName)) {
+    throw new Error(
+      `RealRobo recharge for ${operatorName} requires operator_id ${REALROBO_DEFAULT_WALLET_OPERATOR_ID} with a sub_operator_id biller code`,
+    );
+  }
+
   const operatorId = getRealRoboOperatorId(operatorName);
-  const stateId = circleCode ? getRealRoboStateId(circleCode) : 0;
-  const requestId = transactionId || `TX_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
-  // Required parameters
-  url.searchParams.append('api_token', apiToken);
-  url.searchParams.append('number', phoneNumber);
-  url.searchParams.append('amount', amount.toString());
-  url.searchParams.append('operator_id', operatorId.toString());
-  url.searchParams.append('req_id', requestId);
-  
-  // Optional parameters
-  if (stateId !== 0) {
-    url.searchParams.append('state_id', stateId.toString());
-  }
-  
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    signal: AbortSignal.timeout(30000) // 30 second timeout
+  return callRealRoboRechargeApi({
+    ...requestParams,
+    operatorId,
+    requestId: baseRequestId,
   });
-  
-  if (!response.ok) {
-    throw new Error(`RealRobo API error: ${response.status} ${response.statusText}`);
-  }
-  
-  const textResponse = await response.text();
-  
-  try {
-    const jsonResponse = JSON.parse(textResponse) as RealRoboRechargeResponse;
-    return jsonResponse;
-  } catch (error) {
-    throw new Error(`Invalid JSON response from RealRobo: ${textResponse}`);
-  }
 }
 
 export async function checkRealRoboStatus(reqId: string): Promise<RealRoboStatusResponse> {

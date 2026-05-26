@@ -1,12 +1,16 @@
 import type { LucideIcon } from "lucide-react";
 import { Card } from "@heroui/react";
 
+import { StatTrendBadge } from "@/components/admin/stat-trend-badge";
+
 type StatCardProps = {
   title: string;
   value: string;
   description?: string;
   icon?: LucideIcon;
   highlight?: "default" | "danger";
+  /** Day-over-day % change vs yesterday; shown as pill next to value. */
+  trendPercent?: number | null;
 };
 
 export function StatCard({
@@ -15,6 +19,7 @@ export function StatCard({
   description,
   icon: Icon,
   highlight = "default",
+  trendPercent,
 }: StatCardProps) {
   return (
     <Card variant="default">
@@ -28,11 +33,16 @@ export function StatCard({
         ) : null}
       </Card.Header>
       <Card.Content className="pt-2">
-        <p
-          className={`text-3xl font-semibold tracking-tight tabular-nums text-foreground sm:text-4xl ${highlight === "danger" ? "text-danger" : ""}`}
-        >
-          {value}
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p
+            className={`text-2xl font-semibold tracking-tight tabular-nums text-foreground ${highlight === "danger" ? "text-danger" : ""}`}
+          >
+            {value}
+          </p>
+          {trendPercent != null ? (
+            <StatTrendBadge className="self-center" percentChange={trendPercent} />
+          ) : null}
+        </div>
         {description ? (
           <p className="mt-1 text-xs text-muted">{description}</p>
         ) : null}

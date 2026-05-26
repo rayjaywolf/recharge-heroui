@@ -1,4 +1,4 @@
-import { and, eq, gt, gte, ne, sum } from "drizzle-orm";
+import { and, eq, gt, gte, lt, ne, sum } from "drizzle-orm";
 import { Table } from "@heroui/react";
 import { db, transaction } from "@repo/db";
 
@@ -12,6 +12,7 @@ import { Money } from "@/components/money";
 import { StatCard } from "@/components/admin/stat-card";
 import { fetchAdminEarnings } from "@/lib/admin-earnings-query";
 import { formatInr } from "@/lib/format-money";
+import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
 import { formatTableDateTime } from "@/lib/utils";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 
@@ -37,8 +38,7 @@ export default async function AdminEarningsPage({
   const query = pickSearchParams(resolvedParams);
   const { rows, status, sort } = await fetchAdminEarnings(query);
 
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const { todayStart, yesterdayStart } = getDayBounds();
 
   const successRechargeVolumeFilter = and(
     eq(transaction.status, "SUCCESS"),
@@ -48,8 +48,10 @@ export default async function AdminEarningsPage({
   const [
     [aggregate],
     [todayAggregate],
+    [yesterdayAggregate],
     [totalVolumeRow],
     [todaysVolumeRow],
+    [yesterdaysVolumeRow],
   ] = await Promise.all([
     db
       .select({ total: sum(transaction.adminCommission) })
@@ -65,6 +67,16 @@ export default async function AdminEarningsPage({
         ),
       ),
     db
+      .select({ total: sum(transaction.adminCommission) })
+      .from(transaction)
+      .where(
+        and(
+          gt(transaction.adminCommission, 0),
+          gte(transaction.createdAt, yesterdayStart),
+          lt(transaction.createdAt, todayStart),
+        ),
+      ),
+    db
       .select({ total: sum(transaction.amount) })
       .from(transaction)
       .where(successRechargeVolumeFilter),
@@ -74,12 +86,26 @@ export default async function AdminEarningsPage({
       .where(
         and(successRechargeVolumeFilter, gte(transaction.createdAt, todayStart)),
       ),
+    db
+      .select({ total: sum(transaction.amount) })
+      .from(transaction)
+      .where(
+        and(
+          successRechargeVolumeFilter,
+          gte(transaction.createdAt, yesterdayStart),
+          lt(transaction.createdAt, todayStart),
+        ),
+      ),
   ]);
 
   const totalEarnings = Number(aggregate?.total ?? 0);
   const todaysEarnings = Number(todayAggregate?.total ?? 0);
+  const yesterdaysEarnings = Number(yesterdayAggregate?.total ?? 0);
   const totalVolume = Number(totalVolumeRow?.total ?? 0);
   const todaysVolume = Number(todaysVolumeRow?.total ?? 0);
+  const yesterdaysVolume = Number(yesterdaysVolumeRow?.total ?? 0);
+  const earningsTrend = computePercentChange(todaysEarnings, yesterdaysEarnings);
+  const volumeTrend = computePercentChange(todaysVolume, yesterdaysVolume);
 
   return (
     <div className="space-y-6">
@@ -95,18 +121,22 @@ export default async function AdminEarningsPage({
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Total platform earnings"
+          trendPercent={earningsTrend}
           value={formatInr(totalEarnings, { fractionDigits: 2 })}
         />
         <StatCard
           title="Today's earnings"
+          trendPercent={earningsTrend}
           value={formatInr(todaysEarnings, { fractionDigits: 2 })}
         />
         <StatCard
           title="Total volume"
+          trendPercent={volumeTrend}
           value={formatInr(totalVolume, { fractionDigits: 0 })}
         />
         <StatCard
           title="Today's volume"
+          trendPercent={volumeTrend}
           value={formatInr(todaysVolume, { fractionDigits: 0 })}
         />
       </div>
@@ -161,7 +191,7 @@ export default async function AdminEarningsPage({
                         <Money amount={tx.amount} fractionDigits={0} />
                       </Table.Cell>
                       <Table.Cell className="text-right font-semibold text-success">
-                        <Money amount={tx.adminCommission} sign="+" />
+                        <Money amount={tx.commission} sign="+" />
                       </Table.Cell>
                     </Table.Row>
                   ))}

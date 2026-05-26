@@ -36,11 +36,22 @@ const OPERATOR_OPTIONS = [
   { id: "BSNL", label: "BSNL" },
 ] as const;
 
-const SORT_OPTIONS: { id: EarningsSort; label: string }[] = [
+const ADMIN_SORT_OPTIONS: { id: EarningsSort; label: string }[] = [
   { id: "date_desc", label: "Newest first" },
   { id: "date_asc", label: "Oldest first" },
   { id: "commission_desc", label: "Highest platform cut" },
   { id: "commission_asc", label: "Lowest platform cut" },
+  { id: "amount_desc", label: "Highest recharge" },
+  { id: "amount_asc", label: "Lowest recharge" },
+  { id: "retailer_asc", label: "Retailer A–Z" },
+  { id: "operator_asc", label: "Carrier A–Z" },
+];
+
+const DISTRIBUTOR_SORT_OPTIONS: { id: EarningsSort; label: string }[] = [
+  { id: "date_desc", label: "Newest first" },
+  { id: "date_asc", label: "Oldest first" },
+  { id: "commission_desc", label: "Highest your cut" },
+  { id: "commission_asc", label: "Lowest your cut" },
   { id: "amount_desc", label: "Highest recharge" },
   { id: "amount_asc", label: "Lowest recharge" },
   { id: "retailer_asc", label: "Retailer A–Z" },
@@ -80,6 +91,8 @@ export function EarningsFilterBar({
   initialDateFrom,
   initialDateTo,
   initialSort,
+  basePath = "/admin/earnings",
+  variant = "admin",
 }: {
   initialStatus: string;
   initialOperator: string;
@@ -87,8 +100,12 @@ export function EarningsFilterBar({
   initialDateFrom: string;
   initialDateTo: string;
   initialSort: EarningsSort;
+  basePath?: string;
+  variant?: "admin" | "distributor";
 }) {
   const router = useRouter();
+  const sortOptions =
+    variant === "distributor" ? DISTRIBUTOR_SORT_OPTIONS : ADMIN_SORT_OPTIONS;
   const [status, setStatus] = useState(initialStatus);
   const [operator, setOperator] = useState(initialOperator);
   const [search, setSearch] = useState(initialSearch);
@@ -138,7 +155,7 @@ export function EarningsFilterBar({
     if (applyDateTo) params.set("dateTo", applyDateTo);
 
     const qs = params.toString();
-    router.push(qs ? `/admin/earnings?${qs}` : "/admin/earnings");
+    router.push(qs ? `${basePath}?${qs}` : basePath);
   };
 
   const clearFilters = () => {
@@ -149,7 +166,7 @@ export function EarningsFilterBar({
     setDateFrom("");
     setDateTo("");
     setDateRange(null);
-    router.push("/admin/earnings");
+    router.push(basePath);
   };
 
   return (
@@ -242,7 +259,7 @@ export function EarningsFilterBar({
           </Select.Trigger>
           <Select.Popover>
             <ListBox>
-              {SORT_OPTIONS.map((opt) => (
+              {sortOptions.map((opt) => (
                 <ListBox.Item key={opt.id} id={opt.id} textValue={opt.label}>
                   {opt.label}
                   <ListBox.ItemIndicator />

@@ -45,6 +45,8 @@ export type FetchAdminTransactionsOptions = {
   defaultType?: AdminTransactionTypeFilter;
   lockedType?: AdminTransactionTypeFilter;
   lockedStatus?: string;
+  /** When set, limits rows to this user and search skips retailer name/email. */
+  userId?: string;
 };
 
 export function resolveTransactionTypeFilter(
@@ -73,7 +75,10 @@ export function resolveTransactionsSort(
   return DEFAULT_SORT;
 }
 
-function transactionsOrderBy(sort: TransactionsSort) {
+export function transactionsOrderBy(
+  sort: TransactionsSort,
+  options?: { scopedUser?: boolean },
+) {
   switch (sort) {
     case "date_asc":
       return asc(transaction.createdAt);
@@ -82,7 +87,9 @@ function transactionsOrderBy(sort: TransactionsSort) {
     case "amount_asc":
       return asc(transaction.amount);
     case "retailer_asc":
-      return asc(user.name);
+      return options?.scopedUser
+        ? asc(transaction.operator)
+        : asc(user.name);
     case "operator_asc":
       return asc(transaction.operator);
     case "date_desc":
@@ -120,7 +127,15 @@ export function buildTransactionWhereClause(
     (params.status && params.status !== "ALL" ? params.status : undefined);
 
   const conditions: SQL[] = [];
-  applyTransactionTypeCondition(conditions, type);
+
+  if (options?.userId) {
+    conditions.push(eq(transaction.userId, options.userId));
+  }
+
+  const skipTypeFilter = options?.userId && type === "ALL";
+  if (!skipTypeFilter) {
+    applyTransactionTypeCondition(conditions, type);
+  }
 
   if (status) {
     conditions.push(eq(transaction.status, status as TxStatus));
@@ -134,13 +149,20 @@ export function buildTransactionWhereClause(
   if (search) {
     const pattern = `%${search}%`;
     conditions.push(
-      or(
-        ilike(transaction.targetPhone, pattern),
-        ilike(transaction.apiReferenceId, pattern),
-        ilike(transaction.id, pattern),
-        ilike(user.name, pattern),
-        ilike(user.email, pattern),
-      )!,
+      options?.userId
+        ? or(
+            ilike(transaction.targetPhone, pattern),
+            ilike(transaction.apiReferenceId, pattern),
+            ilike(transaction.id, pattern),
+            ilike(transaction.apiMessage, pattern),
+          )!
+        : or(
+            ilike(transaction.targetPhone, pattern),
+            ilike(transaction.apiReferenceId, pattern),
+            ilike(transaction.id, pattern),
+            ilike(user.name, pattern),
+            ilike(user.email, pattern),
+          )!,
     );
   }
 
@@ -198,7 +220,7 @@ export async function fetchAdminTransactions(
     .from(transaction)
     .innerJoin(user, eq(transaction.userId, user.id))
     .where(whereClause)
-    .orderBy(transactionsOrderBy(sort))
+    .orderBy(transactionsOrderBy(sort, { scopedUser: !!options?.userId }))
     .limit(150);
 
   const rows: AdminTransactionRow[] = transactions.map((tx) => ({

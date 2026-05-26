@@ -1,23 +1,18 @@
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { Button } from "@heroui/react";
 import { db, user } from "@repo/db";
 
+import { ButtonLink } from "@/components/button-link";
 import { auth } from "@/lib/auth";
-
-function getDashboardPath(role: string): string {
-  if (role === "ADMIN") return "/admin";
-  if (role === "DISTRIBUTOR") return "/distributor";
-  return "/retailer";
-}
+import { getDashboardPath } from "@/lib/dashboard-path";
 
 export default async function HomePage() {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
-  if (session) {
+  if (session?.user) {
     const [found] = await db
       .select({ role: user.role })
       .from(user)
@@ -57,12 +52,12 @@ export default async function HomePage() {
           </p>
 
           <div className="mt-8 flex flex-col gap-3">
-            <Button fullWidth href="/login" variant="primary">
+            <ButtonLink fullWidth href="/login" variant="primary">
               Sign in
-            </Button>
-            <Button fullWidth href="/register" variant="secondary">
+            </ButtonLink>
+            <ButtonLink fullWidth href="/register" variant="secondary">
               Apply as retailer
-            </Button>
+            </ButtonLink>
           </div>
         </div>
       </main>

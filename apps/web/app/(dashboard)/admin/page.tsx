@@ -5,6 +5,7 @@ import {
   eq,
   gte,
   inArray,
+  lt,
   ne,
   notInArray,
   sum,
@@ -28,11 +29,30 @@ import { Money } from "@/components/money";
 import { StatCard } from "@/components/admin/stat-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 import { formatInr } from "@/lib/format-money";
+import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
 import { formatTableDateTime } from "@/lib/utils";
+
+async function successRateBetween(start: Date, end?: Date) {
+  const conditions = [
+    gte(transaction.createdAt, start),
+    ne(transaction.operator, "MANUAL_CREDIT"),
+    inArray(transaction.status, ["SUCCESS", "FAILED", "REFUNDED"]),
+  ];
+  if (end) conditions.push(lt(transaction.createdAt, end));
+
+  const rows = await db
+    .select({ status: transaction.status })
+    .from(transaction)
+    .where(and(...conditions));
+
+  const successCount = rows.filter((t) => t.status === "SUCCESS").length;
+  const total = rows.length;
+  return total > 0 ? Math.round((successCount / total) * 100) : 100;
+}
 
 export default async function AdminOverviewPage() {
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const { todayStart, yesterdayStart } = getDayBounds(now);
 
   const [totalLiabilityRow] = await db
     .select({ total: sum(user.balance) })
@@ -53,6 +73,76 @@ export default async function AdminOverviewPage() {
     );
 
   const todaysVolume = Number(todaysVolumeRow?.total ?? 0);
+
+  const [
+    [yesterdaysVolumeRow],
+    [todaysInflowRow],
+    [yesterdaysInflowRow],
+    [todaysNewPendingRow],
+    [yesterdaysNewPendingRow],
+  ] = await Promise.all([
+    db
+      .select({ total: sum(transaction.amount) })
+      .from(transaction)
+      .where(
+        and(
+          eq(transaction.status, "SUCCESS"),
+          gte(transaction.createdAt, yesterdayStart),
+          lt(transaction.createdAt, todayStart),
+          ne(transaction.operator, "MANUAL_CREDIT"),
+        ),
+      ),
+    db
+      .select({ total: sum(transaction.amount) })
+      .from(transaction)
+      .where(
+        and(
+          eq(transaction.status, "SUCCESS"),
+          gte(transaction.createdAt, todayStart),
+          inArray(transaction.operator, ["MANUAL_CREDIT", "FUNDS_RECEIVED"]),
+        ),
+      ),
+    db
+      .select({ total: sum(transaction.amount) })
+      .from(transaction)
+      .where(
+        and(
+          eq(transaction.status, "SUCCESS"),
+          gte(transaction.createdAt, yesterdayStart),
+          lt(transaction.createdAt, todayStart),
+          inArray(transaction.operator, ["MANUAL_CREDIT", "FUNDS_RECEIVED"]),
+        ),
+      ),
+    db
+      .select({ count: count() })
+      .from(transaction)
+      .where(
+        and(
+          eq(transaction.status, "PENDING"),
+          gte(transaction.createdAt, todayStart),
+        ),
+      ),
+    db
+      .select({ count: count() })
+      .from(transaction)
+      .where(
+        and(
+          eq(transaction.status, "PENDING"),
+          gte(transaction.createdAt, yesterdayStart),
+          lt(transaction.createdAt, todayStart),
+        ),
+      ),
+  ]);
+
+  const yesterdaysVolume = Number(yesterdaysVolumeRow?.total ?? 0);
+  const todaysInflow = Number(todaysInflowRow?.total ?? 0);
+  const yesterdaysInflow = Number(yesterdaysInflowRow?.total ?? 0);
+  const todaysNewPending = todaysNewPendingRow?.count ?? 0;
+  const yesterdaysNewPending = yesterdaysNewPendingRow?.count ?? 0;
+
+  const [yesterdaySuccessRate] = await Promise.all([
+    successRateBetween(yesterdayStart, todayStart),
+  ]);
 
   const [pendingRow] = await db
     .select({ count: count() })
@@ -76,6 +166,17 @@ export default async function AdminOverviewPage() {
   const totalResolved = todaysResolvedTx.length;
   const successRate =
     totalResolved > 0 ? Math.round((successCount / totalResolved) * 100) : 100;
+
+  const balanceTrend = computePercentChange(todaysInflow, yesterdaysInflow);
+  const volumeTrend = computePercentChange(todaysVolume, yesterdaysVolume);
+  const pendingTrend = computePercentChange(
+    todaysNewPending,
+    yesterdaysNewPending,
+  );
+  const successRateTrend = computePercentChange(
+    successRate,
+    yesterdaySuccessRate,
+  );
 
   const recentLedger = await db
     .select({
@@ -108,22 +209,26 @@ export default async function AdminOverviewPage() {
         <StatCard
           icon={Wallet}
           title="Balance"
+          trendPercent={balanceTrend}
           value={formatInr(totalLiability)}
         />
         <StatCard
           icon={ArrowRightLeft}
           title="Volume"
+          trendPercent={volumeTrend}
           value={formatInr(todaysVolume)}
         />
         <StatCard
           highlight={pendingTransactions > 5 ? "danger" : "default"}
           icon={pendingTransactions > 5 ? AlertCircle : Clock}
           title="Pending transactions"
+          trendPercent={pendingTrend}
           value={String(pendingTransactions)}
         />
         <StatCard
           icon={CheckCircle2}
           title="Success rate"
+          trendPercent={successRateTrend}
           value={`${successRate}%`}
         />
       </div>

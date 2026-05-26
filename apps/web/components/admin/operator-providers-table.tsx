@@ -34,6 +34,19 @@ const PROVIDER_OPTIONS: { id: RechargeProvider; label: string }[] = [
   { id: "TEST", label: PROVIDER_LABELS.TEST },
 ];
 
+async function readApiError(res: Response, fallback: string) {
+  try {
+    const body = await res.json();
+    const message =
+      body && typeof body === "object" && "error" in body
+        ? String(body.error)
+        : "";
+    return message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function backupSelectValue(value: string | null) {
   return value ?? BACKUP_NONE;
 }
@@ -147,7 +160,11 @@ function PrimaryApiCard({
               provider: r.provider,
             }),
           });
-          if (!res.ok) throw new Error("Save failed");
+          if (!res.ok) {
+            throw new Error(
+              await readApiError(res, "Failed to save primary API routing."),
+            );
+          }
         }),
       );
       setSavedRows((current) =>
@@ -158,8 +175,13 @@ function PrimaryApiCard({
       );
       toast("Primary API routing saved.", { variant: "success" });
       router.refresh();
-    } catch {
-      toast("Failed to save primary API routing.", { variant: "danger" });
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : "Failed to save primary API routing.",
+        { variant: "danger" },
+      );
     } finally {
       setSaving(false);
     }
@@ -329,7 +351,11 @@ function BackupApisCard({
               slot: u.slot,
             }),
           });
-          if (!res.ok) throw new Error("Save failed");
+          if (!res.ok) {
+            throw new Error(
+              await readApiError(res, "Failed to save backup API routing."),
+            );
+          }
         }),
       );
       setSavedRows((current) =>
@@ -345,8 +371,13 @@ function BackupApisCard({
       );
       toast("Backup API routing saved.", { variant: "success" });
       router.refresh();
-    } catch {
-      toast("Failed to save backup API routing.", { variant: "danger" });
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : "Failed to save backup API routing.",
+        { variant: "danger" },
+      );
     } finally {
       setSaving(false);
     }

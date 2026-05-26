@@ -41,6 +41,9 @@ yarn-error.log*
 /recharge/
 apps/web/recharge/
 
+# HeroUI Pro reference assets
+apps/web/HeroUI Pro (2025-3)/
+
 # vercel
 .vercel
 

@@ -237,16 +237,19 @@ adminRoutes.put("/api/admin/operator-providers", requireAdmin, async (c) => {
     const key = normalizeOperatorKey(String(operator));
     const providerId = assertProvider(String(provider));
 
+    const now = new Date();
     await db
       .insert(operatorProviderConfig)
       .values({
         id: createId(),
         operator: key,
         provider: providerId,
+        createdAt: now,
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: operatorProviderConfig.operator,
-        set: { provider: providerId },
+        set: { provider: providerId, updatedAt: now },
       });
 
     return c.json({ success: true });
@@ -284,10 +287,13 @@ adminRoutes.put("/api/admin/operator-providers/backup", requireAdmin, async (c) 
         .set(data)
         .where(eq(operatorProviderConfig.operator, key));
     } else {
+      const now = new Date();
       await db.insert(operatorProviderConfig).values({
         id: createId(),
         operator: key,
         provider: "REALROBO",
+        createdAt: now,
+        updatedAt: now,
         ...data,
       });
     }

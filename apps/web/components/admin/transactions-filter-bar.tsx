@@ -42,6 +42,11 @@ const CATEGORY_OPTIONS: { id: AdminTransactionTypeFilter; label: string }[] = [
   { id: "FUNDS", label: "Funds transfer" },
 ];
 
+const ALL_CATEGORY_OPTION: { id: AdminTransactionTypeFilter; label: string } = {
+  id: "ALL",
+  label: "All activity",
+};
+
 const SORT_OPTIONS: { id: TransactionsSort; label: string }[] = [
   { id: "date_desc", label: "Newest first" },
   { id: "date_asc", label: "Oldest first" },
@@ -107,6 +112,10 @@ export function TransactionsFilterBar({
   emphasizeSearch?: boolean;
 }) {
   const router = useRouter();
+  const categoryOptions =
+    defaultType === "ALL"
+      ? [ALL_CATEGORY_OPTION, ...CATEGORY_OPTIONS]
+      : CATEGORY_OPTIONS;
   const [type, setType] = useState<AdminTransactionTypeFilter>(initialType);
   const [status, setStatus] = useState(initialStatus);
   const [operator, setOperator] = useState(initialOperator);
@@ -228,7 +237,7 @@ export function TransactionsFilterBar({
             </Select.Trigger>
             <Select.Popover>
               <ListBox>
-                {CATEGORY_OPTIONS.map((opt) => (
+                {categoryOptions.map((opt) => (
                   <ListBox.Item key={opt.id} id={opt.id} textValue={opt.label}>
                     {opt.label}
                     <ListBox.ItemIndicator />

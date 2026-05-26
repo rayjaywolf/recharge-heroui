@@ -7,4 +7,8 @@ export * from "./operator-provider";
 export * from "./recharge-gateway";
 export * from "./provider-balances";
 export { getMRoboticsBalance, performMRoboticsRecharge } from "./mrobotics";
-export { getRealRoboBalance, performRealRoboRecharge } from "./realrobo";
+export {
+  getRealRoboBalance,
+  performRealRoboRecharge,
+  validateRealRoboCircle,
+} from "./realrobo";
