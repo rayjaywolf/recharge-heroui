@@ -110,6 +110,7 @@ export default async function DistributorEarningsPage({
                   <Table.Column>Operator</Table.Column>
                   <Table.Column>Status</Table.Column>
                   <Table.Column className="text-right">Recharge amount</Table.Column>
+                  <Table.Column className="text-right">Your margin</Table.Column>
                   <Table.Column className="text-right">Your cut</Table.Column>
                 </Table.Header>
                 <Table.Body>
@@ -126,8 +127,17 @@ export default async function DistributorEarningsPage({
                       <Table.Cell className="text-right">
                         <Money amount={tx.amount} fractionDigits={0} />
                       </Table.Cell>
-                      <Table.Cell className="text-right font-semibold text-success">
-                        <Money amount={tx.commission} sign="+" />
+                      <Table.Cell className="text-right text-muted">
+                        {tx.amount > 0 && tx.commission > 0
+                          ? `${((tx.commission / tx.amount) * 100).toFixed(2)}%`
+                          : "—"}
+                      </Table.Cell>
+                      <Table.Cell className="text-right font-semibold">
+                        <Money
+                          amount={tx.commission}
+                          className="text-success"
+                          sign="+"
+                        />
                       </Table.Cell>
                     </Table.Row>
                   ))}

@@ -14,6 +14,7 @@ import {
   validatePhoneNumber,
 } from "@repo/shared/phone";
 
+import { assignRandomMpin } from "./mpin";
 import "./startup-validation";
 
 export { db } from "@repo/db";
@@ -84,6 +85,12 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (createdUser) => {
+          const role = (createdUser as { role?: string }).role ?? "RETAILER";
+
+          if (role !== "ADMIN") {
+            await assignRandomMpin(createdUser.id, true);
+          }
+
           const whatsapp = (createdUser as { whatsappNumber?: string | null })
             .whatsappNumber;
           const existingPhone = (createdUser as { phoneNumber?: string | null })

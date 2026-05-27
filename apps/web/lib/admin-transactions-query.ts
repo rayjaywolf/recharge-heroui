@@ -216,6 +216,8 @@ export async function fetchAdminTransactions(
       userEmail: user.email,
       userPhoneNumber: user.phoneNumber,
       userWhatsappNumber: user.whatsappNumber,
+      userRole: user.role,
+      rechargerDistributorId: user.distributorId,
     })
     .from(transaction)
     .innerJoin(user, eq(transaction.userId, user.id))
@@ -246,6 +248,8 @@ export async function fetchAdminTransactions(
       phoneNumber: tx.userPhoneNumber,
       whatsappNumber: tx.userWhatsappNumber,
     },
+    userRole: tx.userRole,
+    rechargerDistributorId: tx.rechargerDistributorId,
   }));
 
   return { rows, type, status, sort };

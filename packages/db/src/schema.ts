@@ -57,6 +57,8 @@ export const user = pgTable(
     gstNumber: text("gstNumber"),
     businessType: text("businessType"),
     distributorId: text("distributorId"),
+    mpinHash: text("mpinHash"),
+    mpinMustReset: boolean("mpinMustReset").notNull().default(false),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
       .notNull()
       .defaultNow(),

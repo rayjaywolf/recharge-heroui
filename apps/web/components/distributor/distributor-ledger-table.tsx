@@ -15,6 +15,10 @@ import { TransactionStatusChip } from "@/components/admin/transaction-status-chi
 import { TransactionPdfDownloadButton } from "@/components/admin/transaction-pdf-download-button";
 import type { AdminTransactionRow } from "@/components/admin/transactions-table";
 import { Money } from "@/components/money";
+import {
+  distributorSelfYourMarginPercent,
+  isDistributorSelfRecharge,
+} from "@/lib/distributor-self-recharge";
 import { formatRechargeProvider } from "@/lib/recharge-provider";
 import { formatTableDateTime } from "@/lib/utils";
 
@@ -192,7 +196,26 @@ export function DistributorLedgerTable({
                       />
                     </div>
 
-                    {selected.distributorCommission > 0 ? (
+                    {isDistributorSelfRecharge(selected) &&
+                    selected.retailerCommission > 0 ? (
+                      <Surface className="space-y-3 p-4" variant="tertiary">
+                        <p className="text-sm font-semibold text-foreground">
+                          Commission
+                        </p>
+                        <DetailItem
+                          label="Your margin"
+                          value={
+                            distributorSelfYourMarginPercent(selected) ?? "—"
+                          }
+                        />
+                        <DetailItem
+                          label="Your earnings"
+                          value={
+                            <Money amount={selected.retailerCommission} />
+                          }
+                        />
+                      </Surface>
+                    ) : selected.distributorCommission > 0 ? (
                       <Surface className="space-y-3 p-4" variant="tertiary">
                         <p className="text-sm font-semibold text-foreground">
                           Commission
@@ -208,15 +231,6 @@ export function DistributorLedgerTable({
 
                     <div className="grid gap-4">
                       <DetailItem
-                        label="API message"
-                        value={selected.apiMessage || "—"}
-                      />
-                      <DetailItem
-                        label="Idempotency key"
-                        mono
-                        value={selected.idempotencyKey}
-                      />
-                      <DetailItem
                         label="Last updated"
                         value={formatDateTime(selected.updatedAt)}
                       />
@@ -225,6 +239,7 @@ export function DistributorLedgerTable({
 
                   <Modal.Footer className="flex flex-wrap gap-2">
                     <TransactionPdfDownloadButton
+                      mode="distributor"
                       showLabel
                       size="md"
                       transaction={selected}

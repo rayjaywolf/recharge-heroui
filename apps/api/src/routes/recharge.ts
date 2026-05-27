@@ -29,6 +29,7 @@ import {
   parseRechargeProviderResponse,
   type ParsedRechargeResponse,
 } from "@repo/server/recharge-gateway";
+import { syncPendingRealRoboTransactionsForUser } from "@repo/server/pending-recharge-sync";
 import { validateRealRoboCircle } from "@repo/server/realrobo";
 import { CIRCLES_BY_PROVIDER, getClientProviders } from "@repo/shared/recharge-config";
 import { requireSession, type AppVariables } from "../middleware";
@@ -198,6 +199,42 @@ rechargeRoutes.get("/api/recharge/transactions", requireSession, async (c) => {
   }
 });
 
+rechargeRoutes.post("/api/recharge/sync-pending", requireSession, async (c) => {
+  try {
+    const session = c.get("session");
+    const result = await syncPendingRealRoboTransactionsForUser(
+      session.user.id,
+    );
+
+    const parts: string[] = [];
+    if (result.succeeded > 0) parts.push(`${result.succeeded} succeeded`);
+    if (result.failed > 0) parts.push(`${result.failed} failed`);
+    if (result.stillPending > 0) {
+      parts.push(`${result.stillPending} still pending`);
+    }
+
+    const message =
+      result.checked === 0
+        ? "No pending RealRobo recharges to check."
+        : result.updated > 0
+          ? `Updated ${result.updated} of ${result.checked} pending recharge${result.checked === 1 ? "" : "s"}${parts.length > 0 ? ` (${parts.join(", ")})` : ""}.`
+          : `Checked ${result.checked} pending recharge${result.checked === 1 ? "" : "s"}; no status changes yet${parts.length > 0 ? ` (${parts.join(", ")})` : ""}.`;
+
+    return c.json({
+      success: true,
+      message,
+      ...result,
+    });
+  } catch (error) {
+    console.error("Sync pending recharges error:", error);
+    const msg = error instanceof Error ? error.message : "Internal server error";
+    if (msg.includes("REALROBO_API_TOKEN")) {
+      return c.json({ error: "RealRobo is not configured." }, 503);
+    }
+    return c.json({ error: "Could not refresh pending recharges." }, 500);
+  }
+});
+
 rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
   try {
     const session = c.get("session");
@@ -285,6 +322,7 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
       return {
         transaction: createdTx,
         distributorId: currentUser.distributorId,
+        userRole: currentUser.role,
       };
     });
 
@@ -302,9 +340,20 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
     const dCommission = (amount * dMargin) / 100;
     const aCommission = (amount * aMargin) / 100;
 
-    const hasDistributor = !!result.distributorId;
-    const adminCommission = aCommission + (hasDistributor ? 0 : dCommission);
-    const distributorCommission = hasDistributor ? dCommission : 0;
+    const isDistributorSelfRecharge =
+      result.userRole === "DISTRIBUTOR" && !result.distributorId;
+
+    let adminCommission: number;
+    let distributorCommission: number;
+
+    if (isDistributorSelfRecharge) {
+      adminCommission = aCommission + dCommission;
+      distributorCommission = 0;
+    } else {
+      const hasDistributor = !!result.distributorId;
+      adminCommission = aCommission + (hasDistributor ? 0 : dCommission);
+      distributorCommission = hasDistributor ? dCommission : 0;
+    }
 
     let usedProvider: RechargeProviderId = primaryProvider;
     let parsed: ParsedRechargeResponse = {

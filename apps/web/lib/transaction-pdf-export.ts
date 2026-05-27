@@ -2,6 +2,10 @@ import { jsPDF } from "jspdf";
 
 import type { AdminTransactionRow } from "@/components/admin/transactions-table";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
+import {
+  distributorSelfYourMarginPercent,
+  isDistributorSelfRecharge,
+} from "@/lib/distributor-self-recharge";
 import { formatRechargeProvider } from "@/lib/recharge-provider";
 
 function formatInr(amount: number): string {
@@ -45,7 +49,12 @@ function addSectionTitle(doc: jsPDF, y: number, title: string): number {
   return y + 8;
 }
 
-export function downloadTransactionPdf(tx: AdminTransactionRow): void {
+export type TransactionPdfMode = "admin" | "distributor";
+
+export function downloadTransactionPdf(
+  tx: AdminTransactionRow,
+  options: { mode: TransactionPdfMode },
+): void {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageHeight = doc.internal.pageSize.getHeight();
   let y = 18;
@@ -77,11 +86,13 @@ export function downloadTransactionPdf(tx: AdminTransactionRow): void {
     y = 18;
   }
 
-  y = addSectionTitle(doc, y, "Retailer");
+  y = addSectionTitle(doc, y, options.mode === "admin" ? "Retailer" : "User");
   y = addField(doc, y, "Name", tx.user.name);
   y = addField(doc, y, "Phone", getDisplayPhone(tx.user) ?? "—");
   y = addField(doc, y, "Email", getDisplayEmail(tx.user.email) ?? "—");
-  y = addField(doc, y, "User ID", tx.userId);
+  if (options.mode === "admin") {
+    y = addField(doc, y, "User ID", tx.userId);
+  }
 
   if (y > pageHeight - 40) {
     doc.addPage();
@@ -89,9 +100,27 @@ export function downloadTransactionPdf(tx: AdminTransactionRow): void {
   }
 
   y = addSectionTitle(doc, y, "Commissions");
-  y = addField(doc, y, "Retailer", formatInr(tx.retailerCommission));
-  y = addField(doc, y, "Distributor", formatInr(tx.distributorCommission));
-  y = addField(doc, y, "Admin", formatInr(tx.adminCommission));
+  if (options.mode === "admin") {
+    if (isDistributorSelfRecharge(tx)) {
+      y = addField(
+        doc,
+        y,
+        "Distributor margin",
+        formatInr(tx.retailerCommission),
+      );
+      y = addField(doc, y, "Admin margin", formatInr(tx.adminCommission));
+    } else {
+      y = addField(doc, y, "Retailer", formatInr(tx.retailerCommission));
+      y = addField(doc, y, "Distributor", formatInr(tx.distributorCommission));
+      y = addField(doc, y, "Admin", formatInr(tx.adminCommission));
+    }
+  } else {
+    const pct = distributorSelfYourMarginPercent(tx);
+    if (pct) {
+      y = addField(doc, y, "Your margin", pct);
+    }
+    y = addField(doc, y, "Your earnings", formatInr(tx.retailerCommission));
+  }
 
   if (y > pageHeight - 40) {
     doc.addPage();
@@ -99,8 +128,10 @@ export function downloadTransactionPdf(tx: AdminTransactionRow): void {
   }
 
   y = addSectionTitle(doc, y, "Additional details");
-  y = addField(doc, y, "API message", tx.apiMessage ?? "—");
-  y = addField(doc, y, "Idempotency key", tx.idempotencyKey ?? "—");
+  if (options.mode === "admin") {
+    y = addField(doc, y, "API message", tx.apiMessage ?? "—");
+    y = addField(doc, y, "Idempotency key", tx.idempotencyKey ?? "—");
+  }
   y = addField(doc, y, "Last updated", formatDateTime(tx.updatedAt));
 
   const safeId = tx.id.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 12);

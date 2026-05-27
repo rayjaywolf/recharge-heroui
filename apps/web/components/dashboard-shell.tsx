@@ -6,6 +6,7 @@ import { Toast } from "@heroui/react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { DashboardMain } from "@/components/dashboard-main";
 import { DashboardSidebarProvider } from "@/components/dashboard-sidebar-context";
+import { MpinGate } from "@/components/mpin-gate";
 
 type DashboardShellProps = {
   children: ReactNode;
@@ -13,6 +14,7 @@ type DashboardShellProps = {
   userRole: string;
   balance: number;
   pendingApprovalsCount?: number;
+  mpinMustReset?: boolean;
 };
 
 export function DashboardShell({
@@ -21,25 +23,28 @@ export function DashboardShell({
   userRole,
   balance,
   pendingApprovalsCount = 0,
+  mpinMustReset = false,
 }: DashboardShellProps) {
   return (
     <div className="min-h-svh bg-background">
       <Toast.Provider />
-      <DashboardSidebarProvider>
-        <AppSidebar
-          pendingApprovalsCount={pendingApprovalsCount}
-          userRole={userRole}
-        />
+      <MpinGate mpinMustReset={mpinMustReset} userRole={userRole}>
+        <DashboardSidebarProvider>
+          <AppSidebar
+            pendingApprovalsCount={pendingApprovalsCount}
+            userRole={userRole}
+          />
 
-        <DashboardMain
-          balance={balance}
-          pendingApprovalsCount={pendingApprovalsCount}
-          userName={userName}
-          userRole={userRole}
-        >
-          {children}
-        </DashboardMain>
-      </DashboardSidebarProvider>
+          <DashboardMain
+            balance={balance}
+            pendingApprovalsCount={pendingApprovalsCount}
+            userName={userName}
+            userRole={userRole}
+          >
+            {children}
+          </DashboardMain>
+        </DashboardSidebarProvider>
+      </MpinGate>
     </div>
   );
 }

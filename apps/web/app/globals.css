@@ -169,3 +169,10 @@
   --color-success-emphasis: var(--success-emphasis);
   --color-warning-emphasis: var(--warning-emphasis);
 }
+
+/* Match HeroUI Success soft chip text (`chip--success.chip--soft`). */
+@layer utilities {
+  .text-success {
+    color: var(--success-soft-foreground) !important;
+  }
+}

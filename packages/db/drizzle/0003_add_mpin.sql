@@ -1,0 +1,2 @@
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "mpinHash" text;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "mpinMustReset" boolean NOT NULL DEFAULT false;

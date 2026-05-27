@@ -3,6 +3,7 @@ import { fetchDistributorLedger } from "@/lib/distributor-ledger-query";
 import { TransactionsFilterBar } from "@/components/admin/transactions-filter-bar";
 import { TransactionsDownloadButton } from "@/components/admin/transactions-download-button";
 import { DistributorLedgerTable } from "@/components/distributor/distributor-ledger-table";
+import { LedgerRefreshPendingButton } from "@/components/distributor/ledger-refresh-pending-button";
 
 function pickSearchParams(
   resolved: { [key: string]: string | string[] | undefined },
@@ -38,10 +39,14 @@ export default async function DistributorLedgerPage({
             Your wallet and transaction history.
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <LedgerRefreshPendingButton />
         <TransactionsDownloadButton
           data={rows}
           fileName="distributor-ledger"
+          variant="distributor"
         />
+        </div>
       </div>
 
       <TransactionsFilterBar

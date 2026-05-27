@@ -15,6 +15,7 @@ export interface BaseTransactionData {
   retailerCommission?: number
   distributorCommission?: number
   adminCommission?: number
+  commission?: number
   user?: {
     name: string
     email: string
@@ -38,9 +39,17 @@ export interface ExcelExportData<T = BaseTransactionData> {
   sheetName: string
   data: T[]
   headers: string[]
+  /** When false, Reference ID column uses apiReferenceId only (no transaction id fallback). */
+  referenceIdFallbackToId?: boolean
 }
 
-export function exportToExcel<T>({ fileName, sheetName, data, headers }: ExcelExportData<T>) {
+export function exportToExcel<T>({
+  fileName,
+  sheetName,
+  data,
+  headers,
+  referenceIdFallbackToId = true,
+}: ExcelExportData<T>) {
   // Create a new workbook
   const workbook = XLSX.utils.book_new()
   
@@ -78,7 +87,8 @@ export function exportToExcel<T>({ fileName, sheetName, data, headers }: ExcelEx
         return typedItem.targetPhone || ''
       }
       if (header === 'Reference ID' || header === 'Ref ID') {
-        return typedItem.apiReferenceId || typedItem.id || ''
+        if (typedItem.apiReferenceId) return typedItem.apiReferenceId
+        return referenceIdFallbackToId ? typedItem.id || '' : ''
       }
       if (header === 'Action') {
         return typedItem.operator || typedItem.type || ''
@@ -96,7 +106,29 @@ export function exportToExcel<T>({ fileName, sheetName, data, headers }: ExcelEx
         if (typedItem.retailerCommission) {
           return `₹${typedItem.retailerCommission.toLocaleString('en-IN')}`
         }
+        if (typedItem.commission != null && typedItem.commission !== '') {
+          return `₹${Number(typedItem.commission).toLocaleString('en-IN')}`
+        }
         return ''
+      }
+      if (header === 'Your margin %') {
+        if (typedItem.yourMarginPercent != null && typedItem.yourMarginPercent !== '') {
+          return String(typedItem.yourMarginPercent)
+        }
+        const amt = typedItem.amount
+        const r = typedItem.retailerCommission
+        const comm = typedItem.commission
+        if (amt > 0 && comm != null && Number(comm) > 0) {
+          return `${((Number(comm) / amt) * 100).toFixed(2)}%`
+        }
+        if (amt > 0 && r > 0) {
+          return `${((r / amt) * 100).toFixed(2)}%`
+        }
+        return ''
+      }
+      if (header === 'Your earnings (₹)') {
+        const r = typedItem.retailerCommission ?? typedItem.yourEarningsInr
+        return r ? `₹${Number(r).toLocaleString('en-IN')}` : ''
       }
       if (header === 'Type') {
         return typedItem.type || ''
@@ -129,6 +161,29 @@ export function exportTransactions(transactions: BaseTransactionData[], fileName
     sheetName: 'Transactions',
     data: transactions,
     headers: ['Date', 'Time', 'Retailer', 'Email', 'Carrier', 'Phone', 'Amount', 'API', 'Status', 'Reference ID']
+  })
+}
+
+export function exportDistributorLedgerTransactions(
+  transactions: BaseTransactionData[],
+  fileName?: string,
+) {
+  return exportToExcel({
+    fileName: fileName || `distributor-ledger-${new Date().toISOString().split('T')[0]}`,
+    sheetName: 'Ledger',
+    data: transactions,
+    referenceIdFallbackToId: false,
+    headers: [
+      'Date',
+      'Time',
+      'Carrier',
+      'Phone',
+      'Amount',
+      'Status',
+      'Your margin %',
+      'Your earnings (₹)',
+      'Reference ID',
+    ],
   })
 }
 
@@ -173,7 +228,15 @@ export function exportDistributorEarnings(earningsData: BaseTransactionData[], f
     fileName: fileName || `distributor-earnings-${new Date().toISOString().split('T')[0]}`,
     sheetName: 'Distributor Earnings',
     data: earningsData,
-    headers: ['Date', 'Time', 'Retailer', 'Operator', 'Recharge Amount', 'Your Cut']
+    headers: [
+      'Date',
+      'Time',
+      'Retailer',
+      'Operator',
+      'Recharge Amount',
+      'Your margin %',
+      'Your Cut',
+    ],
   })
 }
 

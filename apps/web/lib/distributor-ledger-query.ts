@@ -77,8 +77,11 @@ export async function fetchDistributorLedger(
       adminCommission: transaction.adminCommission,
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
+      rechargerRole: user.role,
+      rechargerDistributorId: user.distributorId,
     })
     .from(transaction)
+    .innerJoin(user, eq(transaction.userId, user.id))
     .where(whereClause)
     .orderBy(transactionsOrderBy(sort, { scopedUser: true }))
     .limit(150);
@@ -106,6 +109,8 @@ export async function fetchDistributorLedger(
       phoneNumber: distributor.phoneNumber,
       whatsappNumber: distributor.whatsappNumber,
     },
+    userRole: tx.rechargerRole,
+    rechargerDistributorId: tx.rechargerDistributorId,
   }));
 
   return { rows, type, status, sort };

@@ -3,16 +3,22 @@
 import { Download } from "lucide-react";
 import { Button } from "@heroui/react";
 
-import { exportTransactions, type BaseTransactionData } from "@/lib/excel-export";
+import {
+  exportDistributorLedgerTransactions,
+  exportTransactions,
+  type BaseTransactionData,
+} from "@/lib/excel-export";
 
 import type { AdminTransactionRow } from "@/components/admin/transactions-table";
 
 export function TransactionsDownloadButton({
   data,
   fileName,
+  variant = "admin",
 }: {
   data: AdminTransactionRow[];
   fileName?: string;
+  variant?: "admin" | "distributor";
 }) {
   const handleDownload = () => {
     const exportData: BaseTransactionData[] = data.map((tx) => ({
@@ -34,7 +40,11 @@ export function TransactionsDownloadButton({
       },
     }));
 
-    exportTransactions(exportData, fileName);
+    if (variant === "distributor") {
+      exportDistributorLedgerTransactions(exportData, fileName);
+    } else {
+      exportTransactions(exportData, fileName);
+    }
   };
 
   return (

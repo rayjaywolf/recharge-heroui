@@ -47,6 +47,8 @@ apps/web/HeroUI Pro (2025-3)/
 # vercel
 .vercel
 
+.agents
+
 # legacy prisma client (reference app)
 apps/web/generated/
 

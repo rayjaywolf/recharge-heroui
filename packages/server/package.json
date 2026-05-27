@@ -14,7 +14,9 @@
     "./recharge-gateway": "./src/recharge-gateway.ts",
     "./provider-balances": "./src/provider-balances.ts",
     "./mrobotics": "./src/mrobotics.ts",
-    "./realrobo": "./src/realrobo.ts"
+    "./realrobo": "./src/realrobo.ts",
+    "./pending-recharge-sync": "./src/pending-recharge-sync.ts",
+    "./mpin": "./src/mpin.ts"
   },
   "dependencies": {
     "@repo/db": "workspace:*",

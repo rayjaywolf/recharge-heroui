@@ -144,7 +144,7 @@ adminRoutes.post("/api/admin/users/approve", requireAdmin, async (c) => {
 
     const [updatedUser] = await db
       .update(user)
-      .set({ isApproved: true })
+      .set({ isApproved: true, mpinMustReset: true })
       .where(eq(user.id, userId))
       .returning({ name: user.name });
 

@@ -5,6 +5,10 @@ export * from "./date-range";
 export * from "./retailer-registration";
 export * from "./operator-provider";
 export * from "./recharge-gateway";
+export {
+  syncPendingRealRoboTransactionsForUser,
+  type SyncPendingRealRoboResult,
+} from "./pending-recharge-sync";
 export * from "./provider-balances";
 export { getMRoboticsBalance, performMRoboticsRecharge } from "./mrobotics";
 export {
@@ -12,3 +16,10 @@ export {
   performRealRoboRecharge,
   validateRealRoboCircle,
 } from "./realrobo";
+export {
+  assignRandomMpin,
+  ensureUserMpinBackfill,
+  hashMpin,
+  setUserMpin,
+  verifyMpinHash,
+} from "./mpin";

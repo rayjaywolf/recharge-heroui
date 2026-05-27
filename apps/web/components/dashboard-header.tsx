@@ -1,7 +1,9 @@
 "use client";
 
 import { Menu, Wallet } from "lucide-react";
+import Link from "next/link";
 import { Button, Chip, Header, Separator } from "@heroui/react";
+import Avatar from "boring-avatars";
 
 import { Money } from "@/components/money";
 import { SidebarPanelIcon } from "@/components/sidebar-panel-icon";
@@ -53,12 +55,21 @@ export function DashboardHeader({
       </MobileNavDrawer>
 
       <div className="ml-auto flex min-w-0 items-center gap-3">
-        <div className="hidden min-w-0 text-right sm:block">
-          <p className="truncate text-sm font-medium text-foreground">
-            {userName}
-          </p>
-          <p className="text-xs text-muted">{formatRole(userRole)}</p>
-        </div>
+        <Link
+          aria-label="View profile"
+          href="/profile"
+          className="hidden min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-content2/50 sm:inline-flex"
+        >
+          <div className="flex size-8 items-center justify-center rounded-full overflow-hidden">
+            <Avatar name={userName} size={28} variant="beam" />
+          </div>
+          <div className="min-w-0 text-right">
+            <p className="truncate text-sm font-medium text-foreground">
+              {userName}
+            </p>
+            <p className="text-xs text-muted">{formatRole(userRole)}</p>
+          </div>
+        </Link>
 
         <Separator className="hidden h-8 sm:block" orientation="vertical" />
 
@@ -77,12 +88,23 @@ export function DashboardHeader({
           </Chip>
         )}
 
-        <div className="min-w-0 sm:hidden">
-          <p className="truncate text-sm font-medium text-foreground">
-            {userName}
-          </p>
-          <p className="text-xs text-muted">{formatRole(userRole)}</p>
-        </div>
+        <Link
+          aria-label="View profile"
+          href="/profile"
+          className="min-w-0 rounded-md px-1 py-1 hover:bg-content2/50 sm:hidden"
+        >
+          <div className="flex items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded-full overflow-hidden">
+              <Avatar name={userName} size={28} variant="beam" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-foreground">
+                {userName}
+              </p>
+              <p className="text-xs text-muted">{formatRole(userRole)}</p>
+            </div>
+          </div>
+        </Link>
 
         <LogoutButton />
       </div>

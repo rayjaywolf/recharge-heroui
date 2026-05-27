@@ -190,8 +190,12 @@ export default async function AdminEarningsPage({
                       <Table.Cell className="text-right">
                         <Money amount={tx.amount} fractionDigits={0} />
                       </Table.Cell>
-                      <Table.Cell className="text-right font-semibold text-success">
-                        <Money amount={tx.commission} sign="+" />
+                      <Table.Cell className="text-right font-semibold">
+                        <Money
+                          amount={tx.commission}
+                          className="text-success"
+                          sign="+"
+                        />
                       </Table.Cell>
                     </Table.Row>
                   ))}

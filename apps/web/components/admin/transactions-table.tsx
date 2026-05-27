@@ -16,6 +16,7 @@ import { TransactionPdfDownloadButton } from "@/components/admin/transaction-pdf
 import { Money } from "@/components/money";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
 import { formatRechargeProvider } from "@/lib/recharge-provider";
+import { isDistributorSelfRecharge } from "@/lib/distributor-self-recharge";
 import { formatTableDateTime } from "@/lib/utils";
 
 export type AdminTransactionRow = {
@@ -35,6 +36,10 @@ export type AdminTransactionRow = {
   adminCommission: number;
   createdAt: string;
   updatedAt: string;
+  /** Recharger (transaction owner) role — for distributor self-recharge UI. */
+  userRole: string;
+  /** Recharger's `user.distributorId` (null = top-level distributor). */
+  rechargerDistributorId: string | null;
   user: {
     name: string;
     email: string;
@@ -251,20 +256,37 @@ export function TransactionsTable({
                       <p className="text-sm font-semibold text-foreground">
                         Commissions
                       </p>
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        <DetailItem
-                          label="Retailer"
-                          value={<Money amount={selected.retailerCommission} />}
-                        />
-                        <DetailItem
-                          label="Distributor"
-                          value={<Money amount={selected.distributorCommission} />}
-                        />
-                        <DetailItem
-                          label="Admin"
-                          value={<Money amount={selected.adminCommission} />}
-                        />
-                      </div>
+                      {isDistributorSelfRecharge(selected) ? (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <DetailItem
+                            label="Distributor margin"
+                            value={
+                              <Money amount={selected.retailerCommission} />
+                            }
+                          />
+                          <DetailItem
+                            label="Admin margin"
+                            value={<Money amount={selected.adminCommission} />}
+                          />
+                        </div>
+                      ) : (
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <DetailItem
+                            label="Retailer"
+                            value={<Money amount={selected.retailerCommission} />}
+                          />
+                          <DetailItem
+                            label="Distributor"
+                            value={
+                              <Money amount={selected.distributorCommission} />
+                            }
+                          />
+                          <DetailItem
+                            label="Admin"
+                            value={<Money amount={selected.adminCommission} />}
+                          />
+                        </div>
+                      )}
                     </Surface>
 
                     <div className="grid gap-4">

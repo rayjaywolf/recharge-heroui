@@ -6,6 +6,7 @@ import { db, user } from "@repo/db";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { auth } from "@/lib/auth";
 import { getPendingApprovalsCount } from "@/lib/pending-approvals";
+import { ensureUserMpinBackfill } from "@repo/server/mpin";
 
 export default async function DashboardLayout({
   children,
@@ -41,10 +42,17 @@ export default async function DashboardLayout({
   const pendingApprovalsCount =
     found.role === "ADMIN" ? await getPendingApprovalsCount() : 0;
 
+  let mpinMustReset = false;
+  if (found.role !== "ADMIN") {
+    const mpinState = await ensureUserMpinBackfill(found.id, found.role);
+    mpinMustReset = mpinState.mpinMustReset;
+  }
+
   return (
     <DashboardShell
       balance={found.balance}
       pendingApprovalsCount={pendingApprovalsCount}
+      mpinMustReset={mpinMustReset}
       userName={found.name}
       userRole={found.role}
     >

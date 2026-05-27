@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./phone": "./src/phone.ts",
     "./recharge-config": "./src/recharge-config.ts",
-    "./recharge-providers": "./src/recharge-providers.ts"
+    "./recharge-providers": "./src/recharge-providers.ts",
+    "./mpin": "./src/mpin.ts"
   },
   "devDependencies": {
     "typescript": "^5"

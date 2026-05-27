@@ -44,6 +44,7 @@ export function EarningsDownloadButton({
       adminCommission: variant === "admin" ? tx.commission : undefined,
       distributorCommission:
         variant === "distributor" ? tx.commission : undefined,
+      commission: variant === "distributor" ? tx.commission : undefined,
       user: tx.user,
     }));
 
