@@ -16,6 +16,7 @@ export type EarningRow = {
   amount: number;
   status: string;
   operator: string;
+  targetPhone?: string;
   commission: number;
   user: {
     name: string;
@@ -42,6 +43,7 @@ export function EarningsDownloadButton({
       amount: tx.amount,
       status: tx.status,
       operator: tx.operator,
+      targetPhone: tx.targetPhone,
       adminCommission: variant === "admin" ? tx.commission : undefined,
       distributorCommission:
         variant === "distributor" ? tx.commission : undefined,

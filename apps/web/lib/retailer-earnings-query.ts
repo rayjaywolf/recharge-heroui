@@ -25,6 +25,7 @@ type RetailerEarningRow = {
   amount: number;
   status: string;
   operator: string;
+  targetPhone: string;
   commission: number;
   user: { name: string; email: string };
 };
@@ -86,6 +87,7 @@ export async function fetchRetailerEarnings(params: AdminEarningsSearchParams) {
       amount: transaction.amount,
       status: transaction.status,
       operator: transaction.operator,
+      targetPhone: transaction.targetPhone,
       commission: transaction.retailerCommission,
     })
     .from(transaction)

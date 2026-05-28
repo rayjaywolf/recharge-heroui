@@ -103,7 +103,7 @@ export function RetailerLedgerTable({
                       onKeyDown={(event) => event.stopPropagation()}
                       onPointerDown={(event) => event.stopPropagation()}
                     >
-                      <TransactionPdfDownloadButton transaction={tx} />
+                      <TransactionPdfDownloadButton mode="retailer" transaction={tx} />
                     </div>
                   </Table.Cell>
                 </Table.Row>
