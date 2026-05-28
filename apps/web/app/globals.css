@@ -196,21 +196,51 @@
     color: var(--success-soft-foreground) !important;
   }
 
-  /* Force date picker/calendar popovers to white background everywhere. */
-  [data-slot="date-picker-popover"],
-  [data-slot="date-range-picker-popover"],
-  [data-slot="date-picker-popover"] *,
-  [data-slot="date-range-picker-popover"] *,
-  [data-slot="calendar"],
-  [data-slot="range-calendar"] {
+  /* Force date picker/calendar popovers to white background in light mode only. */
+  .light [data-slot="date-picker-popover"],
+  .light [data-slot="date-range-picker-popover"],
+  .light [data-slot="date-picker-popover"] *,
+  .light [data-slot="date-range-picker-popover"] *,
+  .light [data-slot="calendar"],
+  .light [data-slot="range-calendar"],
+  .default [data-slot="date-picker-popover"],
+  .default [data-slot="date-range-picker-popover"],
+  .default [data-slot="date-picker-popover"] *,
+  .default [data-slot="date-range-picker-popover"] *,
+  .default [data-slot="calendar"],
+  .default [data-slot="range-calendar"],
+  [data-theme="light"] [data-slot="date-picker-popover"],
+  [data-theme="light"] [data-slot="date-range-picker-popover"],
+  [data-theme="light"] [data-slot="date-picker-popover"] *,
+  [data-theme="light"] [data-slot="date-range-picker-popover"] *,
+  [data-theme="light"] [data-slot="calendar"],
+  [data-theme="light"] [data-slot="range-calendar"],
+  [data-theme="default"] [data-slot="date-picker-popover"],
+  [data-theme="default"] [data-slot="date-range-picker-popover"],
+  [data-theme="default"] [data-slot="date-picker-popover"] *,
+  [data-theme="default"] [data-slot="date-range-picker-popover"] *,
+  [data-theme="default"] [data-slot="calendar"],
+  [data-theme="default"] [data-slot="range-calendar"] {
     background-color: #fff !important;
   }
 
-  /* HeroUI popover container used by date pickers in portal. */
-  [data-slot="popover-content"]:has([data-slot="calendar"]),
-  [data-slot="popover-content"]:has([data-slot="range-calendar"]),
-  [data-slot="popover-content"]:has([data-slot="calendar"]) *,
-  [data-slot="popover-content"]:has([data-slot="range-calendar"]) * {
+  /* HeroUI popover container used by date pickers in portal (light mode only). */
+  .light [data-slot="popover-content"]:has([data-slot="calendar"]),
+  .light [data-slot="popover-content"]:has([data-slot="range-calendar"]),
+  .light [data-slot="popover-content"]:has([data-slot="calendar"]) *,
+  .light [data-slot="popover-content"]:has([data-slot="range-calendar"]) *,
+  .default [data-slot="popover-content"]:has([data-slot="calendar"]),
+  .default [data-slot="popover-content"]:has([data-slot="range-calendar"]),
+  .default [data-slot="popover-content"]:has([data-slot="calendar"]) *,
+  .default [data-slot="popover-content"]:has([data-slot="range-calendar"]) *,
+  [data-theme="light"] [data-slot="popover-content"]:has([data-slot="calendar"]),
+  [data-theme="light"] [data-slot="popover-content"]:has([data-slot="range-calendar"]),
+  [data-theme="light"] [data-slot="popover-content"]:has([data-slot="calendar"]) *,
+  [data-theme="light"] [data-slot="popover-content"]:has([data-slot="range-calendar"]) *,
+  [data-theme="default"] [data-slot="popover-content"]:has([data-slot="calendar"]),
+  [data-theme="default"] [data-slot="popover-content"]:has([data-slot="range-calendar"]),
+  [data-theme="default"] [data-slot="popover-content"]:has([data-slot="calendar"]) *,
+  [data-theme="default"] [data-slot="popover-content"]:has([data-slot="range-calendar"]) * {
     background-color: #fff !important;
   }
 }
