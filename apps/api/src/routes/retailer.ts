@@ -1,9 +1,10 @@
-import { and, asc, count, desc, eq, gt, gte, inArray, lte, sum } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, lte, notInArray, sum } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   commissionRule,
   createId,
   db,
+  dispute,
   fundRequest,
   transaction,
   user,
@@ -11,7 +12,6 @@ import {
 import { resolveDateRange } from "@repo/server/date-range";
 import {
   requireRetailer,
-  requireSession,
   type AppVariables,
 } from "../middleware";
 
@@ -20,6 +20,12 @@ const WALLET_OPERATORS = [
   "MANUAL_DEBIT",
   "FUNDS_RECEIVED",
   "FUNDS_SENT",
+] as const;
+const NON_RECHARGE_OPERATORS = [
+  "MANUAL_CREDIT",
+  "MANUAL_DEBIT",
+  "FUNDS_SENT",
+  "FUNDS_RECEIVED",
 ] as const;
 
 function labelForOperator(operator: string): string {
@@ -39,7 +45,7 @@ function labelForOperator(operator: string): string {
 
 export const retailerRoutes = new Hono<{ Variables: AppVariables }>();
 
-retailerRoutes.get("/api/retailer/profile", requireSession, async (c) => {
+retailerRoutes.get("/api/retailer/profile", requireRetailer, async (c) => {
   try {
     const session = c.get("session");
     const found = await db.query.user.findFirst({
@@ -82,7 +88,7 @@ retailerRoutes.get("/api/retailer/profile", requireSession, async (c) => {
   }
 });
 
-retailerRoutes.get("/api/retailer/commissions", requireSession, async (c) => {
+retailerRoutes.get("/api/retailer/commissions", requireRetailer, async (c) => {
   try {
     const rules = await db
       .select({
@@ -106,7 +112,7 @@ retailerRoutes.get("/api/retailer/commissions", requireSession, async (c) => {
   }
 });
 
-retailerRoutes.get("/api/retailer/earnings", requireSession, async (c) => {
+retailerRoutes.get("/api/retailer/earnings", requireRetailer, async (c) => {
   try {
     const session = c.get("session");
     const { searchParams } = new URL(c.req.url);
@@ -188,6 +194,122 @@ retailerRoutes.get("/api/retailer/earnings", requireSession, async (c) => {
     });
   } catch (error) {
     console.error("Retailer earnings error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+retailerRoutes.get("/api/retailer/disputes", requireRetailer, async (c) => {
+  try {
+    const retailer = c.get("dbUser");
+
+    const rows = await db
+      .select({
+        id: dispute.id,
+        transactionId: dispute.transactionId,
+        subject: dispute.subject,
+        message: dispute.message,
+        status: dispute.status,
+        adminNote: dispute.adminNote,
+        createdAt: dispute.createdAt,
+        resolvedAt: dispute.resolvedAt,
+        transactionStatus: transaction.status,
+        operator: transaction.operator,
+        amount: transaction.amount,
+        targetPhone: transaction.targetPhone,
+        apiReferenceId: transaction.apiReferenceId,
+      })
+      .from(dispute)
+      .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
+      .where(eq(dispute.distributorId, retailer.id))
+      .orderBy(desc(dispute.createdAt));
+
+    return c.json({
+      disputes: rows.map((row) => ({
+        ...row,
+        createdAt: row.createdAt.toISOString(),
+        resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
+      })),
+    });
+  } catch (error) {
+    console.error("List retailer disputes error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+retailerRoutes.post("/api/retailer/disputes", requireRetailer, async (c) => {
+  try {
+    const retailer = c.get("dbUser");
+    const body = await c.req.json();
+    const subject = String(body?.subject ?? "").trim();
+    const message = String(body?.message ?? "").trim();
+    const transactionId = String(body?.transactionId ?? "").trim();
+
+    if (!subject || !message || !transactionId) {
+      return c.json(
+        { error: "Subject, transaction, and message are required." },
+        400,
+      );
+    }
+
+    const [targetTx] = await db
+      .select({
+        id: transaction.id,
+      })
+      .from(transaction)
+      .where(
+        and(
+          eq(transaction.id, transactionId),
+          eq(transaction.userId, retailer.id),
+          notInArray(transaction.operator, [...NON_RECHARGE_OPERATORS]),
+        ),
+      )
+      .limit(1);
+
+    if (!targetTx) {
+      return c.json(
+        { error: "Transaction not found in your allowed recharge scope." },
+        404,
+      );
+    }
+
+    const [pending] = await db
+      .select({ id: dispute.id })
+      .from(dispute)
+      .where(
+        and(eq(dispute.transactionId, transactionId), eq(dispute.status, "PENDING")),
+      )
+      .limit(1);
+
+    if (pending) {
+      return c.json(
+        { error: "A pending dispute already exists for this transaction." },
+        409,
+      );
+    }
+
+    const [created] = await db
+      .insert(dispute)
+      .values({
+        id: createId(),
+        distributorId: retailer.id,
+        transactionId,
+        subject,
+        message,
+        status: "PENDING",
+      })
+      .returning();
+
+    return c.json({
+      success: true,
+      message: "Dispute submitted to admin support.",
+      dispute: {
+        ...created,
+        createdAt: created.createdAt.toISOString(),
+        resolvedAt: created.resolvedAt ? created.resolvedAt.toISOString() : null,
+      },
+    });
+  } catch (error) {
+    console.error("Create retailer dispute error:", error);
     return c.json({ error: "Internal server error" }, 500);
   }
 });
@@ -277,7 +399,7 @@ retailerRoutes.post("/api/retailer/fund-request", requireRetailer, async (c) => 
   }
 });
 
-retailerRoutes.get("/api/retailer/funding/history", requireSession, async (c) => {
+retailerRoutes.get("/api/retailer/funding/history", requireRetailer, async (c) => {
   try {
     const session = c.get("session");
 

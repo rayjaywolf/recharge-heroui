@@ -19,7 +19,6 @@ import {
   distributorSelfYourMarginPercent,
   isDistributorSelfRecharge,
 } from "@/lib/distributor-self-recharge";
-import { formatRechargeProvider } from "@/lib/recharge-provider";
 import { formatTableDateTime } from "@/lib/utils";
 
 function DetailItem({
@@ -87,7 +86,6 @@ export function DistributorLedgerTable({
               <Table.Column>Type</Table.Column>
               <Table.Column>Phone</Table.Column>
               <Table.Column>Amount</Table.Column>
-              <Table.Column>API</Table.Column>
               <Table.Column>Status</Table.Column>
               <Table.Column className="min-w-[280px]">Ref ID</Table.Column>
               <Table.Column className="w-[72px]">PDF</Table.Column>
@@ -108,9 +106,6 @@ export function DistributorLedgerTable({
                   </Table.Cell>
                   <Table.Cell className="font-semibold">
                     <Money amount={tx.amount} />
-                  </Table.Cell>
-                  <Table.Cell>
-                    {formatRechargeProvider(tx.provider)}
                   </Table.Cell>
                   <Table.Cell>
                     <TransactionStatusChip status={tx.status} />
@@ -176,10 +171,6 @@ export function DistributorLedgerTable({
                         value={formatDateTime(selected.createdAt)}
                       />
                       <DetailItem label="Type" value={selected.operator} />
-                      <DetailItem
-                        label="API gateway"
-                        value={formatRechargeProvider(selected.provider)}
-                      />
                       <DetailItem
                         label="Phone"
                         mono

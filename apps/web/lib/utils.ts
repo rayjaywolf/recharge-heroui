@@ -11,5 +11,6 @@ export function formatTableDateTime(value: string | Date): string {
   return date.toLocaleString("en-IN", {
     dateStyle: "short",
     timeStyle: "short",
+    timeZone: "Asia/Kolkata",
   })
 }

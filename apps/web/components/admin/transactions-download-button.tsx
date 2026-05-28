@@ -18,7 +18,7 @@ export function TransactionsDownloadButton({
 }: {
   data: AdminTransactionRow[];
   fileName?: string;
-  variant?: "admin" | "distributor";
+  variant?: "admin" | "distributor" | "retailer";
 }) {
   const handleDownload = () => {
     const exportData: BaseTransactionData[] = data.map((tx) => ({
@@ -40,7 +40,7 @@ export function TransactionsDownloadButton({
       },
     }));
 
-    if (variant === "distributor") {
+    if (variant === "distributor" || variant === "retailer") {
       exportDistributorLedgerTransactions(exportData, fileName);
     } else {
       exportTransactions(exportData, fileName);

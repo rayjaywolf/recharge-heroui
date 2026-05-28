@@ -6,7 +6,6 @@ import {
   distributorSelfYourMarginPercent,
   isDistributorSelfRecharge,
 } from "@/lib/distributor-self-recharge";
-import { formatRechargeProvider } from "@/lib/recharge-provider";
 
 function formatInr(amount: number): string {
   return `Rs. ${amount.toLocaleString("en-IN")}`;
@@ -49,7 +48,7 @@ function addSectionTitle(doc: jsPDF, y: number, title: string): number {
   return y + 8;
 }
 
-export type TransactionPdfMode = "admin" | "distributor";
+export type TransactionPdfMode = "admin" | "distributor" | "retailer";
 
 export function downloadTransactionPdf(
   tx: AdminTransactionRow,
@@ -78,7 +77,9 @@ export function downloadTransactionPdf(
   y = addField(doc, y, "Carrier", tx.operator);
   y = addField(doc, y, "Recharge phone", tx.targetPhone);
   y = addField(doc, y, "Circle", tx.circleCode ?? "—");
-  y = addField(doc, y, "API gateway", formatRechargeProvider(tx.provider));
+  if (options.mode === "admin") {
+    y = addField(doc, y, "API gateway", tx.provider ?? "—");
+  }
   y = addField(doc, y, "Reference ID", tx.apiReferenceId ?? "—");
 
   if (y > pageHeight - 40) {
@@ -116,8 +117,15 @@ export function downloadTransactionPdf(
     }
   } else {
     const pct = distributorSelfYourMarginPercent(tx);
-    if (pct) {
+    if (options.mode === "distributor" && pct) {
       y = addField(doc, y, "Your margin", pct);
+    } else if (options.mode === "retailer" && tx.amount > 0) {
+      y = addField(
+        doc,
+        y,
+        "Your margin",
+        `${((tx.retailerCommission / tx.amount) * 100).toFixed(2)}%`,
+      );
     }
     y = addField(doc, y, "Your earnings", formatInr(tx.retailerCommission));
   }
@@ -179,12 +187,6 @@ export function downloadRechargeReceiptPdf(input: RechargeReceiptInput): void {
   y = addField(doc, y, "Carrier", input.operator);
   y = addField(doc, y, "Recharge phone", input.phone);
   y = addField(doc, y, "Circle", input.circleCode ?? "—");
-  y = addField(
-    doc,
-    y,
-    "API gateway",
-    input.provider ? formatRechargeProvider(input.provider) : "—",
-  );
   y = addField(doc, y, "Reference ID", input.referenceId ?? "—");
   y = addField(doc, y, "API message", input.apiMessage ?? "—");
 

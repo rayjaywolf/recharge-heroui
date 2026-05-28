@@ -70,3 +70,16 @@ export async function setUserMpin(userId: string, mpin: string) {
     .set({ mpinHash, mpinMustReset: false })
     .where(eq(user.id, userId));
 }
+
+export async function verifyUserMpin(userId: string, mpin: string): Promise<boolean> {
+  if (!validateMpin(mpin)) return false;
+
+  const [found] = await db
+    .select({ mpinHash: user.mpinHash, mpinMustReset: user.mpinMustReset })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+
+  if (!found?.mpinHash || found.mpinMustReset) return false;
+  return verifyMpinHash(mpin, found.mpinHash);
+}

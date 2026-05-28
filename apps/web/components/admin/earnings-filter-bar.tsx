@@ -287,7 +287,11 @@ export function EarningsFilterBar({
           }}
         >
           <Label>Date range</Label>
-          <DateField.Group fullWidth variant="secondary">
+          <DateField.Group
+            fullWidth
+            className="bg-white"
+            variant="secondary"
+          >
             <DateField.Input slot="start">
               {(segment) => <DateField.Segment segment={segment} />}
             </DateField.Input>
@@ -301,8 +305,8 @@ export function EarningsFilterBar({
               </DateRangePicker.Trigger>
             </DateField.Suffix>
           </DateField.Group>
-          <DateRangePicker.Popover>
-            <RangeCalendar aria-label="Earnings date range">
+          <DateRangePicker.Popover className="bg-white">
+            <RangeCalendar aria-label="Earnings date range" className="bg-white">
               <RangeCalendar.Header>
                 <RangeCalendar.YearPickerTrigger>
                   <RangeCalendar.YearPickerTriggerHeading />

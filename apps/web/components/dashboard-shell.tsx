@@ -14,6 +14,7 @@ type DashboardShellProps = {
   userRole: string;
   balance: number;
   pendingApprovalsCount?: number;
+  pendingSupportCount?: number;
   mpinMustReset?: boolean;
 };
 
@@ -23,6 +24,7 @@ export function DashboardShell({
   userRole,
   balance,
   pendingApprovalsCount = 0,
+  pendingSupportCount = 0,
   mpinMustReset = false,
 }: DashboardShellProps) {
   return (
@@ -32,12 +34,14 @@ export function DashboardShell({
         <DashboardSidebarProvider>
           <AppSidebar
             pendingApprovalsCount={pendingApprovalsCount}
+            pendingSupportCount={pendingSupportCount}
             userRole={userRole}
           />
 
           <DashboardMain
             balance={balance}
             pendingApprovalsCount={pendingApprovalsCount}
+            pendingSupportCount={pendingSupportCount}
             userName={userName}
             userRole={userRole}
           >

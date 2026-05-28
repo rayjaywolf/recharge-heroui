@@ -50,6 +50,7 @@ export function getDashboardNavLinks(role: string): NavLink[] {
       { name: "Retailers", href: "/distributor/retailers", icon: Users },
       { name: "Funds", href: "/distributor/funds", icon: Wallet },
       { name: "Commissions", href: "/distributor/commissions", icon: PieChart },
+      { name: "Support", href: "/distributor/support", icon: LifeBuoy },
     ];
   }
 
@@ -57,9 +58,10 @@ export function getDashboardNavLinks(role: string): NavLink[] {
     { name: "Overview", href: "/retailer", icon: LayoutDashboard },
     { name: "Recharge", href: "/retailer/recharge", icon: CreditCard },
     { name: "Ledger", href: "/retailer/ledger", icon: History },
+    { name: "Earnings", href: "/retailer/earnings", icon: TrendingUp },
     { name: "Funds", href: "/retailer/funds", icon: Wallet },
     { name: "Commissions", href: "/retailer/commissions", icon: PieChart },
-    { name: "Earnings", href: "/retailer/earnings", icon: TrendingUp },
+    { name: "Support", href: "/retailer/support", icon: LifeBuoy },
   ];
 }
 

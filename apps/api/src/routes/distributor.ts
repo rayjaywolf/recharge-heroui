@@ -1,6 +1,6 @@
-import { and, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, notInArray, or } from "drizzle-orm";
 import { Hono } from "hono";
-import { createId, db, transaction, user } from "@repo/db";
+import { createId, db, dispute, transaction, user } from "@repo/db";
 import { auth } from "@repo/server/auth";
 import { decrementBalance, incrementBalance } from "@repo/server/db-utils";
 import {
@@ -11,6 +11,13 @@ import {
 import { requireDistributor, type AppVariables } from "../middleware";
 
 export const distributorRoutes = new Hono<{ Variables: AppVariables }>();
+
+const NON_RECHARGE_OPERATORS = [
+  "MANUAL_CREDIT",
+  "MANUAL_DEBIT",
+  "FUNDS_SENT",
+  "FUNDS_RECEIVED",
+];
 
 distributorRoutes.post("/api/distributor/fund", requireDistributor, async (c) => {
   try {
@@ -162,5 +169,130 @@ distributorRoutes.post("/api/distributor/retailer", requireDistributor, async (c
       },
       500,
     );
+  }
+});
+
+distributorRoutes.get("/api/distributor/disputes", requireDistributor, async (c) => {
+  try {
+    const session = c.get("session");
+
+    const rows = await db
+      .select({
+        id: dispute.id,
+        transactionId: dispute.transactionId,
+        subject: dispute.subject,
+        message: dispute.message,
+        status: dispute.status,
+        adminNote: dispute.adminNote,
+        createdAt: dispute.createdAt,
+        resolvedAt: dispute.resolvedAt,
+        transactionStatus: transaction.status,
+        operator: transaction.operator,
+        amount: transaction.amount,
+        targetPhone: transaction.targetPhone,
+        apiReferenceId: transaction.apiReferenceId,
+      })
+      .from(dispute)
+      .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
+      .where(eq(dispute.distributorId, session.user.id))
+      .orderBy(desc(dispute.createdAt));
+
+    return c.json({
+      disputes: rows.map((row) => ({
+        ...row,
+        createdAt: row.createdAt.toISOString(),
+        resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
+      })),
+    });
+  } catch (error) {
+    console.error("List distributor disputes error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+distributorRoutes.post("/api/distributor/disputes", requireDistributor, async (c) => {
+  try {
+    const session = c.get("session");
+    const body = await c.req.json();
+    const subject = String(body?.subject ?? "").trim();
+    const message = String(body?.message ?? "").trim();
+    const transactionId = String(body?.transactionId ?? "").trim();
+
+    if (!subject || !message || !transactionId) {
+      return c.json(
+        { error: "Subject, transaction, and message are required." },
+        400,
+      );
+    }
+
+    const [targetTx] = await db
+      .select({
+        id: transaction.id,
+        ownerId: transaction.userId,
+        ownerDistributorId: user.distributorId,
+      })
+      .from(transaction)
+      .innerJoin(user, eq(transaction.userId, user.id))
+      .where(
+        and(
+          eq(transaction.id, transactionId),
+          notInArray(transaction.operator, NON_RECHARGE_OPERATORS),
+          or(
+            eq(transaction.userId, session.user.id),
+            eq(user.distributorId, session.user.id),
+          ),
+        ),
+      )
+      .limit(1);
+
+    if (!targetTx) {
+      return c.json(
+        { error: "Transaction not found in your allowed recharge scope." },
+        404,
+      );
+    }
+
+    const [pending] = await db
+      .select({ id: dispute.id })
+      .from(dispute)
+      .where(
+        and(
+          eq(dispute.transactionId, transactionId),
+          eq(dispute.status, "PENDING"),
+        ),
+      )
+      .limit(1);
+
+    if (pending) {
+      return c.json(
+        { error: "A pending dispute already exists for this transaction." },
+        409,
+      );
+    }
+
+    const [created] = await db
+      .insert(dispute)
+      .values({
+        id: createId(),
+        distributorId: session.user.id,
+        transactionId,
+        subject,
+        message,
+        status: "PENDING",
+      })
+      .returning();
+
+    return c.json({
+      success: true,
+      message: "Dispute submitted to admin support.",
+      dispute: {
+        ...created,
+        createdAt: created.createdAt.toISOString(),
+        resolvedAt: created.resolvedAt ? created.resolvedAt.toISOString() : null,
+      },
+    });
+  } catch (error) {
+    console.error("Create distributor dispute error:", error);
+    return c.json({ error: "Internal server error" }, 500);
   }
 });

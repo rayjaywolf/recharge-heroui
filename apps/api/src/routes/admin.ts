@@ -1,16 +1,21 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   commissionRule,
   createId,
   db,
+  dispute,
   operatorProviderConfig,
   transaction,
   user,
   type Provider,
   type Role,
+  type TxStatus,
 } from "@repo/db";
 import { decrementBalance, incrementBalance } from "@repo/server/db-utils";
+import { checkMRoboticsStatus } from "@repo/server/mrobotics";
+import { syncPendingRealRoboTransactionsForUser } from "@repo/server/pending-recharge-sync";
+import { parseRechargeProviderResponse } from "@repo/server/recharge-gateway";
 import {
   assertProvider,
   BACKUP_NONE,
@@ -21,6 +26,299 @@ import {
 import { requireAdmin, type AppVariables } from "../middleware";
 
 export const adminRoutes = new Hono<{ Variables: AppVariables }>();
+
+adminRoutes.post("/api/admin/transactions/:id/refresh-status", requireAdmin, async (c) => {
+  try {
+    const id = c.req.param("id");
+    const [found] = await db
+      .select()
+      .from(transaction)
+      .where(eq(transaction.id, id))
+      .limit(1);
+
+    if (!found) {
+      return c.json({ error: "Transaction not found." }, 404);
+    }
+
+    if (found.status !== "PENDING") {
+      return c.json({
+        success: true,
+        message: "Transaction is already in final state.",
+        transaction: found,
+      });
+    }
+
+    if (found.provider === "REALROBO") {
+      await syncPendingRealRoboTransactionsForUser(found.userId, { limit: 100 });
+      const [updated] = await db
+        .select()
+        .from(transaction)
+        .where(eq(transaction.id, id))
+        .limit(1);
+
+      return c.json({
+        success: true,
+        message: "Status refreshed from RealRobo.",
+        transaction: updated ?? found,
+      });
+    }
+
+    if (found.provider === "MROBOTICS") {
+      const statusResponse = await checkMRoboticsStatus(found.id);
+      const parsed = parseRechargeProviderResponse(
+        "MROBOTICS",
+        statusResponse,
+        found.id,
+      );
+
+      const [updated] = await db
+        .update(transaction)
+        .set({
+          status: parsed.finalStatus,
+          apiMessage: parsed.apiMessage,
+          apiReferenceId: parsed.apiReferenceId,
+        })
+        .where(eq(transaction.id, found.id))
+        .returning();
+
+      return c.json({
+        success: true,
+        message: "Status refreshed from MRobotics.",
+        transaction: updated ?? found,
+      });
+    }
+
+    return c.json(
+      { error: `Status refresh is not supported for ${found.provider}.` },
+      400,
+    );
+  } catch (error) {
+    console.error("Refresh transaction status error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+adminRoutes.patch("/api/admin/transactions/:id/manual-status", requireAdmin, async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    const status = String(body?.status ?? "") as TxStatus;
+    const message = String(body?.message ?? "").trim();
+
+    const allowedStatuses: TxStatus[] = ["PENDING", "SUCCESS", "FAILED", "REFUNDED"];
+    if (!allowedStatuses.includes(status)) {
+      return c.json({ error: "Invalid status." }, 400);
+    }
+    if (!message) {
+      return c.json({ error: "Message is required when changing status." }, 400);
+    }
+
+    const [found] = await db
+      .select({
+        id: transaction.id,
+        userId: transaction.userId,
+        operator: transaction.operator,
+        amount: transaction.amount,
+        status: transaction.status,
+        apiMessage: transaction.apiMessage,
+        retailerCommission: transaction.retailerCommission,
+        distributorCommission: transaction.distributorCommission,
+        adminCommission: transaction.adminCommission,
+      })
+      .from(transaction)
+      .where(eq(transaction.id, id))
+      .limit(1);
+
+    if (!found) {
+      return c.json({ error: "Transaction not found." }, 404);
+    }
+
+    const [txUser] = await db
+      .select({ id: user.id, role: user.role, distributorId: user.distributorId })
+      .from(user)
+      .where(eq(user.id, found.userId))
+      .limit(1);
+
+    if (!txUser) {
+      return c.json({ error: "Transaction owner not found." }, 404);
+    }
+
+    const [rule] = await db
+      .select()
+      .from(commissionRule)
+      .where(eq(commissionRule.operator, found.operator))
+      .limit(1);
+
+    const amount = found.amount;
+    const rCommission = (amount * (rule?.retailerMargin ?? 0)) / 100;
+    const dCommission = (amount * (rule?.distributorMargin ?? 0)) / 100;
+    const aCommission = (amount * (rule?.adminMargin ?? 0)) / 100;
+
+    const isDistributorSelfRecharge =
+      txUser.role === "DISTRIBUTOR" && !txUser.distributorId;
+
+    let nextAdminCommission: number;
+    let nextDistributorCommission: number;
+
+    if (isDistributorSelfRecharge) {
+      nextAdminCommission = aCommission + dCommission;
+      nextDistributorCommission = 0;
+    } else {
+      const hasDistributor = !!txUser.distributorId;
+      nextAdminCommission = aCommission + (hasDistributor ? 0 : dCommission);
+      nextDistributorCommission = hasDistributor ? dCommission : 0;
+    }
+
+    const nextRetailerCommission = rCommission;
+
+    const from = found.status;
+    const to = status;
+    const toSuccess = to === "SUCCESS";
+    const fromSuccess = from === "SUCCESS";
+    const toFailedLike = to === "FAILED" || to === "REFUNDED";
+    const fromFailedLike = from === "FAILED" || from === "REFUNDED";
+
+    const previousApiMessage = (found.apiMessage ?? "").toUpperCase();
+    const wasManualNoRefund = previousApiMessage.startsWith(
+      "[MANUAL_STATUS_NO_REFUND]",
+    );
+    const wasManualRefunded = previousApiMessage.startsWith(
+      "[MANUAL_STATUS_REFUNDED]",
+    );
+
+    // Automatic refund detection for FAILED:
+    // - REFUNDED is always considered refunded.
+    // - FAILED from normal gateway flow is treated as refunded by default.
+    // - FAILED manually set as no-refund is honored via message marker.
+    const isRefundedOnFrom =
+      from === "REFUNDED" ||
+      (from === "FAILED" && (wasManualRefunded || !wasManualNoRefund));
+    const shouldRefundOnTo = toFailedLike;
+
+    const [updated] = await db.transaction(async (tx) => {
+      // Reverse previously credited earnings if moving away from SUCCESS.
+      if (fromSuccess && !toSuccess) {
+        if (found.retailerCommission > 0) {
+          await tx
+            .update(user)
+            .set({ earnings: sql`${user.earnings} - ${found.retailerCommission}` })
+            .where(eq(user.id, found.userId));
+        }
+
+        if (found.distributorCommission > 0 && txUser.distributorId) {
+          await tx
+            .update(user)
+            .set({
+              earnings: sql`${user.earnings} - ${found.distributorCommission}`,
+            })
+            .where(eq(user.id, txUser.distributorId));
+        }
+
+        if (found.adminCommission > 0) {
+          const [adminUser] = await tx
+            .select({ id: user.id })
+            .from(user)
+            .where(eq(user.role, "ADMIN"))
+            .limit(1);
+          if (adminUser) {
+            await tx
+              .update(user)
+              .set({ earnings: sql`${user.earnings} - ${found.adminCommission}` })
+              .where(eq(user.id, adminUser.id));
+          }
+        }
+      }
+
+      // Wallet refund on transitions to FAILED/REFUNDED from non-failed states.
+      if (shouldRefundOnTo && !isRefundedOnFrom) {
+        await tx
+          .update(user)
+          .set(incrementBalance(amount))
+          .where(eq(user.id, found.userId));
+      }
+
+      // Reverse refund when moving to a non-refunded state.
+      if (isRefundedOnFrom && !shouldRefundOnTo) {
+        const [debited] = await tx
+          .update(user)
+          .set(decrementBalance(amount))
+          .where(and(eq(user.id, found.userId), gte(user.balance, amount)))
+          .returning({ id: user.id });
+
+        if (!debited) {
+          throw new Error("INSUFFICIENT_BALANCE_FOR_REVERSAL");
+        }
+      }
+
+      // Apply earnings when entering SUCCESS from any non-success state.
+      if (!fromSuccess && toSuccess) {
+        if (nextRetailerCommission > 0) {
+          await tx
+            .update(user)
+            .set({ earnings: sql`${user.earnings} + ${nextRetailerCommission}` })
+            .where(eq(user.id, found.userId));
+        }
+
+        if (nextDistributorCommission > 0 && txUser.distributorId) {
+          await tx
+            .update(user)
+            .set({
+              earnings: sql`${user.earnings} + ${nextDistributorCommission}`,
+            })
+            .where(eq(user.id, txUser.distributorId));
+        }
+
+        if (nextAdminCommission > 0) {
+          const [adminUser] = await tx
+            .select({ id: user.id })
+            .from(user)
+            .where(eq(user.role, "ADMIN"))
+            .limit(1);
+          if (adminUser) {
+            await tx
+              .update(user)
+              .set({ earnings: sql`${user.earnings} + ${nextAdminCommission}` })
+              .where(eq(user.id, adminUser.id));
+          }
+        }
+      }
+
+      const [next] = await tx
+        .update(transaction)
+        .set({
+          status: to,
+          apiMessage: toFailedLike
+            ? `[MANUAL_STATUS_REFUNDED] ${message}`
+            : `[MANUAL_STATUS] ${message}`,
+          retailerCommission: toSuccess ? nextRetailerCommission : 0,
+          distributorCommission: toSuccess ? nextDistributorCommission : 0,
+          adminCommission: toSuccess ? nextAdminCommission : 0,
+        })
+        .where(eq(transaction.id, id))
+        .returning();
+
+      return [next];
+    });
+
+    return c.json({
+      success: true,
+      message: "Transaction status updated manually.",
+      transaction: updated,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE_FOR_REVERSAL") {
+      return c.json(
+        {
+          error:
+            "Cannot mark this transaction as success/pending because user balance is insufficient to reverse earlier refund.",
+        },
+        400,
+      );
+    }
+    console.error("Manual transaction status update error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
 
 adminRoutes.post("/api/admin/fund", requireAdmin, async (c) => {
   try {
@@ -227,6 +525,107 @@ adminRoutes.post("/api/admin/users/config", requireAdmin, async (c) => {
     });
   } catch (error) {
     console.error("User Config Error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+adminRoutes.get("/api/admin/disputes", requireAdmin, async (c) => {
+  try {
+    const { searchParams } = new URL(c.req.url);
+    const statusParam = searchParams.get("status");
+    const status =
+      statusParam === "PENDING" || statusParam === "RESOLVED"
+        ? statusParam
+        : "ALL";
+
+    const rows = await db
+      .select({
+        id: dispute.id,
+        distributorId: dispute.distributorId,
+        distributorName: user.name,
+        transactionId: dispute.transactionId,
+        subject: dispute.subject,
+        message: dispute.message,
+        status: dispute.status,
+        adminNote: dispute.adminNote,
+        createdAt: dispute.createdAt,
+        resolvedAt: dispute.resolvedAt,
+        resolvedBy: dispute.resolvedBy,
+        transactionStatus: transaction.status,
+        operator: transaction.operator,
+        amount: transaction.amount,
+        targetPhone: transaction.targetPhone,
+        apiReferenceId: transaction.apiReferenceId,
+      })
+      .from(dispute)
+      .innerJoin(user, eq(dispute.distributorId, user.id))
+      .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
+      .where(status === "ALL" ? undefined : eq(dispute.status, status))
+      .orderBy(desc(dispute.createdAt));
+
+    return c.json({
+      disputes: rows.map((row) => ({
+        ...row,
+        createdAt: row.createdAt.toISOString(),
+        resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
+      })),
+    });
+  } catch (error) {
+    console.error("List admin disputes error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+adminRoutes.patch("/api/admin/disputes/:id/resolve", requireAdmin, async (c) => {
+  try {
+    const adminUser = c.get("dbUser");
+    const disputeId = c.req.param("id");
+    const body = await c.req.json();
+    const adminNote =
+      body?.adminNote == null ? null : String(body.adminNote).trim() || null;
+
+    const [current] = await db
+      .select({ id: dispute.id, status: dispute.status })
+      .from(dispute)
+      .where(eq(dispute.id, disputeId))
+      .limit(1);
+
+    if (!current) {
+      return c.json({ error: "Dispute not found." }, 404);
+    }
+
+    if (current.status === "RESOLVED") {
+      return c.json({ error: "Dispute is already resolved." }, 409);
+    }
+
+    const [updated] = await db
+      .update(dispute)
+      .set({
+        status: "RESOLVED",
+        adminNote,
+        resolvedBy: adminUser.id,
+        resolvedAt: new Date(),
+      })
+      .where(eq(dispute.id, disputeId))
+      .returning({
+        id: dispute.id,
+        status: dispute.status,
+        adminNote: dispute.adminNote,
+        resolvedAt: dispute.resolvedAt,
+      });
+
+    return c.json({
+      success: true,
+      message: "Dispute marked as resolved.",
+      dispute: {
+        ...updated,
+        resolvedAt: updated?.resolvedAt
+          ? updated.resolvedAt.toISOString()
+          : null,
+      },
+    });
+  } catch (error) {
+    console.error("Resolve dispute error:", error);
     return c.json({ error: "Internal server error" }, 500);
   }
 });

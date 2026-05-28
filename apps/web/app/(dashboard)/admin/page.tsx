@@ -234,7 +234,6 @@ export default async function AdminOverviewPage() {
       </div>
 
       <AdminTableCard
-        description="Latest platform transactions."
         headerAction={
           <Link
             className="inline-flex shrink-0 items-center gap-1 text-sm font-medium"

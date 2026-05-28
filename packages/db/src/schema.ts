@@ -31,6 +31,7 @@ export const fundRequestStatusEnum = pgEnum("FundRequestStatus", [
   "REJECTED",
   "CANCELLED",
 ]);
+export const disputeStatusEnum = pgEnum("DisputeStatus", ["PENDING", "RESOLVED"]);
 
 export const user = pgTable(
   "user",
@@ -260,6 +261,47 @@ export const fundRequest = pgTable(
   ],
 );
 
+export const dispute = pgTable(
+  "dispute",
+  {
+    id: text("id").primaryKey(),
+    distributorId: text("distributorId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    transactionId: text("transactionId")
+      .notNull()
+      .references(() => transaction.id, { onDelete: "cascade" }),
+    subject: text("subject").notNull(),
+    message: text("message").notNull(),
+    status: disputeStatusEnum("status").notNull().default("PENDING"),
+    adminNote: text("adminNote"),
+    resolvedBy: text("resolvedBy"),
+    resolvedAt: timestamp("resolvedAt", { precision: 3, mode: "date" }),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("dispute_distributorId_idx").on(table.distributorId),
+    index("dispute_transactionId_idx").on(table.transactionId),
+    index("dispute_status_idx").on(table.status),
+    index("dispute_resolvedBy_idx").on(table.resolvedBy),
+    uniqueIndex("dispute_transactionId_status_key").on(
+      table.transactionId,
+      table.status,
+    ),
+    foreignKey({
+      columns: [table.resolvedBy],
+      foreignColumns: [user.id],
+      name: "dispute_resolvedBy_fkey",
+    }),
+  ],
+);
+
 export const userRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
@@ -274,10 +316,13 @@ export const userRelations = relations(user, ({ many, one }) => ({
     relationName: "distributorToRetailer",
   }),
   retailers: many(user, { relationName: "distributorToRetailer" }),
+  disputes: many(dispute, { relationName: "distributorDisputes" }),
+  resolvedDisputes: many(dispute, { relationName: "disputeResolvedByAdmin" }),
 }));
 
-export const transactionRelations = relations(transaction, ({ one }) => ({
+export const transactionRelations = relations(transaction, ({ many, one }) => ({
   user: one(user, { fields: [transaction.userId], references: [user.id] }),
+  disputes: many(dispute),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -301,9 +346,27 @@ export const fundRequestRelations = relations(fundRequest, ({ one }) => ({
   }),
 }));
 
+export const disputeRelations = relations(dispute, ({ one }) => ({
+  distributor: one(user, {
+    fields: [dispute.distributorId],
+    references: [user.id],
+    relationName: "distributorDisputes",
+  }),
+  transaction: one(transaction, {
+    fields: [dispute.transactionId],
+    references: [transaction.id],
+  }),
+  resolver: one(user, {
+    fields: [dispute.resolvedBy],
+    references: [user.id],
+    relationName: "disputeResolvedByAdmin",
+  }),
+}));
+
 export type User = typeof user.$inferSelect;
 export type Transaction = typeof transaction.$inferSelect;
 export type Role = (typeof roleEnum.enumValues)[number];
 export type Provider = (typeof providerEnum.enumValues)[number];
 export type TxStatus = (typeof txStatusEnum.enumValues)[number];
 export type FundRequestStatus = (typeof fundRequestStatusEnum.enumValues)[number];
+export type DisputeStatus = (typeof disputeStatusEnum.enumValues)[number];

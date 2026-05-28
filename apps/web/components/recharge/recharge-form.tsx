@@ -10,6 +10,7 @@ import {
   Input,
   Label,
   ListBox,
+  Modal,
   Select,
   Spinner,
   TextField,
@@ -22,7 +23,6 @@ import {
   validatePhoneNumber,
 } from "@/lib/phone";
 import type { CircleOption, RechargeProvider } from "@/lib/recharge-config";
-import { formatRechargeProvider } from "@/lib/recharge-provider";
 
 type RechargeConfigResponse = {
   operators: string[];
@@ -59,6 +59,14 @@ export function RechargeForm({
   const [circleCode, setCircleCode] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [mpinOpen, setMpinOpen] = useState(false);
+  const [mpin, setMpin] = useState("");
+  const [pendingRecharge, setPendingRecharge] = useState<{
+    normalizedPhone: string;
+    operator: string;
+    amount: number;
+    circleCode?: string;
+  } | null>(null);
 
   useEffect(() => {
     setIdempotencyKey(generateUUID());
@@ -122,29 +130,19 @@ export function RechargeForm({
     router.refresh();
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (isSubmitting.current || !operator) return;
-
-    const numericAmount = Number(amount);
-    if (!Number.isInteger(numericAmount) || numericAmount <= 0) {
-      toast("Enter a whole-number recharge amount.", { variant: "danger" });
-      return;
-    }
-
-    const normalizedPhone = normalizePhoneNumber(phone);
-    if (!validatePhoneNumber(normalizedPhone)) {
-      toast("Enter a valid 10-digit Indian mobile number.", { variant: "danger" });
-      return;
-    }
-
-    if (circleRequired && !circleCode?.trim()) {
-      toast("Select the mobile number's telecom circle before recharging.", {
-        variant: "danger",
-      });
-      return;
-    }
-
+  const submitRecharge = async ({
+    normalizedPhone,
+    operator,
+    amount,
+    circleCode,
+    mpin,
+  }: {
+    normalizedPhone: string;
+    operator: string;
+    amount: number;
+    circleCode?: string;
+    mpin: string;
+  }) => {
     isSubmitting.current = true;
     setSubmitting(true);
 
@@ -154,9 +152,10 @@ export function RechargeForm({
         body: JSON.stringify({
           phone: normalizedPhone,
           operator,
-          amount: numericAmount,
+          amount,
           circleCode: circleCode || undefined,
           idempotencyKey,
+          mpin,
         }),
       });
 
@@ -189,7 +188,7 @@ export function RechargeForm({
         message: confirmationMessage,
         phone: normalizedPhone,
         operator,
-        amount: String(numericAmount),
+        amount: String(amount),
         referenceId: tx?.apiReferenceId || "",
         apiMessage: tx?.apiMessage || "",
       });
@@ -208,7 +207,7 @@ export function RechargeForm({
         message: "An unexpected error occurred. Please try again.",
         phone: normalizePhoneNumber(phone),
         operator,
-        amount,
+        amount: String(amount),
         apiMessage: "",
       });
       goToConfirmation(params);
@@ -216,6 +215,51 @@ export function RechargeForm({
       isSubmitting.current = false;
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isSubmitting.current || !operator) return;
+
+    const numericAmount = Number(amount);
+    if (!Number.isInteger(numericAmount) || numericAmount <= 0) {
+      toast("Enter a whole-number recharge amount.", { variant: "danger" });
+      return;
+    }
+
+    const normalizedPhone = normalizePhoneNumber(phone);
+    if (!validatePhoneNumber(normalizedPhone)) {
+      toast("Enter a valid 10-digit Indian mobile number.", { variant: "danger" });
+      return;
+    }
+
+    if (circleRequired && !circleCode?.trim()) {
+      toast("Select the mobile number's telecom circle before recharging.", {
+        variant: "danger",
+      });
+      return;
+    }
+
+    setPendingRecharge({
+      normalizedPhone,
+      operator,
+      amount: numericAmount,
+      circleCode: circleCode || undefined,
+    });
+    setMpin("");
+    setMpinOpen(true);
+  };
+
+  const handleConfirmMpin = async () => {
+    if (!pendingRecharge) return;
+    if (!/^\d{4}$/.test(mpin)) {
+      toast("Enter a valid 4-digit MPIN.", { variant: "danger" });
+      return;
+    }
+
+    setMpinOpen(false);
+    await submitRecharge({ ...pendingRecharge, mpin });
+    setPendingRecharge(null);
   };
 
   if (loadingConfig) {
@@ -257,7 +301,49 @@ export function RechargeForm({
   }
 
   return (
-    <Form className="grid w-full max-w-lg gap-4" onSubmit={handleSubmit}>
+    <>
+      <Modal>
+        <Modal.Backdrop isOpen={mpinOpen} onOpenChange={setMpinOpen}>
+          <Modal.Container>
+            <Modal.Dialog className="sm:max-w-md">
+              <Modal.Header>
+                <Modal.Heading>Confirm MPIN</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body className="space-y-3">
+                <Description>
+                  Enter your 4-digit MPIN to initiate this recharge.
+                </Description>
+                <TextField isRequired name="mpin" type="password">
+                  <Label>MPIN</Label>
+                  <Input
+                    autoFocus
+                    inputMode="numeric"
+                    maxLength={4}
+                    pattern="\\d{4}"
+                    placeholder="4-digit MPIN"
+                    value={mpin}
+                    variant="secondary"
+                    onChange={(e) =>
+                      setMpin(e.target.value.replace(/\D/g, "").slice(0, 4))
+                    }
+                  />
+                </TextField>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onPress={() => setMpinOpen(false)}>
+                  Cancel
+                </Button>
+                <Button isDisabled={submitting} variant="primary" onPress={handleConfirmMpin}>
+                  {submitting ? <Spinner size="sm" /> : null}
+                  Confirm and recharge
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
+
+      <Form className="grid w-full max-w-lg gap-4" onSubmit={handleSubmit}>
       <TextField isRequired name="phone" type="tel">
         <Label>Phone number</Label>
         <Input
@@ -292,12 +378,6 @@ export function RechargeForm({
           </ListBox>
         </Select.Popover>
       </Select>
-
-      {operator && routedProvider ? (
-        <Description>
-          Gateway for {operator}: {formatRechargeProvider(routedProvider)}
-        </Description>
-      ) : null}
 
       <TextField isRequired name="amount" type="number">
         <Label>Amount (₹)</Label>
@@ -368,6 +448,7 @@ export function RechargeForm({
         {submitting ? <Spinner size="sm" /> : null}
         Initiate recharge
       </Button>
-    </Form>
+      </Form>
+    </>
   );
 }

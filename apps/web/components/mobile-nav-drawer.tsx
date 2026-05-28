@@ -8,10 +8,12 @@ import { NavLinksList } from "@/components/nav-links";
 export function MobileNavDrawer({
   userRole,
   pendingApprovalsCount = 0,
+  pendingSupportCount = 0,
   children,
 }: {
   userRole: string;
   pendingApprovalsCount?: number;
+  pendingSupportCount?: number;
   children: ReactNode;
 }) {
   const state = useOverlayState();
@@ -29,6 +31,7 @@ export function MobileNavDrawer({
             <Drawer.Body>
               <NavLinksList
                 pendingApprovalsCount={pendingApprovalsCount}
+                pendingSupportCount={pendingSupportCount}
                 userRole={userRole}
                 onNavigate={() => state.close()}
               />

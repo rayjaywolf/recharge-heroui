@@ -16,7 +16,6 @@ import { TransactionStatusChip } from "@/components/admin/transaction-status-chi
 import { requireDistributor } from "@/lib/distributor-retailers";
 import { formatInr } from "@/lib/format-money";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
-import { formatRechargeProvider } from "@/lib/recharge-provider";
 import { RECHARGE_EXCLUDED_OPERATORS } from "@/lib/transaction-filters";
 import { transactionLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
@@ -284,7 +283,6 @@ export default async function DistributorRetailerDetailPage({
                   <Table.Column isRowHeader>Date</Table.Column>
                   <Table.Column>Type</Table.Column>
                   <Table.Column>Amount</Table.Column>
-                  <Table.Column>API</Table.Column>
                   <Table.Column>Status</Table.Column>
                   <Table.Column>Reference</Table.Column>
                 </Table.Header>
@@ -313,16 +311,6 @@ export default async function DistributorRetailerDetailPage({
                         </Table.Cell>
                         <Table.Cell className="font-semibold">
                           <Money amount={tx.amount} />
-                        </Table.Cell>
-                        <Table.Cell className="text-sm">
-                          {[
-                            "MANUAL_CREDIT",
-                            "MANUAL_DEBIT",
-                            "FUNDS_SENT",
-                            "FUNDS_RECEIVED",
-                          ].includes(tx.operator)
-                            ? "—"
-                            : formatRechargeProvider(tx.provider)}
                         </Table.Cell>
                         <Table.Cell>
                           <TransactionStatusChip status={tx.status} />

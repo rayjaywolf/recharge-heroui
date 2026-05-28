@@ -22,4 +22,5 @@ export {
   hashMpin,
   setUserMpin,
   verifyMpinHash,
+  verifyUserMpin,
 } from "./mpin";

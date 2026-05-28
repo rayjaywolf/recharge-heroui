@@ -12,6 +12,7 @@ type DashboardMainProps = {
   userRole: string;
   balance: number;
   pendingApprovalsCount?: number;
+  pendingSupportCount?: number;
 };
 
 export function DashboardMain({
@@ -20,6 +21,7 @@ export function DashboardMain({
   userRole,
   balance,
   pendingApprovalsCount = 0,
+  pendingSupportCount = 0,
 }: DashboardMainProps) {
   const { collapsed, isReady } = useDashboardSidebar();
 
@@ -33,6 +35,7 @@ export function DashboardMain({
       <DashboardHeader
         balance={balance}
         pendingApprovalsCount={pendingApprovalsCount}
+        pendingSupportCount={pendingSupportCount}
         userName={userName}
         userRole={userRole}
       />

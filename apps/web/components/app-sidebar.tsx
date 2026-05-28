@@ -10,9 +10,11 @@ import { cn } from "@/lib/utils";
 export function AppSidebar({
   userRole,
   pendingApprovalsCount = 0,
+  pendingSupportCount = 0,
 }: {
   userRole: string;
   pendingApprovalsCount?: number;
+  pendingSupportCount?: number;
 }) {
   const { collapsed, isReady } = useDashboardSidebar();
 
@@ -55,6 +57,7 @@ export function AppSidebar({
           className={collapsed ? "pt-1" : undefined}
           collapsed={collapsed}
           pendingApprovalsCount={pendingApprovalsCount}
+          pendingSupportCount={pendingSupportCount}
           userRole={userRole}
         />
       </div>

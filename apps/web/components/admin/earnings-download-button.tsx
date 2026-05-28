@@ -6,6 +6,7 @@ import { Button } from "@heroui/react";
 import {
   exportAdminEarnings,
   exportDistributorEarnings,
+  exportRetailerEarnings,
   type BaseTransactionData,
 } from "@/lib/excel-export";
 
@@ -32,7 +33,7 @@ export function EarningsDownloadButton({
 }: {
   data: EarningRow[];
   fileName?: string;
-  variant?: "admin" | "distributor";
+  variant?: "admin" | "distributor" | "retailer";
 }) {
   const handleDownload = () => {
     const exportData: BaseTransactionData[] = data.map((tx) => ({
@@ -44,12 +45,18 @@ export function EarningsDownloadButton({
       adminCommission: variant === "admin" ? tx.commission : undefined,
       distributorCommission:
         variant === "distributor" ? tx.commission : undefined,
-      commission: variant === "distributor" ? tx.commission : undefined,
+      retailerCommission: variant === "retailer" ? tx.commission : undefined,
+      commission:
+        variant === "distributor" || variant === "retailer"
+          ? tx.commission
+          : undefined,
       user: tx.user,
     }));
 
     if (variant === "distributor") {
       exportDistributorEarnings(exportData, fileName);
+    } else if (variant === "retailer") {
+      exportRetailerEarnings(exportData, fileName);
     } else {
       exportAdminEarnings(exportData, fileName);
     }

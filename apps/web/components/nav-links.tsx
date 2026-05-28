@@ -14,12 +14,14 @@ import { cn } from "@/lib/utils";
 export function NavLinksList({
   userRole,
   pendingApprovalsCount = 0,
+  pendingSupportCount = 0,
   onNavigate,
   className,
   collapsed = false,
 }: {
   userRole: string;
   pendingApprovalsCount?: number;
+  pendingSupportCount?: number;
   onNavigate?: () => void;
   className?: string;
   collapsed?: boolean;
@@ -39,7 +41,14 @@ export function NavLinksList({
               ? pendingApprovalsCount > 99
                 ? "99+"
                 : String(pendingApprovalsCount)
-              : undefined
+              : (link.href === "/admin/support" ||
+                    link.href === "/distributor/support" ||
+                    link.href === "/retailer/support") &&
+                  pendingSupportCount > 0
+                ? pendingSupportCount > 99
+                  ? "99+"
+                  : String(pendingSupportCount)
+                : undefined
           }
           collapsed={collapsed}
           onNavigate={onNavigate}

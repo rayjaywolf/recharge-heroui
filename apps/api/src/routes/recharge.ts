@@ -13,6 +13,7 @@ import {
   normalizePhoneNumber,
   validatePhoneNumber,
 } from "@repo/shared/phone";
+import { validateMpin } from "@repo/shared/mpin";
 import { decrementBalance, incrementBalance } from "@repo/server/db-utils";
 import { resolveDateRange } from "@repo/server/date-range";
 import {
@@ -31,6 +32,7 @@ import {
 } from "@repo/server/recharge-gateway";
 import { syncPendingRealRoboTransactionsForUser } from "@repo/server/pending-recharge-sync";
 import { validateRealRoboCircle } from "@repo/server/realrobo";
+import { verifyUserMpin } from "@repo/server/mpin";
 import { CIRCLES_BY_PROVIDER, getClientProviders } from "@repo/shared/recharge-config";
 import { requireSession, type AppVariables } from "../middleware";
 
@@ -239,7 +241,7 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
   try {
     const session = c.get("session");
     const body = await c.req.json();
-    const { phone, operator, amount, circleCode, idempotencyKey } = body;
+    const { phone, operator, amount, circleCode, idempotencyKey, mpin } = body;
 
     if (!phone || !operator || !amount || amount <= 0) {
       return c.json({ error: "Invalid input" }, 400);
@@ -253,6 +255,20 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
         },
         400,
       );
+    }
+
+    if (session.user.role !== "ADMIN") {
+      if (!validateMpin(String(mpin ?? ""))) {
+        return c.json({ error: "Valid 4-digit MPIN is required." }, 400);
+      }
+
+      const mpinOk = await verifyUserMpin(session.user.id, String(mpin));
+      if (!mpinOk) {
+        return c.json(
+          { error: "Incorrect MPIN. Please try again." },
+          401,
+        );
+      }
     }
 
     const normalizedPhone = normalizePhoneNumber(phone);

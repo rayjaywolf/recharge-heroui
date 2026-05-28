@@ -18,6 +18,7 @@ type DashboardHeaderProps = {
   userRole: string;
   balance: number;
   pendingApprovalsCount?: number;
+  pendingSupportCount?: number;
 };
 
 function formatRole(role: string): string {
@@ -29,6 +30,7 @@ export function DashboardHeader({
   userRole,
   balance,
   pendingApprovalsCount = 0,
+  pendingSupportCount = 0,
 }: DashboardHeaderProps) {
   const { collapsed, toggle } = useDashboardSidebar();
   const showWalletMenu = userRole === "DISTRIBUTOR" || userRole === "RETAILER";
@@ -47,6 +49,7 @@ export function DashboardHeader({
 
       <MobileNavDrawer
         pendingApprovalsCount={pendingApprovalsCount}
+        pendingSupportCount={pendingSupportCount}
         userRole={userRole}
       >
         <Button aria-label="Open menu" className="md:hidden" isIconOnly variant="ghost">

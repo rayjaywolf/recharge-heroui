@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { db, user } from "@repo/db";
+import { db, dispute, user } from "@repo/db";
 
 import { DashboardShell } from "@/components/dashboard-shell";
 import { auth } from "@/lib/auth";
@@ -41,6 +41,36 @@ export default async function DashboardLayout({
 
   const pendingApprovalsCount =
     found.role === "ADMIN" ? await getPendingApprovalsCount() : 0;
+  let pendingSupportCount = 0;
+  if (found.role === "ADMIN") {
+    const [row] = await db
+      .select({ total: count() })
+      .from(dispute)
+      .where(eq(dispute.status, "PENDING"));
+    pendingSupportCount = row?.total ?? 0;
+  } else if (found.role === "DISTRIBUTOR") {
+    const [row] = await db
+      .select({ total: count() })
+      .from(dispute)
+      .where(
+        and(
+          eq(dispute.distributorId, found.id),
+          eq(dispute.status, "PENDING"),
+        ),
+      );
+    pendingSupportCount = row?.total ?? 0;
+  } else if (found.role === "RETAILER") {
+    const [row] = await db
+      .select({ total: count() })
+      .from(dispute)
+      .where(
+        and(
+          eq(dispute.distributorId, found.id),
+          eq(dispute.status, "PENDING"),
+        ),
+      );
+    pendingSupportCount = row?.total ?? 0;
+  }
 
   let mpinMustReset = false;
   if (found.role !== "ADMIN") {
@@ -52,6 +82,7 @@ export default async function DashboardLayout({
     <DashboardShell
       balance={found.balance}
       pendingApprovalsCount={pendingApprovalsCount}
+      pendingSupportCount={pendingSupportCount}
       mpinMustReset={mpinMustReset}
       userName={found.name}
       userRole={found.role}

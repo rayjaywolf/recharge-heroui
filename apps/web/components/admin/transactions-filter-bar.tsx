@@ -351,7 +351,11 @@ export function TransactionsFilterBar({
           }}
         >
           <Label>Date range</Label>
-          <DateField.Group fullWidth variant="secondary">
+          <DateField.Group
+            fullWidth
+            className="bg-white"
+            variant="secondary"
+          >
             <DateField.Input slot="start">
               {(segment) => <DateField.Segment segment={segment} />}
             </DateField.Input>
@@ -365,8 +369,8 @@ export function TransactionsFilterBar({
               </DateRangePicker.Trigger>
             </DateField.Suffix>
           </DateField.Group>
-          <DateRangePicker.Popover>
-            <RangeCalendar aria-label="Transaction date range">
+          <DateRangePicker.Popover className="bg-white">
+            <RangeCalendar aria-label="Transaction date range" className="bg-white">
               <RangeCalendar.Header>
                 <RangeCalendar.YearPickerTrigger>
                   <RangeCalendar.YearPickerTriggerHeading />
