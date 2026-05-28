@@ -34,7 +34,7 @@ export type AdminUserRow = {
   whatsappNumber: string | null;
   role: string;
   balance: number;
-  isSuspended: boolean;
+  accountStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
   createdAt: string;
   distributorId: string | null;
   distributor: { name: string } | null;
@@ -97,26 +97,25 @@ export function UsersTable({
 
   const titleWithCount = `${title} (${data.length})`;
 
-  const toggleSuspension = async (
-    userId: string,
-    currentlySuspended: boolean
-  ) => {
-    setBusyId(userId);
+  const toggleSuspension = async (target: AdminUserRow) => {
+    setBusyId(target.id);
 
     try {
       const res = await apiFetch("/api/admin/retailer/toggle-status", {
         method: "POST",
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId: target.id }),
       });
 
       if (!res.ok) throw new Error("Failed to toggle status");
 
+      const nextStatus =
+        target.accountStatus === "SUSPENDED" ? "APPROVED" : "SUSPENDED";
       setData((prev) =>
         prev.map((r) =>
-          r.id === userId ? { ...r, isSuspended: !currentlySuspended } : r
+          r.id === target.id ? { ...r, accountStatus: nextStatus } : r
         )
       );
-      toast(currentlySuspended ? "User restored." : "User suspended.", {
+      toast(target.accountStatus === "SUSPENDED" ? "User restored." : "User suspended.", {
         variant: "success",
       });
       router.refresh();
@@ -134,7 +133,7 @@ export function UsersTable({
 
   const confirmSuspend = async () => {
     if (!suspendTarget) return;
-    await toggleSuspension(suspendTarget.id, false);
+    await toggleSuspension(suspendTarget);
     suspendDialog.close();
     setSuspendTarget(null);
   };
@@ -248,7 +247,7 @@ export function UsersTable({
                   return (
                     <Table.Row
                       key={user.id}
-                      className={`cursor-pointer ${user.isSuspended ? "opacity-70" : ""}`}
+                      className={`cursor-pointer ${user.accountStatus === "SUSPENDED" ? "opacity-70" : ""}`}
                       onAction={() => router.push(`/admin/users/${user.id}`)}
                     >
                       <Table.Cell className="font-semibold text-foreground">
@@ -273,11 +272,11 @@ export function UsersTable({
                       </Table.Cell>
                       <Table.Cell>
                         <Chip
-                          color={user.isSuspended ? "danger" : "success"}
+                          color={user.accountStatus === "SUSPENDED" ? "danger" : "success"}
                           size="sm"
                           variant="soft"
                         >
-                          {user.isSuspended ? "Suspended" : "Active"}
+                          {user.accountStatus === "SUSPENDED" ? "Suspended" : "Active"}
                         </Chip>
                       </Table.Cell>
                       <Table.Cell
@@ -297,14 +296,14 @@ export function UsersTable({
                           <Button
                             isDisabled={isBusy}
                             size="sm"
-                            variant={user.isSuspended ? "secondary" : "danger"}
+                            variant={user.accountStatus === "SUSPENDED" ? "secondary" : "danger"}
                             onPress={() =>
-                              user.isSuspended
-                                ? toggleSuspension(user.id, true)
+                              user.accountStatus === "SUSPENDED"
+                                ? toggleSuspension(user)
                                 : requestSuspend(user)
                             }
                           >
-                            {user.isSuspended ? (
+                            {user.accountStatus === "SUSPENDED" ? (
                               "Restore"
                             ) : (
                               <>

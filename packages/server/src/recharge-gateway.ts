@@ -139,16 +139,37 @@ export async function callRechargeProvider(
   apiUrl.searchParams.append("orderid", transactionId);
   apiUrl.searchParams.append("format", "json");
 
-  const response = await fetch(apiUrl.toString(), {
-    method: "GET",
-    signal: AbortSignal.timeout(30000),
-  });
-  const textResponse = await response.text();
-
   try {
-    return JSON.parse(textResponse);
-  } catch {
-    return { status: "error", message: textResponse };
+    const response = await fetch(apiUrl.toString(), {
+      method: "GET",
+      signal: AbortSignal.timeout(30000),
+    });
+    const textResponse = await response.text();
+
+    try {
+      return JSON.parse(textResponse);
+    } catch {
+      return { status: "error", message: textResponse };
+    }
+  } catch (error) {
+    const detail =
+      error instanceof Error ? error.message : "Unknown provider error";
+    const isTimeout =
+      error instanceof Error &&
+      (error.name === "TimeoutError" ||
+        error.name === "AbortError" ||
+        detail.toLowerCase().includes("timeout"));
+
+    console.error("[A1TOPUP] recharge request failed:", error);
+
+    return {
+      status: "pending",
+      message: isTimeout
+        ? "A1TopUp request timed out. Left pending for status reconciliation."
+        : `A1TopUp request failed (${detail}). Left pending for status reconciliation.`,
+      transaction_id: transactionId,
+      orderid: transactionId,
+    };
   }
 }
 
@@ -318,9 +339,10 @@ export function parseRechargeProviderResponse(
     };
   }
   return {
-    finalStatus: "FAILED",
-    apiMessage: response.message || "Recharge failed at provider",
+    finalStatus: "PENDING",
+    apiMessage:
+      response.message || "Recharge status unknown at provider; marked pending",
     apiReferenceId: ref,
-    shouldRefund: true,
+    shouldRefund: false,
   };
 }

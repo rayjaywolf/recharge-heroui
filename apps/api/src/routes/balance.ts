@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import { getMRoboticsBalance } from "@repo/server/mrobotics";
 import { getRealRoboBalance } from "@repo/server/realrobo";
-import { requireAdminSessionRole } from "../middleware";
+import { requireAdmin } from "../middleware";
 
 export const balanceRoutes = new Hono();
 
-balanceRoutes.get("/api/balance/realrobo", requireAdminSessionRole, async (c) => {
+balanceRoutes.get("/api/balance/realrobo", requireAdmin, async (c) => {
   try {
     const balance = await getRealRoboBalance();
 
@@ -28,7 +28,7 @@ balanceRoutes.get("/api/balance/realrobo", requireAdminSessionRole, async (c) =>
   }
 });
 
-balanceRoutes.get("/api/balance/mrobotics", requireAdminSessionRole, async (c) => {
+balanceRoutes.get("/api/balance/mrobotics", requireAdmin, async (c) => {
   try {
     const balance = await getMRoboticsBalance();
 

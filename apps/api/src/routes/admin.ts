@@ -14,7 +14,10 @@ import {
 } from "@repo/db";
 import { decrementBalance, incrementBalance } from "@repo/server/db-utils";
 import { checkMRoboticsStatus } from "@repo/server/mrobotics";
-import { syncPendingRealRoboTransactionsForUser } from "@repo/server/pending-recharge-sync";
+import {
+  settlePendingTransaction,
+  syncPendingRealRoboTransactionsForUser,
+} from "@repo/server/pending-recharge-sync";
 import { parseRechargeProviderResponse } from "@repo/server/recharge-gateway";
 import {
   assertProvider,
@@ -71,15 +74,12 @@ adminRoutes.post("/api/admin/transactions/:id/refresh-status", requireAdmin, asy
         found.id,
       );
 
+      await settlePendingTransaction(found, parsed);
       const [updated] = await db
-        .update(transaction)
-        .set({
-          status: parsed.finalStatus,
-          apiMessage: parsed.apiMessage,
-          apiReferenceId: parsed.apiReferenceId,
-        })
+        .select()
+        .from(transaction)
         .where(eq(transaction.id, found.id))
-        .returning();
+        .limit(1);
 
       return c.json({
         success: true,
@@ -196,6 +196,24 @@ adminRoutes.patch("/api/admin/transactions/:id/manual-status", requireAdmin, asy
     const shouldRefundOnTo = toFailedLike;
 
     const [updated] = await db.transaction(async (tx) => {
+      const [next] = await tx
+        .update(transaction)
+        .set({
+          status: to,
+          apiMessage: toFailedLike
+            ? `[MANUAL_STATUS_REFUNDED] ${message}`
+            : `[MANUAL_STATUS] ${message}`,
+          retailerCommission: toSuccess ? nextRetailerCommission : 0,
+          distributorCommission: toSuccess ? nextDistributorCommission : 0,
+          adminCommission: toSuccess ? nextAdminCommission : 0,
+        })
+        .where(and(eq(transaction.id, id), eq(transaction.status, from)))
+        .returning();
+
+      if (!next) {
+        throw new Error("CONCURRENT_STATUS_UPDATE");
+      }
+
       // Reverse previously credited earnings if moving away from SUCCESS.
       if (fromSuccess && !toSuccess) {
         if (found.retailerCommission > 0) {
@@ -283,20 +301,6 @@ adminRoutes.patch("/api/admin/transactions/:id/manual-status", requireAdmin, asy
         }
       }
 
-      const [next] = await tx
-        .update(transaction)
-        .set({
-          status: to,
-          apiMessage: toFailedLike
-            ? `[MANUAL_STATUS_REFUNDED] ${message}`
-            : `[MANUAL_STATUS] ${message}`,
-          retailerCommission: toSuccess ? nextRetailerCommission : 0,
-          distributorCommission: toSuccess ? nextDistributorCommission : 0,
-          adminCommission: toSuccess ? nextAdminCommission : 0,
-        })
-        .where(eq(transaction.id, id))
-        .returning();
-
       return [next];
     });
 
@@ -306,6 +310,15 @@ adminRoutes.patch("/api/admin/transactions/:id/manual-status", requireAdmin, asy
       transaction: updated,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "CONCURRENT_STATUS_UPDATE") {
+      return c.json(
+        {
+          error:
+            "Transaction status changed concurrently. Please refresh and retry.",
+        },
+        409,
+      );
+    }
     if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE_FOR_REVERSAL") {
       return c.json(
         {
@@ -362,8 +375,16 @@ adminRoutes.post("/api/admin/fund", requireAdmin, async (c) => {
             ? incrementBalance(amount)
             : decrementBalance(amount),
         )
-        .where(eq(user.id, userId))
+        .where(
+          actionType === "credit"
+            ? eq(user.id, userId)
+            : and(eq(user.id, userId), gte(user.balance, amount)),
+        )
         .returning();
+
+      if (!updatedUser) {
+        throw new Error("INSUFFICIENT_BALANCE");
+      }
 
       const messageContent = remarks
         ? `[${actionType.toUpperCase()}] ${remarks}`
@@ -390,6 +411,9 @@ adminRoutes.post("/api/admin/fund", requireAdmin, async (c) => {
       balance: result.updatedUser.balance,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
+      return c.json({ error: "Insufficient balance" }, 400);
+    }
     console.error("Fund Wallet Error:", error);
     return c.json({ error: "Internal server error" }, 500);
   }
@@ -413,19 +437,26 @@ adminRoutes.post("/api/admin/retailer/toggle-status", requireAdmin, async (c) =>
     if (!targetUser) {
       return c.json({ error: "Retailer not found" }, 404);
     }
+    if (targetUser.role !== "RETAILER") {
+      return c.json({ error: "Only retailers can be suspended/restored." }, 400);
+    }
+    if (targetUser.accountStatus === "REJECTED") {
+      return c.json({ error: "Rejected retailers cannot be restored from here." }, 400);
+    }
 
-    const newStatus = !targetUser.isSuspended;
+    const newStatus =
+      targetUser.accountStatus === "SUSPENDED" ? "APPROVED" : "SUSPENDED";
 
     const [updatedUser] = await db
       .update(user)
-      .set({ isSuspended: newStatus })
+      .set({ accountStatus: newStatus })
       .where(eq(user.id, userId))
-      .returning({ name: user.name, isSuspended: user.isSuspended });
+      .returning({ name: user.name, accountStatus: user.accountStatus });
 
     return c.json({
       success: true,
-      message: `Successfully ${newStatus ? "suspended" : "activated"} retailer ${updatedUser?.name}`,
-      isSuspended: updatedUser?.isSuspended,
+      message: `Successfully ${newStatus === "SUSPENDED" ? "suspended" : "activated"} retailer ${updatedUser?.name}`,
+      accountStatus: updatedUser?.accountStatus,
     });
   } catch (error) {
     console.error("Toggle Status Error:", error);
@@ -440,9 +471,27 @@ adminRoutes.post("/api/admin/users/approve", requireAdmin, async (c) => {
       return c.json({ error: "User ID is required" }, 400);
     }
 
+    const [target] = await db
+      .select({ role: user.role, accountStatus: user.accountStatus })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    if (!target) {
+      return c.json({ error: "User not found" }, 404);
+    }
+    if (target.role !== "RETAILER") {
+      return c.json({ error: "Only retailers can be approved here." }, 400);
+    }
+    if (target.accountStatus === "APPROVED") {
+      return c.json({ error: "User is already approved." }, 409);
+    }
+    if (target.accountStatus === "REJECTED") {
+      return c.json({ error: "Rejected users cannot be approved directly." }, 409);
+    }
+
     const [updatedUser] = await db
       .update(user)
-      .set({ isApproved: true, mpinMustReset: true })
+      .set({ accountStatus: "APPROVED", mpinMustReset: true })
       .where(eq(user.id, userId))
       .returning({ name: user.name });
 
@@ -467,9 +516,24 @@ adminRoutes.post("/api/admin/users/reject", requireAdmin, async (c) => {
       return c.json({ error: "User ID is required" }, 400);
     }
 
+    const [target] = await db
+      .select({ role: user.role, accountStatus: user.accountStatus })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    if (!target) {
+      return c.json({ error: "User not found" }, 404);
+    }
+    if (target.role !== "RETAILER") {
+      return c.json({ error: "Only retailers can be rejected here." }, 400);
+    }
+    if (target.accountStatus === "REJECTED") {
+      return c.json({ error: "User is already rejected." }, 409);
+    }
+
     const [updatedUser] = await db
       .update(user)
-      .set({ isRejected: true, isApproved: false })
+      .set({ accountStatus: "REJECTED" })
       .where(eq(user.id, userId))
       .returning({ name: user.name });
 
@@ -541,7 +605,7 @@ adminRoutes.get("/api/admin/disputes", requireAdmin, async (c) => {
     const rows = await db
       .select({
         id: dispute.id,
-        distributorId: dispute.distributorId,
+        distributorId: transaction.userId,
         distributorName: user.name,
         transactionId: dispute.transactionId,
         subject: dispute.subject,
@@ -558,8 +622,8 @@ adminRoutes.get("/api/admin/disputes", requireAdmin, async (c) => {
         apiReferenceId: transaction.apiReferenceId,
       })
       .from(dispute)
-      .innerJoin(user, eq(dispute.distributorId, user.id))
       .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
+      .innerJoin(user, eq(transaction.userId, user.id))
       .where(status === "ALL" ? undefined : eq(dispute.status, status))
       .orderBy(desc(dispute.createdAt));
 

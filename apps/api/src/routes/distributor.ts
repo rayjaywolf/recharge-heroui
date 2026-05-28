@@ -116,6 +116,9 @@ distributorRoutes.post("/api/distributor/fund", requireDistributor, async (c) =>
       balance: result.updatedDistributor.balance,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "Insufficient wallet balance.") {
+      return c.json({ error: "Insufficient wallet balance." }, 400);
+    }
     console.error("Distributor Fund Wallet Error:", error);
     return c.json({ error: "Internal server error" }, 500);
   }
@@ -145,8 +148,7 @@ distributorRoutes.post("/api/distributor/retailer", requireDistributor, async (c
         panNumber: input.panNumber,
         gstNumber: input.gstNumber,
         businessType: input.businessType,
-        isApproved: false,
-        isRejected: false,
+        accountStatus: "PENDING",
       } as never,
     });
 

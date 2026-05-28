@@ -38,8 +38,7 @@ authRoutes.post("/api/auth/register-retailer", async (c) => {
         gstNumber: input.gstNumber,
         businessType: input.businessType,
         distributorId: input.distributorId,
-        isApproved: false,
-        isRejected: false,
+        accountStatus: "PENDING",
       } as never,
     });
 

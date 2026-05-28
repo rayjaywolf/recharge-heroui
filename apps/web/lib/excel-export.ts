@@ -43,102 +43,130 @@ export interface ExcelExportData<T = BaseTransactionData> {
   referenceIdFallbackToId?: boolean
 }
 
-export function exportToExcel<T>({
+type ExportRow = Record<string, unknown> &
+  Partial<BaseTransactionData> & {
+    type?: string;
+    notes?: string;
+    yourMarginPercent?: string | number;
+    yourEarningsInr?: number;
+  };
+
+/** Maps one export row cell (used by export helpers and tests). */
+export function mapExportCell(
+  typedItem: ExportRow,
+  header: string,
+  referenceIdFallbackToId = true,
+): string {
+  if (header === 'Date') {
+    return typedItem.createdAt
+      ? new Date(typedItem.createdAt).toLocaleDateString('en-IN')
+      : ''
+  }
+  if (header === 'Time') {
+    return typedItem.createdAt
+      ? new Date(typedItem.createdAt).toLocaleTimeString('en-IN')
+      : ''
+  }
+  if (header === 'Amount' || header === 'Recharge Amount') {
+    return typedItem.amount ? `₹${typedItem.amount.toLocaleString('en-IN')}` : ''
+  }
+  if (header === 'Status') {
+    return typedItem.status || ''
+  }
+  if (header === 'Retailer' || header === 'User') {
+    return typedItem.user?.name || ''
+  }
+  if (header === 'Email') {
+    return typedItem.user?.email || ''
+  }
+  if (header === 'Operator' || header === 'Carrier') {
+    return typedItem.operator || ''
+  }
+  if (header === 'API') {
+    return formatRechargeProvider(typedItem.provider)
+  }
+  if (header === 'Phone') {
+    return typedItem.targetPhone || ''
+  }
+  if (header === 'Reference ID' || header === 'Ref ID') {
+    if (typedItem.apiReferenceId) return typedItem.apiReferenceId
+    return referenceIdFallbackToId ? typedItem.id || '' : ''
+  }
+  if (header === 'Action') {
+    return String(typedItem.operator || typedItem.type || '')
+  }
+  if (header === 'Notes') {
+    return String(typedItem.apiMessage || typedItem.notes || '')
+  }
+  if (header === 'Platform Cut') {
+    return typedItem.adminCommission
+      ? `₹${typedItem.adminCommission.toLocaleString('en-IN')}`
+      : ''
+  }
+  if (header === 'Your Cut') {
+    if (typedItem.distributorCommission) {
+      return `₹${typedItem.distributorCommission.toLocaleString('en-IN')}`
+    }
+    if (typedItem.retailerCommission) {
+      return `₹${typedItem.retailerCommission.toLocaleString('en-IN')}`
+    }
+    if (typedItem.commission != null && typedItem.commission !== '') {
+      return `₹${Number(typedItem.commission).toLocaleString('en-IN')}`
+    }
+    return ''
+  }
+  if (header === 'Your margin %') {
+    if (typedItem.yourMarginPercent != null && typedItem.yourMarginPercent !== '') {
+      return String(typedItem.yourMarginPercent)
+    }
+    const amt = typedItem.amount
+    const r = typedItem.retailerCommission
+    const comm = typedItem.commission
+    if (amt > 0 && comm != null && Number(comm) > 0) {
+      return `${((Number(comm) / amt) * 100).toFixed(2)}%`
+    }
+    if (amt > 0 && r > 0) {
+      return `${((r / amt) * 100).toFixed(2)}%`
+    }
+    return ''
+  }
+  if (header === 'Your earnings (₹)') {
+    const r = typedItem.retailerCommission ?? typedItem.yourEarningsInr
+    return r ? `₹${Number(r).toLocaleString('en-IN')}` : ''
+  }
+  if (header === 'Type') {
+    return String(typedItem.type || '')
+  }
+
+  const propertyKey = header.toLowerCase().replace(/\s+/g, '')
+  return String(typedItem[propertyKey] || '')
+}
+
+/** Builds worksheet rows (header + data) without writing a file. */
+export function buildWorksheetRows<T extends ExportRow>(
+  headers: string[],
+  data: T[],
+  referenceIdFallbackToId = true,
+): string[][] {
+  return [
+    headers,
+    ...data.map((item) =>
+      headers.map((header) =>
+        mapExportCell(item, header, referenceIdFallbackToId),
+      ),
+    ),
+  ]
+}
+
+export function exportToExcel<T extends ExportRow>({
   fileName,
   sheetName,
   data,
   headers,
   referenceIdFallbackToId = true,
 }: ExcelExportData<T>) {
-  // Create a new workbook
   const workbook = XLSX.utils.book_new()
-  
-  // Convert data to worksheet format with type safety
-  const worksheetData = [headers, ...data.map(item => 
-    headers.map(header => {
-      // Type-safe data mapping
-      const typedItem = item as any
-      
-      if (header === 'Date') {
-        return typedItem.createdAt ? new Date(typedItem.createdAt).toLocaleDateString('en-IN') : ''
-      }
-      if (header === 'Time') {
-        return typedItem.createdAt ? new Date(typedItem.createdAt).toLocaleTimeString('en-IN') : ''
-      }
-      if (header === 'Amount' || header === 'Recharge Amount') {
-        return typedItem.amount ? `₹${typedItem.amount.toLocaleString('en-IN')}` : ''
-      }
-      if (header === 'Status') {
-        return typedItem.status || ''
-      }
-      if (header === 'Retailer' || header === 'User') {
-        return typedItem.user?.name || ''
-      }
-      if (header === 'Email') {
-        return typedItem.user?.email || ''
-      }
-      if (header === 'Operator' || header === 'Carrier') {
-        return typedItem.operator || ''
-      }
-      if (header === 'API') {
-        return formatRechargeProvider(typedItem.provider)
-      }
-      if (header === 'Phone') {
-        return typedItem.targetPhone || ''
-      }
-      if (header === 'Reference ID' || header === 'Ref ID') {
-        if (typedItem.apiReferenceId) return typedItem.apiReferenceId
-        return referenceIdFallbackToId ? typedItem.id || '' : ''
-      }
-      if (header === 'Action') {
-        return typedItem.operator || typedItem.type || ''
-      }
-      if (header === 'Notes') {
-        return typedItem.apiMessage || typedItem.notes || ''
-      }
-      if (header === 'Platform Cut') {
-        return typedItem.adminCommission ? `₹${typedItem.adminCommission.toLocaleString('en-IN')}` : ''
-      }
-      if (header === 'Your Cut') {
-        if (typedItem.distributorCommission) {
-          return `₹${typedItem.distributorCommission.toLocaleString('en-IN')}`
-        }
-        if (typedItem.retailerCommission) {
-          return `₹${typedItem.retailerCommission.toLocaleString('en-IN')}`
-        }
-        if (typedItem.commission != null && typedItem.commission !== '') {
-          return `₹${Number(typedItem.commission).toLocaleString('en-IN')}`
-        }
-        return ''
-      }
-      if (header === 'Your margin %') {
-        if (typedItem.yourMarginPercent != null && typedItem.yourMarginPercent !== '') {
-          return String(typedItem.yourMarginPercent)
-        }
-        const amt = typedItem.amount
-        const r = typedItem.retailerCommission
-        const comm = typedItem.commission
-        if (amt > 0 && comm != null && Number(comm) > 0) {
-          return `${((Number(comm) / amt) * 100).toFixed(2)}%`
-        }
-        if (amt > 0 && r > 0) {
-          return `${((r / amt) * 100).toFixed(2)}%`
-        }
-        return ''
-      }
-      if (header === 'Your earnings (₹)') {
-        const r = typedItem.retailerCommission ?? typedItem.yourEarningsInr
-        return r ? `₹${Number(r).toLocaleString('en-IN')}` : ''
-      }
-      if (header === 'Type') {
-        return typedItem.type || ''
-      }
-      
-      // Default: try to get the property directly with safe access
-      const propertyKey = header.toLowerCase().replace(/\s+/g, '')
-      return typedItem[propertyKey] || ''
-    })
-  )]
+  const worksheetData = buildWorksheetRows(headers, data, referenceIdFallbackToId)
   
   // Create worksheet
   const worksheet = XLSX.utils.aoa_to_sheet(worksheetData)

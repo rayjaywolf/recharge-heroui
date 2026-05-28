@@ -10,7 +10,7 @@ export type UserReportRow = {
   role: string;
   balance: number;
   earnings: number;
-  isSuspended: boolean;
+  accountStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
   createdAt: string;
   distributorName: string | null;
   retailerCount: number;
@@ -33,7 +33,7 @@ async function attachRechargeStats(
     role: string;
     balance: number;
     earnings: number;
-    isSuspended: boolean;
+    accountStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
     createdAt: Date;
     distributorName: string | null;
     retailerCount: number;
@@ -94,7 +94,7 @@ async function attachRechargeStats(
       role: u.role,
       balance: u.balance,
       earnings: u.earnings,
-      isSuspended: u.isSuspended,
+      accountStatus: u.accountStatus,
       createdAt: u.createdAt.toISOString(),
       distributorName: u.distributorName,
       retailerCount: u.retailerCount,
@@ -120,7 +120,7 @@ export async function fetchUserReportRows(
       role: true,
       balance: true,
       earnings: true,
-      isSuspended: true,
+      accountStatus: true,
       createdAt: true,
     },
     with: {
@@ -138,7 +138,7 @@ export async function fetchUserReportRows(
     role: u.role,
     balance: u.balance,
     earnings: u.earnings,
-    isSuspended: u.isSuspended,
+    accountStatus: u.accountStatus,
     createdAt: u.createdAt,
     distributorName: u.distributor?.name ?? null,
     retailerCount: u.retailers.length,

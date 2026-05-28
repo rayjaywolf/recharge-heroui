@@ -80,7 +80,7 @@ export async function proxy(request: NextRequest) {
   const role = authSession.user.role as string | undefined;
 
   if (!role) {
-    return NextResponse.next();
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   if (role === "RETAILER") {

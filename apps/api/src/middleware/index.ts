@@ -72,6 +72,12 @@ export const requireDistributor: MiddlewareHandler<{ Variables: AppVariables }> 
         403,
       );
     }
+    if (found.accountStatus !== "APPROVED") {
+      return c.json(
+        { error: "Your account is not approved for distributor actions." },
+        403,
+      );
+    }
 
     c.set("session", session as { user: SessionUser });
     c.set("dbUser", found);
@@ -94,6 +100,12 @@ export const requireRetailer: MiddlewareHandler<{ Variables: AppVariables }> =
     if (found?.role !== "RETAILER") {
       return c.json({ error: "Forbidden" }, 403);
     }
+    if (found.accountStatus !== "APPROVED") {
+      return c.json(
+        { error: "Your account is not approved for retailer actions." },
+        403,
+      );
+    }
 
     c.set("session", session as { user: SessionUser });
     c.set("dbUser", found);
@@ -105,7 +117,12 @@ export const requireAdminSessionRole: MiddlewareHandler = async (c, next) => {
   if (!session?.user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  if (session.user.role !== "ADMIN") {
+  const [found] = await db
+    .select({ role: user.role })
+    .from(user)
+    .where(eq(user.id, session.user.id))
+    .limit(1);
+  if (found?.role !== "ADMIN") {
     return c.json({ error: "Admin access required" }, 403);
   }
   await next();

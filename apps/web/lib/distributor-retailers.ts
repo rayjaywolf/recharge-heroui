@@ -12,9 +12,7 @@ export type DistributorRetailerRow = {
   phoneNumber: string | null;
   whatsappNumber: string | null;
   balance: number;
-  isSuspended: boolean;
-  isApproved: boolean;
-  isRejected: boolean;
+  accountStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
   createdAt: string;
   transactionCount: number;
 };
@@ -53,9 +51,7 @@ export async function fetchDistributorRetailers(): Promise<DistributorRetailerRo
       phoneNumber: true,
       whatsappNumber: true,
       balance: true,
-      isSuspended: true,
-      isApproved: true,
-      isRejected: true,
+      accountStatus: true,
       createdAt: true,
     },
     with: {
@@ -71,9 +67,7 @@ export async function fetchDistributorRetailers(): Promise<DistributorRetailerRo
     phoneNumber: r.phoneNumber,
     whatsappNumber: r.whatsappNumber,
     balance: r.balance,
-    isSuspended: r.isSuspended,
-    isApproved: r.isApproved,
-    isRejected: r.isRejected,
+    accountStatus: r.accountStatus,
     createdAt: r.createdAt.toISOString(),
     transactionCount: r.transactions.length,
   }));
@@ -93,9 +87,7 @@ export async function fetchDistributorRetailerById(
       phoneNumber: true,
       whatsappNumber: true,
       balance: true,
-      isSuspended: true,
-      isApproved: true,
-      isRejected: true,
+      accountStatus: true,
       createdAt: true,
       distributorId: true,
     },
@@ -115,9 +107,7 @@ export async function fetchDistributorRetailerById(
     phoneNumber: retailer.phoneNumber,
     whatsappNumber: retailer.whatsappNumber,
     balance: retailer.balance,
-    isSuspended: retailer.isSuspended,
-    isApproved: retailer.isApproved,
-    isRejected: retailer.isRejected,
+    accountStatus: retailer.accountStatus,
     createdAt: retailer.createdAt.toISOString(),
     transactionCount: retailer.transactions.length,
   };

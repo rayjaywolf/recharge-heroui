@@ -308,7 +308,15 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
         .limit(1);
 
       if (!currentUser) throw new Error("User not found");
-      if (currentUser.isSuspended) throw new Error("ACCOUNT_SUSPENDED");
+      if (
+        currentUser.role !== "ADMIN" &&
+        currentUser.accountStatus !== "APPROVED"
+      ) {
+        throw new Error("ACCOUNT_NOT_APPROVED");
+      }
+      if (currentUser.accountStatus === "SUSPENDED") {
+        throw new Error("ACCOUNT_SUSPENDED");
+      }
       if (currentUser.balance < amount) throw new Error("Insufficient balance");
 
       const [updated] = await tx
@@ -455,8 +463,28 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
               }
             : {}),
         })
-        .where(eq(transaction.id, result.transaction.id))
+        .where(
+          and(
+            eq(transaction.id, result.transaction.id),
+            eq(transaction.status, "PENDING"),
+          ),
+        )
         .returning();
+
+      if (!t) {
+        const [latest] = await tx
+          .select()
+          .from(transaction)
+          .where(eq(transaction.id, result.transaction.id))
+          .limit(1);
+        return {
+          transaction: latest ?? result.transaction,
+          status: latest?.status ?? "PENDING",
+          message:
+            "Transaction status changed concurrently. Please refresh transaction status.",
+          concurrentUpdate: true,
+        };
+      }
 
       if (shouldRefund) {
         await tx
@@ -500,6 +528,16 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
       return { transaction: t, status: finalStatus, message: apiMessage };
     });
 
+    if (updatedTransaction.concurrentUpdate) {
+      return c.json(
+        {
+          error: updatedTransaction.message,
+          transaction: updatedTransaction.transaction,
+        },
+        409,
+      );
+    }
+
     if (updatedTransaction.status === "PENDING") {
       return c.json({
         success: true,
@@ -525,6 +563,15 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "";
+    if (message === "ACCOUNT_NOT_APPROVED") {
+      return c.json(
+        {
+          error:
+            "Your account is not approved yet. Please wait for admin approval.",
+        },
+        403,
+      );
+    }
     if (message === "ACCOUNT_SUSPENDED") {
       return c.json(
         { error: "Your account has been suspended by the administrator." },

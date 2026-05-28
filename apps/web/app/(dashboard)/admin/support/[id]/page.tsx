@@ -26,8 +26,8 @@ export default async function AdminDisputeDetailPage({
       createdAt: dispute.createdAt,
       resolvedAt: dispute.resolvedAt,
       transactionId: dispute.transactionId,
-      distributorId: dispute.distributorId,
-      distributorName: user.name,
+      retailerId: transaction.userId,
+      retailerName: user.name,
       operator: transaction.operator,
       targetPhone: transaction.targetPhone,
       amount: transaction.amount,
@@ -37,7 +37,7 @@ export default async function AdminDisputeDetailPage({
     })
     .from(dispute)
     .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
-    .innerJoin(user, eq(dispute.distributorId, user.id))
+    .innerJoin(user, eq(transaction.userId, user.id))
     .where(eq(dispute.id, id))
     .limit(1);
 
@@ -82,7 +82,7 @@ export default async function AdminDisputeDetailPage({
           <div className="space-y-1">
             <p className="text-xs text-muted">Retailer</p>
             <p className="text-sm font-medium text-foreground">
-              {detail.distributorName}
+              {detail.retailerName}
             </p>
           </div>
           <div className="space-y-1">

@@ -2,8 +2,7 @@ import { and, count, eq, ne } from "drizzle-orm";
 import { db, user } from "@repo/db";
 
 export const pendingApprovalsWhere = and(
-  eq(user.isApproved, false),
-  eq(user.isRejected, false),
+  eq(user.accountStatus, "PENDING"),
   ne(user.role, "ADMIN"),
 );
 

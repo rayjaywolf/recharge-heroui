@@ -5,7 +5,7 @@ import { db, user } from "@repo/db";
 
 import { auth } from "@/lib/auth";
 
-export async function requireRetailer() {
+export async function requireAdmin() {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -14,25 +14,22 @@ export async function requireRetailer() {
     redirect("/login");
   }
 
-  const [retailer] = await db
+  const [admin] = await db
     .select({
       id: user.id,
       role: user.role,
       name: user.name,
       email: user.email,
       balance: user.balance,
-      distributorId: user.distributorId,
-      phoneNumber: user.phoneNumber,
-      whatsappNumber: user.whatsappNumber,
       accountStatus: user.accountStatus,
     })
     .from(user)
     .where(eq(user.id, session.user.id))
     .limit(1);
 
-  if (!retailer || retailer.role !== "RETAILER") {
+  if (!admin || admin.role !== "ADMIN") {
     redirect("/login");
   }
 
-  return retailer;
+  return admin;
 }

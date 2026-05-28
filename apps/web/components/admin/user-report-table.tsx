@@ -57,7 +57,7 @@ export function UserReportTable({
         successCount: row.successCount,
         successVolume: row.successVolume,
         pendingCount: row.pendingCount,
-        status: row.isSuspended ? "Suspended" : "Active",
+        status: row.accountStatus,
         joined: row.createdAt,
       })),
       downloadFileName
@@ -156,9 +156,17 @@ export function UserReportTable({
                       )}
                     </Table.Cell>
                     <Table.Cell>
-                      {row.isSuspended ? (
+                      {row.accountStatus === "SUSPENDED" ? (
                         <Chip size="sm" variant="danger">
                           Suspended
+                        </Chip>
+                      ) : row.accountStatus === "PENDING" ? (
+                        <Chip color="warning" size="sm" variant="soft">
+                          Pending
+                        </Chip>
+                      ) : row.accountStatus === "REJECTED" ? (
+                        <Chip size="sm" variant="danger">
+                          Rejected
                         </Chip>
                       ) : (
                         <Chip color="success" size="sm" variant="soft">

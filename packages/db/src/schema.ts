@@ -1,10 +1,10 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
-  doublePrecision,
   foreignKey,
   index,
   integer,
+  numeric,
   pgEnum,
   pgTable,
   text,
@@ -31,6 +31,12 @@ export const fundRequestStatusEnum = pgEnum("FundRequestStatus", [
   "REJECTED",
   "CANCELLED",
 ]);
+export const accountStatusEnum = pgEnum("AccountStatus", [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "SUSPENDED",
+]);
 export const disputeStatusEnum = pgEnum("DisputeStatus", ["PENDING", "RESOLVED"]);
 
 export const user = pgTable(
@@ -45,10 +51,10 @@ export const user = pgTable(
     image: text("image"),
     role: roleEnum("role").notNull().default("RETAILER"),
     balance: integer("balance").notNull().default(0),
-    earnings: doublePrecision("earnings").notNull().default(0),
-    isSuspended: boolean("isSuspended").notNull().default(false),
-    isApproved: boolean("isApproved").notNull().default(false),
-    isRejected: boolean("isRejected").notNull().default(false),
+    earnings: numeric("earnings", { precision: 10, scale: 2, mode: "number" })
+      .notNull()
+      .default("0"),
+    accountStatus: accountStatusEnum("accountStatus").notNull().default("PENDING"),
     whatsappNumber: text("whatsappNumber"),
     address: text("address"),
     pincode: text("pincode"),
@@ -95,11 +101,27 @@ export const transaction = pgTable(
     apiReferenceId: text("apiReferenceId"),
     apiMessage: text("apiMessage"),
     idempotencyKey: text("idempotencyKey"),
-    retailerCommission: doublePrecision("retailerCommission").notNull().default(0),
-    distributorCommission: doublePrecision("distributorCommission")
+    retailerCommission: numeric("retailerCommission", {
+      precision: 10,
+      scale: 2,
+      mode: "number",
+    })
       .notNull()
-      .default(0),
-    adminCommission: doublePrecision("adminCommission").notNull().default(0),
+      .default("0"),
+    distributorCommission: numeric("distributorCommission", {
+      precision: 10,
+      scale: 2,
+      mode: "number",
+    })
+      .notNull()
+      .default("0"),
+    adminCommission: numeric("adminCommission", {
+      precision: 10,
+      scale: 2,
+      mode: "number",
+    })
+      .notNull()
+      .default("0"),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
       .notNull()
       .defaultNow(),
@@ -197,10 +219,30 @@ export const commissionRule = pgTable(
   {
     id: text("id").primaryKey(),
     operator: text("operator").notNull(),
-    providerMargin: doublePrecision("providerMargin").notNull().default(0),
-    adminMargin: doublePrecision("adminMargin").notNull().default(0),
-    distributorMargin: doublePrecision("distributorMargin").notNull().default(0),
-    retailerMargin: doublePrecision("retailerMargin").notNull().default(0),
+    providerMargin: numeric("providerMargin", {
+      precision: 10,
+      scale: 2,
+      mode: "number",
+    })
+      .notNull()
+      .default("0"),
+    adminMargin: numeric("adminMargin", { precision: 10, scale: 2, mode: "number" })
+      .notNull()
+      .default("0"),
+    distributorMargin: numeric("distributorMargin", {
+      precision: 10,
+      scale: 2,
+      mode: "number",
+    })
+      .notNull()
+      .default("0"),
+    retailerMargin: numeric("retailerMargin", {
+      precision: 10,
+      scale: 2,
+      mode: "number",
+    })
+      .notNull()
+      .default("0"),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
       .notNull()
       .defaultNow(),
@@ -369,4 +411,5 @@ export type Role = (typeof roleEnum.enumValues)[number];
 export type Provider = (typeof providerEnum.enumValues)[number];
 export type TxStatus = (typeof txStatusEnum.enumValues)[number];
 export type FundRequestStatus = (typeof fundRequestStatusEnum.enumValues)[number];
+export type AccountStatus = (typeof accountStatusEnum.enumValues)[number];
 export type DisputeStatus = (typeof disputeStatusEnum.enumValues)[number];

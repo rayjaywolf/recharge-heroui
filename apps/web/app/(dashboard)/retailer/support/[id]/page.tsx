@@ -35,7 +35,7 @@ export default async function RetailerDisputeDetailPage({
     })
     .from(dispute)
     .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
-    .where(and(eq(dispute.id, id), eq(dispute.distributorId, retailer.id)))
+    .where(and(eq(dispute.id, id), eq(transaction.userId, retailer.id)))
     .limit(1);
 
   const detail = row[0];

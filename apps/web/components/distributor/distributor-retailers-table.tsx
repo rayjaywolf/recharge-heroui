@@ -82,7 +82,7 @@ export function DistributorRetailersTable({
                 {filteredData.map((retailer) => (
                   <Table.Row
                     key={retailer.id}
-                    className={`cursor-pointer whitespace-nowrap ${retailer.isSuspended ? "opacity-70" : ""}`}
+                    className={`cursor-pointer whitespace-nowrap ${retailer.accountStatus === "SUSPENDED" ? "opacity-70" : ""}`}
                     onAction={() =>
                       router.push(`/distributor/retailers/${retailer.id}`)
                     }
@@ -102,9 +102,7 @@ export function DistributorRetailersTable({
                     </Table.Cell>
                     <Table.Cell>
                       <RetailerStatusChip
-                        isApproved={retailer.isApproved}
-                        isRejected={retailer.isRejected}
-                        isSuspended={retailer.isSuspended}
+                        accountStatus={retailer.accountStatus}
                       />
                     </Table.Cell>
                   </Table.Row>

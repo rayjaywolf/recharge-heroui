@@ -47,22 +47,17 @@ export const auth = betterAuth({
       role: {
         type: "string",
         defaultValue: "RETAILER",
+        input: false,
       },
       balance: {
         type: "number",
         defaultValue: 0,
+        input: false,
       },
-      isSuspended: {
-        type: "boolean",
-        defaultValue: false,
-      },
-      isApproved: {
-        type: "boolean",
-        defaultValue: false,
-      },
-      isRejected: {
-        type: "boolean",
-        defaultValue: false,
+      accountStatus: {
+        type: "string",
+        defaultValue: "PENDING",
+        input: false,
       },
       whatsappNumber: { type: "string", required: false },
       address: { type: "string", required: false },

@@ -22,7 +22,7 @@ export type SyncPendingRealRoboResult = {
 
 type PendingTransaction = typeof transaction.$inferSelect;
 
-async function settlePendingTransaction(
+export async function settlePendingTransaction(
   tx: PendingTransaction,
   parsed: ParsedRechargeResponse,
 ): Promise<"unchanged" | "updated"> {
@@ -34,13 +34,18 @@ async function settlePendingTransaction(
       return "unchanged";
     }
 
-    await db
+    const [updated] = await db
       .update(transaction)
       .set({
         apiMessage: parsed.apiMessage,
         apiReferenceId: parsed.apiReferenceId ?? tx.apiReferenceId,
       })
-      .where(eq(transaction.id, tx.id));
+      .where(and(eq(transaction.id, tx.id), eq(transaction.status, "PENDING")))
+      .returning({ id: transaction.id });
+
+    if (!updated) {
+      return "unchanged";
+    }
 
     return "updated";
   }
@@ -77,8 +82,8 @@ async function settlePendingTransaction(
     distributorCommission = hasDistributor ? dCommission : 0;
   }
 
-  await db.transaction(async (dbTx) => {
-    await dbTx
+  const settled = await db.transaction(async (dbTx) => {
+    const [settled] = await dbTx
       .update(transaction)
       .set({
         status: parsed.finalStatus,
@@ -92,7 +97,12 @@ async function settlePendingTransaction(
             }
           : {}),
       })
-      .where(eq(transaction.id, tx.id));
+      .where(and(eq(transaction.id, tx.id), eq(transaction.status, "PENDING")))
+      .returning({ id: transaction.id });
+
+    if (!settled) {
+      return false;
+    }
 
     if (parsed.shouldRefund && parsed.finalStatus === "FAILED") {
       await dbTx
@@ -132,9 +142,10 @@ async function settlePendingTransaction(
         }
       }
     }
+    return true;
   });
 
-  return "updated";
+  return settled ? "updated" : "unchanged";
 }
 
 /** Poll RealRobo for pending recharges and update local transaction rows. */

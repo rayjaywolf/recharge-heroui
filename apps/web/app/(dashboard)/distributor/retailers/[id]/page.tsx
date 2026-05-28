@@ -21,30 +21,22 @@ import { transactionLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 
 function retailerStatusLabel({
-  isSuspended,
-  isApproved,
-  isRejected,
+  accountStatus,
 }: {
-  isSuspended: boolean;
-  isApproved: boolean;
-  isRejected: boolean;
+  accountStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
 }) {
-  if (isSuspended) return "Suspended";
-  if (isRejected) return "Rejected";
-  if (!isApproved) return "Pending KYC";
+  if (accountStatus === "SUSPENDED") return "Suspended";
+  if (accountStatus === "REJECTED") return "Rejected";
+  if (accountStatus === "PENDING") return "Pending KYC";
   return "Active";
 }
 
 function retailerStatusHighlight({
-  isSuspended,
-  isApproved,
-  isRejected,
+  accountStatus,
 }: {
-  isSuspended: boolean;
-  isApproved: boolean;
-  isRejected: boolean;
+  accountStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
 }): "default" | "danger" {
-  if (isSuspended || isRejected || !isApproved) return "danger";
+  if (accountStatus !== "APPROVED") return "danger";
   return "default";
 }
 

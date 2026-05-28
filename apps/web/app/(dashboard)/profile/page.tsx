@@ -46,18 +46,18 @@ export default async function ProfilePage() {
             {found.role}
           </Chip>
           <Chip
-            color={found.isSuspended ? "danger" : "success"}
+            color={found.accountStatus === "SUSPENDED" ? "danger" : "success"}
             size="sm"
             variant="soft"
           >
-            {found.isSuspended ? "Suspended" : "Active"}
+            {found.accountStatus === "SUSPENDED" ? "Suspended" : "Active"}
           </Chip>
           {found.role !== "ADMIN" ? (
-            found.isRejected ? (
+            found.accountStatus === "REJECTED" ? (
               <Chip color="danger" size="sm" variant="soft">
                 Rejected
               </Chip>
-            ) : !found.isApproved ? (
+            ) : found.accountStatus === "PENDING" ? (
               <Chip color="warning" size="sm" variant="soft">
                 Pending approval
               </Chip>

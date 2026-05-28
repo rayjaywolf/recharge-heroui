@@ -84,19 +84,17 @@ export default async function DistributorOverviewPage() {
   const retailers = await db
     .select({
       id: user.id,
-      isApproved: user.isApproved,
-      isSuspended: user.isSuspended,
-      isRejected: user.isRejected,
+      accountStatus: user.accountStatus,
     })
     .from(user)
     .where(eq(user.distributorId, distributor.id));
 
   const assignedRetailersCount = retailers.length;
   const activeRetailersCount = retailers.filter(
-    (r) => r.isApproved && !r.isSuspended && !r.isRejected
+    (r) => r.accountStatus === "APPROVED"
   ).length;
   const pendingRetailersCount = retailers.filter(
-    (r) => !r.isApproved && !r.isRejected
+    (r) => r.accountStatus === "PENDING"
   ).length;
   const retailerIds = retailers.map((r) => r.id);
 

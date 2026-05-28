@@ -10,7 +10,7 @@ export default async function AdminSupportPage() {
   const rows = await db
     .select({
       id: dispute.id,
-      retailerId: dispute.distributorId,
+      retailerId: transaction.userId,
       retailerName: user.name,
       transactionId: dispute.transactionId,
       subject: dispute.subject,
@@ -21,8 +21,8 @@ export default async function AdminSupportPage() {
       targetPhone: transaction.targetPhone,
     })
     .from(dispute)
-    .innerJoin(user, eq(dispute.distributorId, user.id))
     .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
+    .innerJoin(user, eq(transaction.userId, user.id))
     .orderBy(desc(dispute.status), desc(dispute.createdAt));
 
   const initialRows: AdminDisputeRow[] = rows.map((row) => ({

@@ -220,7 +220,7 @@ retailerRoutes.get("/api/retailer/disputes", requireRetailer, async (c) => {
       })
       .from(dispute)
       .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
-      .where(eq(dispute.distributorId, retailer.id))
+      .where(eq(transaction.userId, retailer.id))
       .orderBy(desc(dispute.createdAt));
 
     return c.json({
@@ -291,7 +291,7 @@ retailerRoutes.post("/api/retailer/disputes", requireRetailer, async (c) => {
       .insert(dispute)
       .values({
         id: createId(),
-        distributorId: retailer.id,
+        distributorId: retailer.distributorId ?? retailer.id,
         transactionId,
         subject,
         message,

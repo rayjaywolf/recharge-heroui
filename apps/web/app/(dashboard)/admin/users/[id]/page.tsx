@@ -90,11 +90,11 @@ export default async function AdminUserDetailPage({
             {found.role}
           </Chip>
           <Chip
-            color={found.isSuspended ? "danger" : "success"}
+            color={found.accountStatus === "SUSPENDED" ? "danger" : "success"}
             size="sm"
             variant="soft"
           >
-            {found.isSuspended ? "Suspended" : "Active"}
+            {found.accountStatus === "SUSPENDED" ? "Suspended" : "Active"}
           </Chip>
         </div>
         <p className="mt-1 text-sm text-muted">
@@ -131,12 +131,14 @@ export default async function AdminUserDetailPage({
         ) : (
           <StatCard
             description={
-              found.isSuspended ? "Access blocked" : "Account in good standing"
+              found.accountStatus === "SUSPENDED"
+                ? "Access blocked"
+                : "Account in good standing"
             }
-            highlight={found.isSuspended ? "danger" : "default"}
+            highlight={found.accountStatus === "SUSPENDED" ? "danger" : "default"}
             icon={ShieldAlert}
             title="Status"
-            value={found.isSuspended ? "Suspended" : "Active"}
+            value={found.accountStatus === "SUSPENDED" ? "Suspended" : "Active"}
           />
         )}
       </div>

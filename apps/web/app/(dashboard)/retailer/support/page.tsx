@@ -59,7 +59,7 @@ export default async function RetailerSupportPage() {
       })
       .from(dispute)
       .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
-      .where(eq(dispute.distributorId, retailer.id))
+      .where(eq(transaction.userId, retailer.id))
       .orderBy(desc(dispute.createdAt)),
   ]);
 

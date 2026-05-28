@@ -1,15 +1,12 @@
 import { Chip } from "@heroui/react";
+import type { AccountStatus } from "@repo/db";
 
 export function RetailerStatusChip({
-  isSuspended,
-  isApproved,
-  isRejected,
+  accountStatus,
 }: {
-  isSuspended: boolean;
-  isApproved: boolean;
-  isRejected: boolean;
+  accountStatus: AccountStatus;
 }) {
-  if (isSuspended) {
+  if (accountStatus === "SUSPENDED") {
     return (
       <Chip size="sm" variant="soft">
         Suspended
@@ -17,7 +14,7 @@ export function RetailerStatusChip({
     );
   }
 
-  if (isRejected) {
+  if (accountStatus === "REJECTED") {
     return (
       <Chip color="danger" size="sm" variant="soft">
         Rejected
@@ -25,7 +22,7 @@ export function RetailerStatusChip({
     );
   }
 
-  if (!isApproved) {
+  if (accountStatus === "PENDING") {
     return (
       <Chip color="warning" size="sm" variant="soft">
         Pending KYC
@@ -41,13 +38,9 @@ export function RetailerStatusChip({
 }
 
 export function retailerCanReceiveFunds({
-  isSuspended,
-  isApproved,
-  isRejected,
+  accountStatus,
 }: {
-  isSuspended: boolean;
-  isApproved: boolean;
-  isRejected: boolean;
+  accountStatus: AccountStatus;
 }) {
-  return !isSuspended && !isRejected && isApproved;
+  return accountStatus === "APPROVED";
 }

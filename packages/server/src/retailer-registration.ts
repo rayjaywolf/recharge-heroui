@@ -137,12 +137,12 @@ export async function assertCanRegisterRetailer(
 
   if (!existing) return;
 
-  if (existing.isRejected) {
+  if (existing.accountStatus === "REJECTED") {
     await clearRejectedApplicantForReapply(existing.id);
     return;
   }
 
-  if (!existing.isApproved) {
+  if (existing.accountStatus === "PENDING") {
     throw new RegistrationConflictError(
       "An application with this phone number is already pending review.",
       409,

@@ -1,7 +1,7 @@
 import { and, count, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { db, dispute, user } from "@repo/db";
+import { db, dispute, transaction, user } from "@repo/db";
 
 import { DashboardShell } from "@/components/dashboard-shell";
 import { auth } from "@/lib/auth";
@@ -31,11 +31,11 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  if (found.isRejected) {
+  if (found.accountStatus === "REJECTED") {
     redirect("/rejected");
   }
 
-  if (!found.isApproved && found.role !== "ADMIN") {
+  if (found.accountStatus !== "APPROVED" && found.role !== "ADMIN") {
     redirect("/pending-approval");
   }
 
@@ -63,9 +63,10 @@ export default async function DashboardLayout({
     const [row] = await db
       .select({ total: count() })
       .from(dispute)
+      .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
       .where(
         and(
-          eq(dispute.distributorId, found.id),
+          eq(transaction.userId, found.id),
           eq(dispute.status, "PENDING"),
         ),
       );
