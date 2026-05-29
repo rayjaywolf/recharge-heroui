@@ -2,7 +2,7 @@
 
 import { Menu, Wallet } from "lucide-react";
 import Link from "next/link";
-import { Button, Chip, Header, Separator } from "@heroui/react";
+import { Button, Chip, Header } from "@heroui/react";
 import Avatar from "boring-avatars";
 
 import { Money } from "@/components/money";
@@ -57,13 +57,13 @@ export function DashboardHeader({
         </Button>
       </MobileNavDrawer>
 
-      <div className="ml-auto flex min-w-0 items-center gap-3">
+      <div className="ml-auto flex min-w-0 items-center gap-4">
         <Link
           aria-label="View profile"
           href="/profile"
-          className="hidden min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-content2/50 sm:inline-flex"
+          className="hidden min-w-0 items-center gap-2 rounded-md py-1 hover:bg-content2/50 sm:inline-flex"
         >
-          <div className="flex size-8 items-center justify-center rounded-full overflow-hidden">
+          <div className="flex size-8 items-center justify-center overflow-hidden rounded-full">
             <Avatar name={userName} size={28} variant="beam" />
           </div>
           <div className="min-w-0 text-right">
@@ -74,42 +74,50 @@ export function DashboardHeader({
           </div>
         </Link>
 
-        <Separator className="hidden h-8 sm:block" orientation="vertical" />
+        <div className="flex items-center gap-2 sm:border-l sm:border-separator sm:pl-4">
+          <ThemeToggle />
 
-        <ThemeToggle />
+          {showWalletMenu ? (
+            <WalletBalanceMenu balance={balance} userRole={userRole} />
+          ) : (
+            <Chip
+              className="inline-flex items-center gap-2.5 font-medium"
+              size="md"
+              variant="secondary"
+            >
+              <Wallet
+                className="size-4 shrink-0 text-success"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <Money
+                amount={balance}
+                className="leading-none text-success"
+                fractionDigits={2}
+              />
+            </Chip>
+          )}
 
-        {showWalletMenu ? (
-          <WalletBalanceMenu balance={balance} userRole={userRole} />
-        ) : (
-          <Chip className="gap-1 font-medium" size="md" variant="secondary">
-            <Wallet className="size-3.5 shrink-0" aria-hidden />
-            <Money
-              amount={balance}
-              className="text-inherit"
-              fractionDigits={2}
-            />
-          </Chip>
-        )}
-
-        <Link
-          aria-label="View profile"
-          href="/profile"
-          className="min-w-0 rounded-md px-1 py-1 hover:bg-content2/50 sm:hidden"
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-full overflow-hidden">
-              <Avatar name={userName} size={28} variant="beam" />
+          <Link
+            aria-label="View profile"
+            href="/profile"
+            className="min-w-0 rounded-md py-1 hover:bg-content2/50 sm:hidden"
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex size-8 items-center justify-center overflow-hidden rounded-full">
+                <Avatar name={userName} size={28} variant="beam" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {userName}
+                </p>
+                <p className="text-xs text-muted">{formatRole(userRole)}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">
-                {userName}
-              </p>
-              <p className="text-xs text-muted">{formatRole(userRole)}</p>
-            </div>
-          </div>
-        </Link>
+          </Link>
 
-        <LogoutButton />
+          <LogoutButton />
+        </div>
       </div>
     </Header>
   );

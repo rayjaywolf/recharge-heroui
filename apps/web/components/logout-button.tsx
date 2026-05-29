@@ -23,11 +23,12 @@ export function LogoutButton() {
   return (
     <Button
       aria-label="Log out"
+      className="text-muted hover:bg-danger/10 hover:text-danger"
       isIconOnly
-      variant="danger"
+      variant="ghost"
       onPress={handleLogout}
     >
-      <LogOut className="size-4" />
+      <LogOut className="size-4" strokeWidth={2} aria-hidden />
     </Button>
   );
 }

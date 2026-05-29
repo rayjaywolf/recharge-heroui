@@ -24,12 +24,12 @@ export function ThemeToggle() {
     >
       {mounted ? (
         isDark ? (
-          <Sun className="size-5" aria-hidden />
+          <Sun className="size-4" strokeWidth={2} aria-hidden />
         ) : (
-          <Moon className="size-5" aria-hidden />
+          <Moon className="size-4" strokeWidth={2} aria-hidden />
         )
       ) : (
-        <Sun className="size-5 opacity-50" aria-hidden />
+        <Sun className="size-4 opacity-50" strokeWidth={2} aria-hidden />
       )}
     </Button>
   );

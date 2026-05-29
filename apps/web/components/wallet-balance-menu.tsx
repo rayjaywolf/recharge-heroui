@@ -19,9 +19,16 @@ export function WalletBalanceMenu({
 
   return (
     <Dropdown>
-      <Button className="h-9 gap-1.5 px-3 font-medium" variant="secondary">
-        <Wallet className="size-3.5 shrink-0" aria-hidden />
-        <Money amount={balance} className="text-inherit" fractionDigits={2} />
+      <Button
+        className="inline-flex h-9 items-center gap-2.5 px-3 font-medium"
+        variant="secondary"
+      >
+        <Wallet className="size-4 shrink-0 text-success" strokeWidth={2} aria-hidden />
+        <Money
+          amount={balance}
+          className="leading-none text-success"
+          fractionDigits={2}
+        />
       </Button>
       <Dropdown.Popover>
         <Dropdown.Menu
