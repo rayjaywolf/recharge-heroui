@@ -102,7 +102,7 @@ export function UserReportTable({
                 {showRetailerCount ? <Table.Column>Retailers</Table.Column> : null}
                 <Table.Column>Balance</Table.Column>
                 <Table.Column>Earnings</Table.Column>
-                <Table.Column>Success recharges</Table.Column>
+                <Table.Column>Recharges</Table.Column>
                 <Table.Column>Volume</Table.Column>
                 <Table.Column>Pending</Table.Column>
                 <Table.Column>Status</Table.Column>
