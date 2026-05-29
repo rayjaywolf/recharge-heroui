@@ -11,6 +11,7 @@ import { WalletBalanceMenu } from "@/components/wallet-balance-menu";
 import { useDashboardSidebar } from "@/components/dashboard-sidebar-context";
 import { LogoutButton } from "@/components/logout-button";
 import { MobileNavDrawer } from "@/components/mobile-nav-drawer";
+import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 type DashboardHeaderProps = {
@@ -19,6 +20,7 @@ type DashboardHeaderProps = {
   balance: number;
   pendingApprovalsCount?: number;
   pendingSupportCount?: number;
+  unreadNotificationCount?: number;
 };
 
 function formatRole(role: string): string {
@@ -31,9 +33,11 @@ export function DashboardHeader({
   balance,
   pendingApprovalsCount = 0,
   pendingSupportCount = 0,
+  unreadNotificationCount = 0,
 }: DashboardHeaderProps) {
   const { collapsed, toggle } = useDashboardSidebar();
   const showWalletMenu = userRole === "DISTRIBUTOR" || userRole === "RETAILER";
+  const showNotifications = userRole === "ADMIN";
 
   return (
     <Header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-separator bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -76,6 +80,10 @@ export function DashboardHeader({
 
         <div className="flex items-center gap-2 sm:border-l sm:border-separator sm:pl-4">
           <ThemeToggle />
+
+          {showNotifications ? (
+            <NotificationBell initialUnreadCount={unreadNotificationCount} />
+          ) : null}
 
           {showWalletMenu ? (
             <WalletBalanceMenu balance={balance} userRole={userRole} />

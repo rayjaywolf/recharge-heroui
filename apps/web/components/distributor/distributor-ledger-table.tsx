@@ -16,6 +16,7 @@ import { TransactionPdfDownloadButton } from "@/components/admin/transaction-pdf
 import type { AdminTransactionRow } from "@/components/admin/transactions-table";
 import { Money } from "@/components/money";
 import {
+  distributorLedgerActorLabel,
   distributorSelfYourMarginPercent,
   isDistributorSelfRecharge,
 } from "@/lib/distributor-self-recharge";
@@ -83,6 +84,7 @@ export function DistributorLedgerTable({
           >
             <Table.Header>
               <Table.Column isRowHeader>Date & time</Table.Column>
+              <Table.Column>Retailer</Table.Column>
               <Table.Column>Type</Table.Column>
               <Table.Column>Phone</Table.Column>
               <Table.Column>Amount</Table.Column>
@@ -99,6 +101,9 @@ export function DistributorLedgerTable({
                 >
                   <Table.Cell className="text-sm text-muted">
                     {formatTableDateTime(tx.createdAt)}
+                  </Table.Cell>
+                  <Table.Cell className="font-medium">
+                    {distributorLedgerActorLabel(tx)}
                   </Table.Cell>
                   <Table.Cell className="font-semibold">{tx.operator}</Table.Cell>
                   <Table.Cell className="font-mono text-xs text-muted">
@@ -169,6 +174,10 @@ export function DistributorLedgerTable({
                       <DetailItem
                         label="Date & time"
                         value={formatDateTime(selected.createdAt)}
+                      />
+                      <DetailItem
+                        label="Retailer"
+                        value={distributorLedgerActorLabel(selected)}
                       />
                       <DetailItem label="Type" value={selected.operator} />
                       <DetailItem

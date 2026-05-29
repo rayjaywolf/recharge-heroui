@@ -10,6 +10,7 @@ import {
   user,
 } from "@repo/db";
 import { resolveDateRange } from "@repo/server/date-range";
+import { notifyAdminsDisputePending } from "@repo/server/notifications";
 import {
   requireRetailer,
   type AppVariables,
@@ -298,6 +299,12 @@ retailerRoutes.post("/api/retailer/disputes", requireRetailer, async (c) => {
         status: "PENDING",
       })
       .returning();
+
+    await notifyAdminsDisputePending({
+      disputeId: created.id,
+      subject,
+      submitterName: retailer.name,
+    });
 
     return c.json({
       success: true,

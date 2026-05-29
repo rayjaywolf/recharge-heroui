@@ -38,6 +38,10 @@ export const accountStatusEnum = pgEnum("AccountStatus", [
   "SUSPENDED",
 ]);
 export const disputeStatusEnum = pgEnum("DisputeStatus", ["PENDING", "RESOLVED"]);
+export const notificationTypeEnum = pgEnum("NotificationType", [
+  "RETAILER_PENDING_APPROVAL",
+  "DISPUTE_PENDING",
+]);
 
 export const user = pgTable(
   "user",
@@ -344,10 +348,35 @@ export const dispute = pgTable(
   ],
 );
 
+export const notification = pgTable(
+  "notification",
+  {
+    id: text("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    type: notificationTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    href: text("href").notNull(),
+    entityId: text("entityId").notNull(),
+    readAt: timestamp("readAt", { precision: 3, mode: "date" }),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("notification_userId_idx").on(table.userId),
+    index("notification_userId_readAt_idx").on(table.userId, table.readAt),
+    index("notification_type_entityId_idx").on(table.type, table.entityId),
+  ],
+);
+
 export const userRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
   transactions: many(transaction),
+  notifications: many(notification),
   fundRequestsAsRetailer: many(fundRequest, { relationName: "retailerFundRequests" }),
   fundRequestsAsDistributor: many(fundRequest, {
     relationName: "distributorFundRequests",
@@ -388,6 +417,10 @@ export const fundRequestRelations = relations(fundRequest, ({ one }) => ({
   }),
 }));
 
+export const notificationRelations = relations(notification, ({ one }) => ({
+  user: one(user, { fields: [notification.userId], references: [user.id] }),
+}));
+
 export const disputeRelations = relations(dispute, ({ one }) => ({
   distributor: one(user, {
     fields: [dispute.distributorId],
@@ -413,3 +446,5 @@ export type TxStatus = (typeof txStatusEnum.enumValues)[number];
 export type FundRequestStatus = (typeof fundRequestStatusEnum.enumValues)[number];
 export type AccountStatus = (typeof accountStatusEnum.enumValues)[number];
 export type DisputeStatus = (typeof disputeStatusEnum.enumValues)[number];
+export type NotificationType = (typeof notificationTypeEnum.enumValues)[number];
+export type Notification = typeof notification.$inferSelect;

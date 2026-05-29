@@ -7,6 +7,7 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { auth } from "@/lib/auth";
 import { getPendingApprovalsCount } from "@/lib/pending-approvals";
 import { ensureUserMpinBackfill } from "@repo/server/mpin";
+import { getUnreadNotificationCount } from "@repo/server/notifications";
 
 export default async function DashboardLayout({
   children,
@@ -41,6 +42,10 @@ export default async function DashboardLayout({
 
   const pendingApprovalsCount =
     found.role === "ADMIN" ? await getPendingApprovalsCount() : 0;
+  const unreadNotificationCount =
+    found.role === "ADMIN"
+      ? await getUnreadNotificationCount(found.id)
+      : 0;
   let pendingSupportCount = 0;
   if (found.role === "ADMIN") {
     const [row] = await db
@@ -84,6 +89,7 @@ export default async function DashboardLayout({
       balance={found.balance}
       pendingApprovalsCount={pendingApprovalsCount}
       pendingSupportCount={pendingSupportCount}
+      unreadNotificationCount={unreadNotificationCount}
       mpinMustReset={mpinMustReset}
       userName={found.name}
       userRole={found.role}

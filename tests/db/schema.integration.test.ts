@@ -61,6 +61,22 @@ describe.runIf(hasDatabase)("database schema & data integrity", () => {
     expect(byName.get("earnings")?.data_type).toBe("numeric");
   });
 
+  it("has notification table with NotificationType enum", async () => {
+    const columns = await fetchColumns(client, "notification", [
+      "type",
+      "userId",
+      "entityId",
+      "readAt",
+    ]);
+    const byName = new Map(columns.map((c) => [c.column_name, c]));
+
+    expect(byName.has("type")).toBe(true);
+    expect(byName.get("type")?.udt_name).toBe("NotificationType");
+    expect(byName.has("userId")).toBe(true);
+    expect(byName.has("entityId")).toBe(true);
+    expect(byName.has("readAt")).toBe(true);
+  });
+
   it("stores money margins and commissions as numeric(10,2)", async () => {
     const transactionCols = await fetchColumns(client, "transaction", [
       "retailerCommission",

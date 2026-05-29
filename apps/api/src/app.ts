@@ -8,6 +8,7 @@ import { adminRoutes } from "./routes/admin";
 import { balanceRoutes } from "./routes/balance";
 import { distributorRoutes } from "./routes/distributor";
 import { rechargeRoutes } from "./routes/recharge";
+import { notificationRoutes } from "./routes/notifications";
 import { retailerRoutes } from "./routes/retailer";
 
 const app = new Hono<{ Variables: AppVariables }>();
@@ -38,5 +39,6 @@ app.route("/", balanceRoutes);
 app.route("/", distributorRoutes);
 app.route("/", rechargeRoutes);
 app.route("/", retailerRoutes);
+app.route("/", notificationRoutes);
 
 export default app;

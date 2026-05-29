@@ -36,7 +36,7 @@ export default async function DistributorLedgerPage({
             Ledger
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Your wallet and transaction history.
+            Your wallet, your recharges, and your retailers&apos; activity.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

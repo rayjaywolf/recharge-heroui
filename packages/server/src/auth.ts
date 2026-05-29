@@ -15,6 +15,7 @@ import {
 } from "@repo/shared/phone";
 
 import { assignRandomMpin } from "./mpin";
+import { notifyAdminsRetailerPendingApproval } from "./notifications";
 import "./startup-validation";
 
 export { db } from "@repo/db";
@@ -84,6 +85,18 @@ export const auth = betterAuth({
 
           if (role !== "ADMIN") {
             await assignRandomMpin(createdUser.id, true);
+          }
+
+          if (role === "RETAILER") {
+            const accountStatus =
+              (createdUser as { accountStatus?: string }).accountStatus ??
+              "PENDING";
+            if (accountStatus === "PENDING") {
+              await notifyAdminsRetailerPendingApproval({
+                retailerId: createdUser.id,
+                retailerName: createdUser.name,
+              });
+            }
           }
 
           const whatsapp = (createdUser as { whatsappNumber?: string | null })

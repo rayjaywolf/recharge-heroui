@@ -7,7 +7,6 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { DashboardMain } from "@/components/dashboard-main";
 import { DashboardSidebarProvider } from "@/components/dashboard-sidebar-context";
 import { MpinGate } from "@/components/mpin-gate";
-
 type DashboardShellProps = {
   children: ReactNode;
   userName: string;
@@ -15,6 +14,7 @@ type DashboardShellProps = {
   balance: number;
   pendingApprovalsCount?: number;
   pendingSupportCount?: number;
+  unreadNotificationCount?: number;
   mpinMustReset?: boolean;
 };
 
@@ -25,6 +25,7 @@ export function DashboardShell({
   balance,
   pendingApprovalsCount = 0,
   pendingSupportCount = 0,
+  unreadNotificationCount = 0,
   mpinMustReset = false,
 }: DashboardShellProps) {
   return (
@@ -42,6 +43,7 @@ export function DashboardShell({
             balance={balance}
             pendingApprovalsCount={pendingApprovalsCount}
             pendingSupportCount={pendingSupportCount}
+            unreadNotificationCount={unreadNotificationCount}
             userName={userName}
             userRole={userRole}
           >

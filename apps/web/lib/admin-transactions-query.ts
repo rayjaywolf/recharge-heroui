@@ -47,6 +47,8 @@ export type FetchAdminTransactionsOptions = {
   lockedStatus?: string;
   /** When set, limits rows to this user and search skips retailer name/email. */
   userId?: string;
+  /** Distributor's own transactions plus all retailers under this distributor. */
+  networkDistributorId?: string;
 };
 
 export function resolveTransactionTypeFilter(
@@ -130,9 +132,18 @@ export function buildTransactionWhereClause(
 
   if (options?.userId) {
     conditions.push(eq(transaction.userId, options.userId));
+  } else if (options?.networkDistributorId) {
+    conditions.push(
+      or(
+        eq(transaction.userId, options.networkDistributorId),
+        eq(user.distributorId, options.networkDistributorId),
+      )!,
+    );
   }
 
-  const skipTypeFilter = options?.userId && type === "ALL";
+  const singleUserScope = Boolean(options?.userId);
+  const skipTypeFilter =
+    (singleUserScope || options?.networkDistributorId) && type === "ALL";
   if (!skipTypeFilter) {
     applyTransactionTypeCondition(conditions, type);
   }
@@ -149,7 +160,7 @@ export function buildTransactionWhereClause(
   if (search) {
     const pattern = `%${search}%`;
     conditions.push(
-      options?.userId
+      singleUserScope
         ? or(
             ilike(transaction.targetPhone, pattern),
             ilike(transaction.apiReferenceId, pattern),
@@ -160,6 +171,7 @@ export function buildTransactionWhereClause(
             ilike(transaction.targetPhone, pattern),
             ilike(transaction.apiReferenceId, pattern),
             ilike(transaction.id, pattern),
+            ilike(transaction.apiMessage, pattern),
             ilike(user.name, pattern),
             ilike(user.email, pattern),
           )!,
@@ -222,7 +234,11 @@ export async function fetchAdminTransactions(
     .from(transaction)
     .innerJoin(user, eq(transaction.userId, user.id))
     .where(whereClause)
-    .orderBy(transactionsOrderBy(sort, { scopedUser: !!options?.userId }))
+    .orderBy(
+      transactionsOrderBy(sort, {
+        scopedUser: Boolean(options?.userId),
+      }),
+    )
     .limit(150);
 
   const rows: AdminTransactionRow[] = transactions.map((tx) => ({

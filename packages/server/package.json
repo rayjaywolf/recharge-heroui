@@ -16,7 +16,8 @@
     "./mrobotics": "./src/mrobotics.ts",
     "./realrobo": "./src/realrobo.ts",
     "./pending-recharge-sync": "./src/pending-recharge-sync.ts",
-    "./mpin": "./src/mpin.ts"
+    "./mpin": "./src/mpin.ts",
+    "./notifications": "./src/notifications.ts"
   },
   "dependencies": {
     "@repo/db": "workspace:*",

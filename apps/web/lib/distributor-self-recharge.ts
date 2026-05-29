@@ -15,6 +15,12 @@ export function distributorSelfYourCutInr(tx: AdminTransactionRow): number {
   return isDistributorSelfRecharge(tx) ? tx.retailerCommission : tx.distributorCommission;
 }
 
+export function distributorLedgerActorLabel(
+  tx: Pick<AdminTransactionRow, "user" | "userRole" | "rechargerDistributorId">,
+): string {
+  return isDistributorSelfRecharge(tx) ? "You" : tx.user.name;
+}
+
 export function distributorSelfYourMarginPercent(
   tx: Pick<AdminTransactionRow, "amount" | "retailerCommission">,
 ): string | null {

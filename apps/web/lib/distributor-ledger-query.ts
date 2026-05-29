@@ -34,10 +34,6 @@ export async function fetchDistributorLedger(
   const [distributor] = await db
     .select({
       id: user.id,
-      name: user.name,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      whatsappNumber: user.whatsappNumber,
       role: user.role,
     })
     .from(user)
@@ -56,7 +52,7 @@ export async function fetchDistributorLedger(
   const sort = resolveTransactionsSort(params.sort);
   const whereClause = buildTransactionWhereClause(params, {
     defaultType: "ALL",
-    userId: distributor.id,
+    networkDistributorId: distributor.id,
   });
 
   const transactions = await db
@@ -70,17 +66,24 @@ export async function fetchDistributorLedger(
       provider: transaction.provider,
       status: transaction.status,
       apiReferenceId: transaction.apiReferenceId,
+      apiMessage: transaction.apiMessage,
+      idempotencyKey: transaction.idempotencyKey,
       retailerCommission: transaction.retailerCommission,
       distributorCommission: transaction.distributorCommission,
+      adminCommission: transaction.adminCommission,
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
-      rechargerRole: user.role,
+      userName: user.name,
+      userEmail: user.email,
+      userPhoneNumber: user.phoneNumber,
+      userWhatsappNumber: user.whatsappNumber,
+      userRole: user.role,
       rechargerDistributorId: user.distributorId,
     })
     .from(transaction)
     .innerJoin(user, eq(transaction.userId, user.id))
     .where(whereClause)
-    .orderBy(transactionsOrderBy(sort, { scopedUser: true }))
+    .orderBy(transactionsOrderBy(sort, { scopedUser: false }))
     .limit(150);
 
   const rows: AdminTransactionRow[] = transactions.map((tx) => ({
@@ -93,20 +96,20 @@ export async function fetchDistributorLedger(
     provider: tx.provider,
     status: tx.status,
     apiReferenceId: tx.apiReferenceId,
-    apiMessage: null,
-    idempotencyKey: null,
+    apiMessage: tx.apiMessage,
+    idempotencyKey: tx.idempotencyKey,
     retailerCommission: tx.retailerCommission,
     distributorCommission: tx.distributorCommission,
-    adminCommission: 0,
+    adminCommission: tx.adminCommission,
     createdAt: tx.createdAt.toISOString(),
     updatedAt: tx.updatedAt.toISOString(),
     user: {
-      name: distributor.name,
-      email: distributor.email,
-      phoneNumber: distributor.phoneNumber,
-      whatsappNumber: distributor.whatsappNumber,
+      name: tx.userName,
+      email: tx.userEmail,
+      phoneNumber: tx.userPhoneNumber,
+      whatsappNumber: tx.userWhatsappNumber,
     },
-    userRole: tx.rechargerRole,
+    userRole: tx.userRole,
     rechargerDistributorId: tx.rechargerDistributorId,
   }));
 

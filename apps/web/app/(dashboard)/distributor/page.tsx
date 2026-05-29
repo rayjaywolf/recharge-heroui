@@ -6,6 +6,7 @@ import {
   gte,
   lt,
   notInArray,
+  or,
   sum,
 } from "drizzle-orm";
 import {
@@ -35,6 +36,7 @@ import {
   buildDistributorRechargeVolumeFilter,
 } from "@/lib/distributor-recharge-volume";
 import { LEDGER_EXCLUDED_OPERATORS } from "@/lib/transaction-filters";
+import { distributorLedgerActorLabel } from "@/lib/distributor-self-recharge";
 import { formatTableDateTime } from "@/lib/utils";
 
 async function networkSuccessRateBetween(
@@ -228,11 +230,18 @@ export default async function DistributorOverviewPage() {
       targetPhone: transaction.targetPhone,
       amount: transaction.amount,
       status: transaction.status,
+      rechargerName: user.name,
+      rechargerRole: user.role,
+      rechargerDistributorId: user.distributorId,
     })
     .from(transaction)
+    .innerJoin(user, eq(transaction.userId, user.id))
     .where(
       and(
-        eq(transaction.userId, distributor.id),
+        or(
+          eq(transaction.userId, distributor.id),
+          eq(user.distributorId, distributor.id),
+        )!,
         notInArray(transaction.operator, [...LEDGER_EXCLUDED_OPERATORS]),
       ),
     )
@@ -283,7 +292,7 @@ export default async function DistributorOverviewPage() {
       </div>
 
       <AdminTableCard
-        description="Your latest recharges and fund movements."
+        description="Latest activity from your wallet and your retailers."
         headerAction={
           <Link
             className="inline-flex shrink-0 items-center gap-1 text-sm font-medium"
@@ -306,6 +315,7 @@ export default async function DistributorOverviewPage() {
               >
                 <Table.Header>
                   <Table.Column isRowHeader>Time</Table.Column>
+                  <Table.Column>Retailer</Table.Column>
                   <Table.Column>Type</Table.Column>
                   <Table.Column>Phone</Table.Column>
                   <Table.Column>Amount</Table.Column>
@@ -316,6 +326,13 @@ export default async function DistributorOverviewPage() {
                     <Table.Row key={tx.id} className="whitespace-nowrap">
                       <Table.Cell className="whitespace-nowrap text-sm text-muted">
                         {formatTableDateTime(tx.createdAt)}
+                      </Table.Cell>
+                      <Table.Cell className="font-medium">
+                        {distributorLedgerActorLabel({
+                          user: { name: tx.rechargerName },
+                          userRole: tx.rechargerRole,
+                          rechargerDistributorId: tx.rechargerDistributorId,
+                        })}
                       </Table.Cell>
                       <Table.Cell className="font-medium">{tx.operator}</Table.Cell>
                       <Table.Cell className="font-mono text-sm text-muted">

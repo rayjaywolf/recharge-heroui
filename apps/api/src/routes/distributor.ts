@@ -8,6 +8,7 @@ import {
   parseRetailerRegistrationInput,
   RegistrationConflictError,
 } from "@repo/server/retailer-registration";
+import { notifyAdminsDisputePending } from "@repo/server/notifications";
 import { requireDistributor, type AppVariables } from "../middleware";
 
 export const distributorRoutes = new Hono<{ Variables: AppVariables }>();
@@ -283,6 +284,12 @@ distributorRoutes.post("/api/distributor/disputes", requireDistributor, async (c
         status: "PENDING",
       })
       .returning();
+
+    await notifyAdminsDisputePending({
+      disputeId: created.id,
+      subject,
+      submitterName: session.user.name,
+    });
 
     return c.json({
       success: true,

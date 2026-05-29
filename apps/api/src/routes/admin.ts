@@ -13,6 +13,7 @@ import {
   type TxStatus,
 } from "@repo/db";
 import { decrementBalance, incrementBalance } from "@repo/server/db-utils";
+import { markNotificationsReadForEntity } from "@repo/server/notifications";
 import { checkMRoboticsStatus } from "@repo/server/mrobotics";
 import {
   settlePendingTransaction,
@@ -499,6 +500,11 @@ adminRoutes.post("/api/admin/users/approve", requireAdmin, async (c) => {
       return c.json({ error: "User not found" }, 404);
     }
 
+    await markNotificationsReadForEntity({
+      type: "RETAILER_PENDING_APPROVAL",
+      entityId: userId,
+    });
+
     return c.json({
       success: true,
       message: `User ${updatedUser.name} approved successfully.`,
@@ -540,6 +546,11 @@ adminRoutes.post("/api/admin/users/reject", requireAdmin, async (c) => {
     if (!updatedUser) {
       return c.json({ error: "User not found" }, 404);
     }
+
+    await markNotificationsReadForEntity({
+      type: "RETAILER_PENDING_APPROVAL",
+      entityId: userId,
+    });
 
     return c.json({
       success: true,
@@ -677,6 +688,11 @@ adminRoutes.patch("/api/admin/disputes/:id/resolve", requireAdmin, async (c) => 
         adminNote: dispute.adminNote,
         resolvedAt: dispute.resolvedAt,
       });
+
+    await markNotificationsReadForEntity({
+      type: "DISPUTE_PENDING",
+      entityId: disputeId,
+    });
 
     return c.json({
       success: true,
