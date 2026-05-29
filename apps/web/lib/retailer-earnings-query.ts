@@ -154,22 +154,28 @@ export async function fetchRetailerEarnings(params: AdminEarningsSearchParams) {
       ),
   ]);
 
+  const totalEarnings = Number(totalEarningsRow?.total ?? 0);
   const todaysEarnings = Number(todaysEarningsRow?.total ?? 0);
-  const yesterdaysEarnings = Number(yesterdaysEarningsRow?.total ?? 0);
+  const totalVolume = Number(totalVolumeRow?.total ?? 0);
   const todaysVolume = Number(todaysVolumeRow?.total ?? 0);
+  const yesterdaysEarnings = Number(yesterdaysEarningsRow?.total ?? 0);
   const yesterdaysVolume = Number(yesterdaysVolumeRow?.total ?? 0);
+  const earningsThroughYesterday = totalEarnings - todaysEarnings;
+  const volumeThroughYesterday = totalVolume - todaysVolume;
 
   return {
     rows,
     status,
     sort,
     stats: {
-      totalEarnings: Number(totalEarningsRow?.total ?? 0),
+      totalEarnings,
       todaysEarnings,
-      totalVolume: Number(totalVolumeRow?.total ?? 0),
+      totalVolume,
       todaysVolume,
-      earningsTrend: computePercentChange(todaysEarnings, yesterdaysEarnings),
-      volumeTrend: computePercentChange(todaysVolume, yesterdaysVolume),
+      earningsTrend: computePercentChange(totalEarnings, earningsThroughYesterday),
+      todaysEarningsTrend: computePercentChange(todaysEarnings, yesterdaysEarnings),
+      volumeTrend: computePercentChange(totalVolume, volumeThroughYesterday),
+      todaysVolumeTrend: computePercentChange(todaysVolume, yesterdaysVolume),
     },
   };
 }

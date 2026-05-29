@@ -130,23 +130,12 @@ export default async function DistributorOverviewPage() {
   const todaysNetworkVolume = Number(todaysNetworkVolumeRow[0]?.total ?? 0);
 
   const [
-    [yesterdaysNetworkVolumeRow],
     [todaysInflowRow],
     [yesterdaysInflowRow],
     [todaysNewRetailersRow],
     [yesterdaysNewRetailersRow],
     yesterdaySuccessRate,
   ] = await Promise.all([
-    db
-      .select({ total: sum(transaction.amount) })
-      .from(transaction)
-      .where(
-        and(
-          rechargeVolumeFilter,
-          gte(transaction.createdAt, yesterdayStart),
-          lt(transaction.createdAt, todayStart),
-        ),
-      ),
     db
       .select({ total: sum(transaction.amount) })
       .from(transaction)
@@ -210,11 +199,12 @@ export default async function DistributorOverviewPage() {
   const successRate =
     totalResolved > 0 ? Math.round((successCount / totalResolved) * 100) : 100;
 
-  const yesterdaysNetworkVolume = Number(yesterdaysNetworkVolumeRow?.total ?? 0);
   const todaysInflow = Number(todaysInflowRow?.total ?? 0);
   const yesterdaysInflow = Number(yesterdaysInflowRow?.total ?? 0);
   const todaysNewRetailers = todaysNewRetailersRow?.count ?? 0;
   const yesterdaysNewRetailers = yesterdaysNewRetailersRow?.count ?? 0;
+  const networkVolumeThroughYesterday =
+    totalNetworkVolume - todaysNetworkVolume;
 
   const walletTrend = computePercentChange(todaysInflow, yesterdaysInflow);
   const retailersTrend = computePercentChange(
@@ -222,8 +212,8 @@ export default async function DistributorOverviewPage() {
     yesterdaysNewRetailers,
   );
   const networkVolumeTrend = computePercentChange(
-    todaysNetworkVolume,
-    yesterdaysNetworkVolume,
+    totalNetworkVolume,
+    networkVolumeThroughYesterday,
   );
   const successRateTrend = computePercentChange(
     successRate,

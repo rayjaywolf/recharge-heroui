@@ -52,24 +52,12 @@ export default async function RetailerOverviewPage() {
   const todaysVolume = Number(todaysVolumeRows[0]?.total ?? 0);
 
   const [
-    [yesterdaysVolumeRow],
     [todaysInflowRow],
     [yesterdaysInflowRow],
     [totalEarningsRow],
     [todaysEarningsRow],
-    [yesterdaysEarningsRow],
   ] =
     await Promise.all([
-      db
-        .select({ total: sum(transaction.amount) })
-        .from(transaction)
-        .where(
-          and(
-            rechargeVolumeFilter,
-            gte(transaction.createdAt, yesterdayStart),
-            lt(transaction.createdAt, todayStart),
-          ),
-        ),
       db
         .select({ total: sum(transaction.amount) })
         .from(transaction)
@@ -107,17 +95,6 @@ export default async function RetailerOverviewPage() {
             gte(transaction.createdAt, todayStart),
           ),
         ),
-      db
-        .select({ total: sum(transaction.retailerCommission) })
-        .from(transaction)
-        .where(
-          and(
-            eq(transaction.userId, retailer.id),
-            gt(transaction.retailerCommission, 0),
-            gte(transaction.createdAt, yesterdayStart),
-            lt(transaction.createdAt, todayStart),
-          ),
-        ),
     ]);
 
   const todayResolved = await db
@@ -147,17 +124,20 @@ export default async function RetailerOverviewPage() {
       ? Math.round((yesterdaySuccessCount / yesterdayResolved.length) * 100)
       : 100;
 
-  const yesterdaysVolume = Number(yesterdaysVolumeRow?.total ?? 0);
   const todaysInflow = Number(todaysInflowRow?.total ?? 0);
   const yesterdaysInflow = Number(yesterdaysInflowRow?.total ?? 0);
   const totalEarnings = Number(totalEarningsRow?.total ?? 0);
   const todaysEarnings = Number(todaysEarningsRow?.total ?? 0);
-  const yesterdaysEarnings = Number(yesterdaysEarningsRow?.total ?? 0);
+  const volumeThroughYesterday = totalVolume - todaysVolume;
+  const earningsThroughYesterday = totalEarnings - todaysEarnings;
 
   const walletTrend = computePercentChange(todaysInflow, yesterdaysInflow);
-  const volumeTrend = computePercentChange(todaysVolume, yesterdaysVolume);
+  const volumeTrend = computePercentChange(totalVolume, volumeThroughYesterday);
   const successRateTrend = computePercentChange(successRate, yesterdaySuccessRate);
-  const earningsTrend = computePercentChange(todaysEarnings, yesterdaysEarnings);
+  const earningsTrend = computePercentChange(
+    totalEarnings,
+    earningsThroughYesterday,
+  );
 
   const recentLedger = await db
     .select({

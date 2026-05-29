@@ -158,18 +158,23 @@ export async function fetchDistributorEarnings(
   const yesterdaysEarnings =
     Number(yesterdaysNetworkEarningsRow?.total ?? 0) +
     Number(yesterdaysSelfEarningsRow?.total ?? 0);
+  const totalVolume = Number(totalVolumeRow?.total ?? 0);
   const todaysVolume = Number(todaysVolumeRow?.total ?? 0);
   const yesterdaysVolume = Number(yesterdaysVolumeRow?.total ?? 0);
+  const earningsThroughYesterday = totalEarnings - todaysEarnings;
+  const volumeThroughYesterday = totalVolume - todaysVolume;
 
   return {
     ...earningsResult,
     stats: {
       totalEarnings,
       todaysEarnings,
-      totalVolume: Number(totalVolumeRow?.total ?? 0),
+      totalVolume,
       todaysVolume,
-      earningsTrend: computePercentChange(todaysEarnings, yesterdaysEarnings),
-      volumeTrend: computePercentChange(todaysVolume, yesterdaysVolume),
+      earningsTrend: computePercentChange(totalEarnings, earningsThroughYesterday),
+      todaysEarningsTrend: computePercentChange(todaysEarnings, yesterdaysEarnings),
+      volumeTrend: computePercentChange(totalVolume, volumeThroughYesterday),
+      todaysVolumeTrend: computePercentChange(todaysVolume, yesterdaysVolume),
     },
   };
 }

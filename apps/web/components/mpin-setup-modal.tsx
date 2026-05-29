@@ -18,8 +18,8 @@ export function MpinSetupModal({ open, onCompleted }: MpinSetupModalProps) {
             <Modal.Header>
               <Modal.Heading>Set your MPIN</Modal.Heading>
             </Modal.Header>
-            <Modal.Body className="space-y-3">
-              <p className="text-sm text-muted">
+            <Modal.Body className="space-y-4">
+              <p className="text-center text-sm text-muted">
                 For security, choose a new 4-digit MPIN before using the dashboard.
                 You will need your account password to confirm.
               </p>

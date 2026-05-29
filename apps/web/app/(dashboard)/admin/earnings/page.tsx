@@ -104,8 +104,18 @@ export default async function AdminEarningsPage({
   const totalVolume = Number(totalVolumeRow?.total ?? 0);
   const todaysVolume = Number(todaysVolumeRow?.total ?? 0);
   const yesterdaysVolume = Number(yesterdaysVolumeRow?.total ?? 0);
-  const earningsTrend = computePercentChange(todaysEarnings, yesterdaysEarnings);
-  const volumeTrend = computePercentChange(todaysVolume, yesterdaysVolume);
+  const earningsThroughYesterday = totalEarnings - todaysEarnings;
+  const volumeThroughYesterday = totalVolume - todaysVolume;
+  const earningsTrend = computePercentChange(
+    totalEarnings,
+    earningsThroughYesterday,
+  );
+  const todaysEarningsTrend = computePercentChange(
+    todaysEarnings,
+    yesterdaysEarnings,
+  );
+  const volumeTrend = computePercentChange(totalVolume, volumeThroughYesterday);
+  const todaysVolumeTrend = computePercentChange(todaysVolume, yesterdaysVolume);
 
   return (
     <div className="space-y-6">
@@ -126,7 +136,7 @@ export default async function AdminEarningsPage({
         />
         <StatCard
           title="Today's earnings"
-          trendPercent={earningsTrend}
+          trendPercent={todaysEarningsTrend}
           value={formatInr(todaysEarnings, { fractionDigits: 2 })}
         />
         <StatCard
@@ -136,7 +146,7 @@ export default async function AdminEarningsPage({
         />
         <StatCard
           title="Today's volume"
-          trendPercent={volumeTrend}
+          trendPercent={todaysVolumeTrend}
           value={formatInr(todaysVolume, { fractionDigits: 0 })}
         />
       </div>

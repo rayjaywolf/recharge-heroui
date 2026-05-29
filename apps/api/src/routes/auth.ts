@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { db, user } from "@repo/db";
 import { auth } from "@repo/server/auth";
-import { setUserMpin } from "@repo/server/mpin";
+import { setUserMpin, verifyUserMpin } from "@repo/server/mpin";
 import { validateMpin } from "@repo/shared/mpin";
 import {
   assertCanRegisterRetailer,
@@ -58,6 +58,32 @@ authRoutes.post("/api/auth/register-retailer", async (c) => {
     const message =
       error instanceof Error ? error.message : "Registration failed.";
     return c.json({ error: message }, 500);
+  }
+});
+
+authRoutes.post("/api/profile/verify-mpin", requireSession, async (c) => {
+  try {
+    const session = c.get("session");
+    if (session.user.role === "ADMIN") {
+      return c.json({ success: true });
+    }
+
+    const body = await c.req.json();
+    const mpin = typeof body?.mpin === "string" ? body.mpin.trim() : "";
+
+    if (!validateMpin(mpin)) {
+      return c.json({ error: "Valid 4-digit MPIN is required." }, 400);
+    }
+
+    const mpinOk = await verifyUserMpin(session.user.id, mpin);
+    if (!mpinOk) {
+      return c.json({ error: "Incorrect MPIN. Please try again." }, 401);
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Verify MPIN error:", error);
+    return c.json({ error: "Failed to verify MPIN." }, 500);
   }
 });
 

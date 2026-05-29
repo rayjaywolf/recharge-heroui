@@ -54,7 +54,7 @@ export default async function RetailerEarningsPage({
         />
         <StatCard
           title="Today's earnings"
-          trendPercent={stats.earningsTrend}
+          trendPercent={stats.todaysEarningsTrend}
           value={formatInr(stats.todaysEarnings, { fractionDigits: 2 })}
         />
         <StatCard
@@ -64,7 +64,7 @@ export default async function RetailerEarningsPage({
         />
         <StatCard
           title="Today's volume"
-          trendPercent={stats.volumeTrend}
+          trendPercent={stats.todaysVolumeTrend}
           value={formatInr(stats.todaysVolume, { fractionDigits: 0 })}
         />
       </div>

@@ -17,6 +17,7 @@ import {
   toast,
 } from "@heroui/react";
 
+import { MpinInputOtp } from "@/components/mpin-input-otp";
 import { apiFetch } from "@/lib/api-client";
 import {
   normalizePhoneNumber,
@@ -61,6 +62,9 @@ export function RechargeForm({
   const [submitting, setSubmitting] = useState(false);
   const [mpinOpen, setMpinOpen] = useState(false);
   const [mpin, setMpin] = useState("");
+  const [mpinInvalid, setMpinInvalid] = useState(false);
+  const [mpinError, setMpinError] = useState<string | null>(null);
+  const [verifyingMpin, setVerifyingMpin] = useState(false);
   const [pendingRecharge, setPendingRecharge] = useState<{
     normalizedPhone: string;
     operator: string;
@@ -247,19 +251,57 @@ export function RechargeForm({
       circleCode: circleCode || undefined,
     });
     setMpin("");
+    setMpinInvalid(false);
+    setMpinError(null);
     setMpinOpen(true);
   };
 
+  const handleMpinChange = (value: string) => {
+    setMpin(value);
+    if (mpinInvalid || mpinError) {
+      setMpinInvalid(false);
+      setMpinError(null);
+    }
+  };
+
   const handleConfirmMpin = async () => {
-    if (!pendingRecharge) return;
+    if (!pendingRecharge || verifyingMpin || submitting) return;
+
     if (!/^\d{4}$/.test(mpin)) {
-      toast("Enter a valid 4-digit MPIN.", { variant: "danger" });
+      setMpinInvalid(true);
+      setMpinError("Enter a valid 4-digit MPIN.");
       return;
     }
 
-    setMpinOpen(false);
-    await submitRecharge({ ...pendingRecharge, mpin });
-    setPendingRecharge(null);
+    setVerifyingMpin(true);
+    setMpinInvalid(false);
+    setMpinError(null);
+
+    try {
+      const verifyRes = await apiFetch("/api/profile/verify-mpin", {
+        method: "POST",
+        body: JSON.stringify({ mpin }),
+      });
+      const verifyData = await verifyRes.json();
+
+      if (!verifyRes.ok) {
+        setMpinInvalid(true);
+        setMpinError(
+          verifyData?.error || "Incorrect MPIN. Please try again.",
+        );
+        return;
+      }
+
+      setMpinOpen(false);
+      await submitRecharge({ ...pendingRecharge, mpin });
+      setPendingRecharge(null);
+      setMpin("");
+    } catch {
+      setMpinInvalid(true);
+      setMpinError("Could not verify MPIN. Please try again.");
+    } finally {
+      setVerifyingMpin(false);
+    }
   };
 
   if (loadingConfig) {
@@ -303,38 +345,47 @@ export function RechargeForm({
   return (
     <>
       <Modal>
-        <Modal.Backdrop isOpen={mpinOpen} onOpenChange={setMpinOpen}>
+        <Modal.Backdrop
+          isOpen={mpinOpen}
+          onOpenChange={(open) => {
+            setMpinOpen(open);
+            if (!open) {
+              setMpin("");
+              setMpinInvalid(false);
+              setMpinError(null);
+            }
+          }}
+        >
           <Modal.Container>
             <Modal.Dialog className="sm:max-w-md">
               <Modal.Header>
                 <Modal.Heading>Confirm MPIN</Modal.Heading>
               </Modal.Header>
-              <Modal.Body className="space-y-3">
-                <Description>
+              <Modal.Body className="flex flex-col items-center gap-5 py-2 text-center">
+                <Description className="max-w-xs">
                   Enter your 4-digit MPIN to initiate this recharge.
                 </Description>
-                <TextField isRequired name="mpin" type="password">
-                  <Label>MPIN</Label>
-                  <Input
-                    autoFocus
-                    inputMode="numeric"
-                    maxLength={4}
-                    pattern="\\d{4}"
-                    placeholder="4-digit MPIN"
-                    value={mpin}
-                    variant="secondary"
-                    onChange={(e) =>
-                      setMpin(e.target.value.replace(/\D/g, "").slice(0, 4))
-                    }
-                  />
-                </TextField>
+                <MpinInputOtp
+                  autoFocus
+                  centered
+                  errorMessage={mpinError}
+                  hideLabel
+                  id="recharge-mpin"
+                  isInvalid={mpinInvalid}
+                  value={mpin}
+                  onChange={handleMpinChange}
+                />
               </Modal.Body>
               <Modal.Footer>
                 <Button variant="secondary" onPress={() => setMpinOpen(false)}>
                   Cancel
                 </Button>
-                <Button isDisabled={submitting} variant="primary" onPress={handleConfirmMpin}>
-                  {submitting ? <Spinner size="sm" /> : null}
+                <Button
+                  isDisabled={verifyingMpin || submitting}
+                  variant="primary"
+                  onPress={handleConfirmMpin}
+                >
+                  {verifyingMpin || submitting ? <Spinner size="sm" /> : null}
                   Confirm and recharge
                 </Button>
               </Modal.Footer>

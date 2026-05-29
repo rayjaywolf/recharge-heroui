@@ -95,7 +95,9 @@ export function MpinForm({
             placeholder="4 digits"
             value={mpin}
             variant="secondary"
-            onChange={(e) => setMpin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            onChange={(e) =>
+              setMpin(e.target.value.replace(/\D/g, "").slice(0, 4))
+            }
           />
         </TextField>
 

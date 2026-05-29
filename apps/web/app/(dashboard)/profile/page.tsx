@@ -23,6 +23,15 @@ export default async function ProfilePage() {
     where: eq(user.id, session.user.id),
     with: {
       retailers: { columns: { id: true } },
+      distributor: {
+        columns: {
+          id: true,
+          name: true,
+          email: true,
+          phoneNumber: true,
+          whatsappNumber: true,
+        },
+      },
     },
   });
 
@@ -30,6 +39,9 @@ export default async function ProfilePage() {
 
   const contactEmail = getDisplayEmail(found.email);
   const contactPhone = getDisplayPhone(found);
+  const distributorPhone = found.distributor
+    ? getDisplayPhone(found.distributor)
+    : null;
 
   const memberSince = found.createdAt.toLocaleDateString("en-IN", {
     dateStyle: "medium",
@@ -162,6 +174,35 @@ export default async function ProfilePage() {
             <Card.Title>Profile</Card.Title>
           </Card.Header>
           <Card.Content className="space-y-3 text-sm">
+            {found.role === "RETAILER" && found.distributor ? (
+              <>
+                <div>
+                  <p className="text-xs font-medium text-muted">Distributor</p>
+                  <p className="font-medium text-foreground">
+                    {found.distributor.name}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted">
+                    Distributor phone
+                  </p>
+                  <p className="font-medium text-foreground">
+                    {distributorPhone ?? "—"}
+                  </p>
+                </div>
+                {found.distributor.whatsappNumber &&
+                found.distributor.whatsappNumber !== distributorPhone ? (
+                  <div>
+                    <p className="text-xs font-medium text-muted">
+                      Distributor WhatsApp
+                    </p>
+                    <p className="font-medium text-foreground">
+                      {found.distributor.whatsappNumber}
+                    </p>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
             {found.address ? (
               <div>
                 <p className="text-xs font-medium text-muted">Address</p>
@@ -182,21 +223,11 @@ export default async function ProfilePage() {
                 <p className="font-medium text-foreground">{found.businessType}</p>
               </div>
             ) : null}
-            {found.distributorId ? (
-              <div>
-                <p className="text-xs font-medium text-muted">
-                  Distributor ID
-                </p>
-                <p className="font-mono text-xs text-foreground">
-                  {found.distributorId}
-                </p>
-              </div>
-            ) : null}
             {!found.address &&
             !found.state &&
             !found.pincode &&
             !found.businessType &&
-            !found.distributorId ? (
+            !(found.role === "RETAILER" && found.distributor) ? (
               <p className="text-muted">No additional profile details on file.</p>
             ) : null}
           </Card.Content>
