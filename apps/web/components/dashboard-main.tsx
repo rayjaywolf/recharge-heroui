@@ -13,6 +13,7 @@ type DashboardMainProps = {
   balance: number;
   pendingApprovalsCount?: number;
   pendingSupportCount?: number;
+  pendingFundRequestsCount?: number;
   unreadNotificationCount?: number;
 };
 
@@ -23,6 +24,7 @@ export function DashboardMain({
   balance,
   pendingApprovalsCount = 0,
   pendingSupportCount = 0,
+  pendingFundRequestsCount = 0,
   unreadNotificationCount = 0,
 }: DashboardMainProps) {
   const { collapsed, isReady } = useDashboardSidebar();
@@ -37,6 +39,7 @@ export function DashboardMain({
       <DashboardHeader
         balance={balance}
         pendingApprovalsCount={pendingApprovalsCount}
+        pendingFundRequestsCount={pendingFundRequestsCount}
         pendingSupportCount={pendingSupportCount}
         unreadNotificationCount={unreadNotificationCount}
         userName={userName}

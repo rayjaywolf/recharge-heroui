@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, notInArray, or } from "drizzle-orm";
 import { Hono } from "hono";
-import { createId, db, dispute, transaction, user } from "@repo/db";
+import { createId, db, dispute, fundRequest, transaction, user } from "@repo/db";
 import { auth } from "@repo/server/auth";
 import { decrementBalance, incrementBalance } from "@repo/server/db-utils";
 import {
@@ -8,7 +8,13 @@ import {
   parseRetailerRegistrationInput,
   RegistrationConflictError,
 } from "@repo/server/retailer-registration";
-import { notifyAdminsDisputePending } from "@repo/server/notifications";
+import {
+  markNotificationsReadForEntity,
+  notifyAdminsDisputePending,
+  notifyRetailerFundRequestApproved,
+  notifyRetailerFundRequestRejected,
+  notifyRetailerWalletCredited,
+} from "@repo/server/notifications";
 import { requireDistributor, type AppVariables } from "../middleware";
 
 export const distributorRoutes = new Hono<{ Variables: AppVariables }>();
@@ -108,7 +114,14 @@ distributorRoutes.post("/api/distributor/fund", requireDistributor, async (c) =>
           : `Received ${amount} from distributor ${distributorUser.name}`,
       });
 
-      return { updatedDistributor, updatedRetailer };
+      return { updatedDistributor, updatedRetailer, retTxId };
+    });
+
+    await notifyRetailerWalletCredited({
+      retailerId: userId,
+      amount,
+      transactionId: result.retTxId,
+      sourceLabel: distributorUser.name,
     });
 
     return c.json({
@@ -305,3 +318,203 @@ distributorRoutes.post("/api/distributor/disputes", requireDistributor, async (c
     return c.json({ error: "Internal server error" }, 500);
   }
 });
+
+distributorRoutes.post(
+  "/api/distributor/fund-requests/:id/approve",
+  requireDistributor,
+  async (c) => {
+    try {
+      const session = c.get("session");
+      const distributorUser = c.get("dbUser");
+      const requestId = c.req.param("id");
+
+      const [request] = await db
+        .select({
+          id: fundRequest.id,
+          retailerId: fundRequest.retailerId,
+          distributorId: fundRequest.distributorId,
+          amount: fundRequest.amount,
+          status: fundRequest.status,
+          remarks: fundRequest.remarks,
+        })
+        .from(fundRequest)
+        .where(eq(fundRequest.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return c.json({ error: "Fund request not found." }, 404);
+      }
+
+      if (request.distributorId !== session.user.id) {
+        return c.json({ error: "Fund request not found." }, 404);
+      }
+
+      if (request.status !== "PENDING") {
+        return c.json({ error: "Fund request is no longer pending." }, 409);
+      }
+
+      if (distributorUser.balance < request.amount) {
+        return c.json({ error: "Insufficient wallet balance." }, 400);
+      }
+
+      const [retailer] = await db
+        .select({ name: user.name })
+        .from(user)
+        .where(eq(user.id, request.retailerId))
+        .limit(1);
+
+      if (!retailer) {
+        return c.json({ error: "Retailer not found." }, 404);
+      }
+
+      const result = await db.transaction(async (tx) => {
+        const [updatedDistributor] = await tx
+          .update(user)
+          .set(decrementBalance(request.amount))
+          .where(
+            and(
+              eq(user.id, session.user.id),
+              gte(user.balance, request.amount),
+            ),
+          )
+          .returning();
+
+        if (!updatedDistributor) {
+          throw new Error("INSUFFICIENT_BALANCE");
+        }
+
+        const [updatedRetailer] = await tx
+          .update(user)
+          .set(incrementBalance(request.amount))
+          .where(eq(user.id, request.retailerId))
+          .returning();
+
+        const distTxId = createId();
+        const retTxId = createId();
+        const transferMessage = request.remarks
+          ? `[FUNDS_SENT] ${request.remarks}`
+          : `Approved fund request from ${retailer.name}`;
+
+        await tx.insert(transaction).values({
+          id: distTxId,
+          userId: session.user.id,
+          targetPhone: "DIST_FUNDS_TRANSFER",
+          operator: "FUNDS_SENT",
+          amount: request.amount,
+          status: "SUCCESS",
+          apiMessage: transferMessage,
+        });
+
+        await tx.insert(transaction).values({
+          id: retTxId,
+          userId: request.retailerId,
+          targetPhone: "RECEIVED_FUNDS",
+          operator: "FUNDS_RECEIVED",
+          amount: request.amount,
+          status: "SUCCESS",
+          apiMessage: request.remarks
+            ? `[FUNDS_RECEIVED] ${request.remarks}`
+            : `Fund request approved by ${distributorUser.name}`,
+        });
+
+        const [updatedRequest] = await tx
+          .update(fundRequest)
+          .set({ status: "APPROVED" })
+          .where(eq(fundRequest.id, requestId))
+          .returning();
+
+        return { updatedDistributor, updatedRetailer, updatedRequest, retTxId };
+      });
+
+      await markNotificationsReadForEntity({
+        type: "FUND_REQUEST_PENDING",
+        entityId: requestId,
+      });
+
+      await notifyRetailerFundRequestApproved({
+        retailerId: request.retailerId,
+        fundRequestId: requestId,
+        amount: request.amount,
+        distributorName: distributorUser.name,
+      });
+
+      return c.json({
+        success: true,
+        message: `Approved fund request and transferred ₹${request.amount} to ${retailer.name}.`,
+        balance: result.updatedDistributor.balance,
+        request: {
+          id: result.updatedRequest?.id,
+          status: result.updatedRequest?.status,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
+        return c.json({ error: "Insufficient wallet balance." }, 400);
+      }
+      console.error("Approve fund request error:", error);
+      return c.json({ error: "Internal server error" }, 500);
+    }
+  },
+);
+
+distributorRoutes.post(
+  "/api/distributor/fund-requests/:id/reject",
+  requireDistributor,
+  async (c) => {
+    try {
+      const session = c.get("session");
+      const distributorUser = c.get("dbUser");
+      const requestId = c.req.param("id");
+
+      const [request] = await db
+        .select({
+          id: fundRequest.id,
+          retailerId: fundRequest.retailerId,
+          distributorId: fundRequest.distributorId,
+          amount: fundRequest.amount,
+          status: fundRequest.status,
+        })
+        .from(fundRequest)
+        .where(eq(fundRequest.id, requestId))
+        .limit(1);
+
+      if (!request || request.distributorId !== session.user.id) {
+        return c.json({ error: "Fund request not found." }, 404);
+      }
+
+      if (request.status !== "PENDING") {
+        return c.json({ error: "Fund request is no longer pending." }, 409);
+      }
+
+      const [updated] = await db
+        .update(fundRequest)
+        .set({ status: "REJECTED" })
+        .where(eq(fundRequest.id, requestId))
+        .returning();
+
+      await markNotificationsReadForEntity({
+        type: "FUND_REQUEST_PENDING",
+        entityId: requestId,
+      });
+
+      await notifyRetailerFundRequestRejected({
+        retailerId: request.retailerId,
+        fundRequestId: requestId,
+        amount: request.amount,
+        distributorName: distributorUser.name,
+      });
+
+      return c.json({
+        success: true,
+        message: "Fund request rejected.",
+        request: {
+          id: updated.id,
+          status: updated.status,
+        },
+      });
+    } catch (error) {
+      console.error("Reject fund request error:", error);
+      return c.json({ error: "Internal server error" }, 500);
+    }
+  },
+);

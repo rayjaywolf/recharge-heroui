@@ -14,6 +14,7 @@ type DashboardShellProps = {
   balance: number;
   pendingApprovalsCount?: number;
   pendingSupportCount?: number;
+  pendingFundRequestsCount?: number;
   unreadNotificationCount?: number;
   mpinMustReset?: boolean;
 };
@@ -25,6 +26,7 @@ export function DashboardShell({
   balance,
   pendingApprovalsCount = 0,
   pendingSupportCount = 0,
+  pendingFundRequestsCount = 0,
   unreadNotificationCount = 0,
   mpinMustReset = false,
 }: DashboardShellProps) {
@@ -35,6 +37,7 @@ export function DashboardShell({
         <DashboardSidebarProvider>
           <AppSidebar
             pendingApprovalsCount={pendingApprovalsCount}
+            pendingFundRequestsCount={pendingFundRequestsCount}
             pendingSupportCount={pendingSupportCount}
             userRole={userRole}
           />
@@ -42,6 +45,7 @@ export function DashboardShell({
           <DashboardMain
             balance={balance}
             pendingApprovalsCount={pendingApprovalsCount}
+            pendingFundRequestsCount={pendingFundRequestsCount}
             pendingSupportCount={pendingSupportCount}
             unreadNotificationCount={unreadNotificationCount}
             userName={userName}

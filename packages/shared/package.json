@@ -8,7 +8,8 @@
     "./phone": "./src/phone.ts",
     "./recharge-config": "./src/recharge-config.ts",
     "./recharge-providers": "./src/recharge-providers.ts",
-    "./mpin": "./src/mpin.ts"
+    "./mpin": "./src/mpin.ts",
+    "./notification-href": "./src/notification-href.ts"
   },
   "devDependencies": {
     "typescript": "^5"

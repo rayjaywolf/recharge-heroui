@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowDownToDot,
   ArrowUpFromDot,
@@ -8,12 +8,13 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
+  Autocomplete,
   Button,
   Card,
   Input,
   Label,
   ListBox,
-  Select,
+  SearchField,
   Spinner,
   Surface,
   Tabs,
@@ -39,12 +40,26 @@ export function FundingControls({ users }: { users: FundingUserOption[] }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<string>("credit");
   const [userId, setUserId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [amount, setAmount] = useState("");
   const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(false);
 
   const selectedUser = users.find((u) => u.id === userId);
   const isCredit = activeTab === "credit";
+
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((user) => {
+      const contact =
+        getDisplayPhone(user) ?? getDisplayEmail(user.email) ?? "";
+      const composed = [user.name, user.role, user.email, contact]
+        .join(" ")
+        .toLowerCase();
+      return composed.includes(q);
+    });
+  }, [search, users]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,43 +149,70 @@ export function FundingControls({ users }: { users: FundingUserOption[] }) {
 
       <Card.Content>
         <form className="grid gap-5" id="funding-form" onSubmit={handleSubmit}>
-          <Select
+          <Autocomplete
             placeholder="Choose a user…"
             value={userId}
             onChange={(value) => setUserId(value != null ? String(value) : null)}
           >
             <Label>Select user</Label>
-            <Select.Trigger>
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
+            <Autocomplete.Trigger>
+              <Autocomplete.Value />
+              <Autocomplete.ClearButton onClick={() => setUserId(null)} />
+              <Autocomplete.Indicator />
+            </Autocomplete.Trigger>
+            <Autocomplete.Popover>
+              <div className="border-b border-separator p-2">
+                <SearchField>
+                  <SearchField.Group>
+                    <SearchField.SearchIcon />
+                    <SearchField.Input
+                      placeholder="Search by name, role, email, or phone…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                    {search ? <SearchField.ClearButton /> : null}
+                  </SearchField.Group>
+                </SearchField>
+              </div>
               <ListBox>
-                {users.length === 0 ? (
+                {filteredUsers.length === 0 ? (
                   <ListBox.Item id="empty" isDisabled textValue="No users">
-                    No users available
+                    {users.length === 0
+                      ? "No users available"
+                      : "No users match your search"}
                   </ListBox.Item>
                 ) : (
-                  users.map((user) => {
+                  filteredUsers.map((user) => {
                     const contact =
                       getDisplayPhone(user) ??
                       getDisplayEmail(user.email) ??
                       "—";
+                    const label = `${user.name} (${user.role}) · ${contact}`;
                     return (
                       <ListBox.Item
                         key={user.id}
                         id={user.id}
-                        textValue={`${user.name} ${user.role}`}
+                        textValue={label}
                       >
-                        {user.name} ({user.role}) · {contact}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {user.name}{" "}
+                            <span className="font-normal text-muted">
+                              ({user.role})
+                            </span>
+                          </p>
+                          <p className="truncate text-xs text-muted">
+                            {contact}
+                          </p>
+                        </div>
                         <ListBox.ItemIndicator />
                       </ListBox.Item>
                     );
                   })
                 )}
               </ListBox>
-            </Select.Popover>
-          </Select>
+            </Autocomplete.Popover>
+          </Autocomplete>
 
           {selectedUser ? (
             <Surface className="p-3" variant="tertiary">

@@ -10,7 +10,11 @@ import {
   user,
 } from "@repo/db";
 import { resolveDateRange } from "@repo/server/date-range";
-import { notifyAdminsDisputePending } from "@repo/server/notifications";
+import {
+  notifyAdminsDisputePending,
+  notifyDistributorDisputePending,
+  notifyDistributorFundRequestPending,
+} from "@repo/server/notifications";
 import {
   requireRetailer,
   type AppVariables,
@@ -306,6 +310,15 @@ retailerRoutes.post("/api/retailer/disputes", requireRetailer, async (c) => {
       submitterName: retailer.name,
     });
 
+    if (retailer.distributorId) {
+      await notifyDistributorDisputePending({
+        distributorId: retailer.distributorId,
+        disputeId: created.id,
+        subject,
+        retailerName: retailer.name,
+      });
+    }
+
     return c.json({
       success: true,
       message: "Dispute submitted to admin support.",
@@ -388,6 +401,13 @@ retailerRoutes.post("/api/retailer/fund-request", requireRetailer, async (c) => 
     if (!created?.distributor) {
       return c.json({ error: "Internal server error" }, 500);
     }
+
+    await notifyDistributorFundRequestPending({
+      distributorId: retailer.distributorId,
+      fundRequestId: requestId,
+      retailerName: retailer.name,
+      amount,
+    });
 
     return c.json({
       success: true,

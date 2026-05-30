@@ -13,7 +13,25 @@ import {
   type TxStatus,
 } from "@repo/db";
 import { decrementBalance, incrementBalance } from "@repo/server/db-utils";
-import { markNotificationsReadForEntity } from "@repo/server/notifications";
+import {
+  markNotificationsReadForEntity,
+  notifyDistributorDisputeResolved,
+  notifyDistributorRechargeSettled,
+  notifyDistributorRetailerApproved,
+  notifyDistributorRetailerRejected,
+  notifyDistributorRetailerRestored,
+  notifyDistributorRetailerSuspended,
+  notifyDistributorWalletCredited,
+  notifyDistributorWalletDebited,
+  notifyRetailerAccountApproved,
+  notifyRetailerAccountRejected,
+  notifyRetailerAccountRestored,
+  notifyRetailerAccountSuspended,
+  notifyRetailerDisputeResolved,
+  notifyRetailerWalletCredited,
+  notifyRetailerWalletDebited,
+  resolveRechargeSettlementOutcome,
+} from "@repo/server/notifications";
 import { checkMRoboticsStatus } from "@repo/server/mrobotics";
 import {
   settlePendingTransaction,
@@ -120,6 +138,7 @@ adminRoutes.patch("/api/admin/transactions/:id/manual-status", requireAdmin, asy
         userId: transaction.userId,
         operator: transaction.operator,
         amount: transaction.amount,
+        targetPhone: transaction.targetPhone,
         status: transaction.status,
         apiMessage: transaction.apiMessage,
         retailerCommission: transaction.retailerCommission,
@@ -135,7 +154,12 @@ adminRoutes.patch("/api/admin/transactions/:id/manual-status", requireAdmin, asy
     }
 
     const [txUser] = await db
-      .select({ id: user.id, role: user.role, distributorId: user.distributorId })
+      .select({
+        id: user.id,
+        role: user.role,
+        distributorId: user.distributorId,
+        name: user.name,
+      })
       .from(user)
       .where(eq(user.id, found.userId))
       .limit(1);
@@ -305,6 +329,29 @@ adminRoutes.patch("/api/admin/transactions/:id/manual-status", requireAdmin, asy
       return [next];
     });
 
+    if (
+      from === "PENDING" &&
+      (to === "SUCCESS" || to === "FAILED" || to === "REFUNDED") &&
+      txUser
+    ) {
+      const outcome = resolveRechargeSettlementOutcome({
+        status: to,
+        refunded: to === "REFUNDED" || (to === "FAILED" && shouldRefundOnTo),
+      });
+
+      await notifyDistributorRechargeSettled({
+        transactionId: found.id,
+        operator: found.operator,
+        amount: found.amount,
+        targetPhone: found.targetPhone,
+        actorName: txUser.name,
+        actorRole: txUser.role,
+        userId: found.userId,
+        distributorId: txUser.distributorId,
+        outcome,
+      });
+    }
+
     return c.json({
       success: true,
       message: "Transaction status updated manually.",
@@ -393,8 +440,9 @@ adminRoutes.post("/api/admin/fund", requireAdmin, async (c) => {
           ? `Credited manually by Administrator (${adminUser.name})`
           : `Debited manually by Administrator (${adminUser.name})`;
 
+      const txId = createId();
       await tx.insert(transaction).values({
-        id: createId(),
+        id: txId,
         userId,
         targetPhone: "WALLET",
         operator: actionType === "credit" ? "MANUAL_CREDIT" : "MANUAL_DEBIT",
@@ -403,8 +451,39 @@ adminRoutes.post("/api/admin/fund", requireAdmin, async (c) => {
         apiMessage: messageContent,
       });
 
-      return { updatedUser };
+      return { updatedUser, txId };
     });
+
+    if (targetUser.role === "DISTRIBUTOR") {
+      if (actionType === "credit") {
+        await notifyDistributorWalletCredited({
+          distributorId: userId,
+          amount,
+          transactionId: result.txId,
+        });
+      } else {
+        await notifyDistributorWalletDebited({
+          distributorId: userId,
+          amount,
+          transactionId: result.txId,
+        });
+      }
+    } else if (targetUser.role === "RETAILER") {
+      if (actionType === "credit") {
+        await notifyRetailerWalletCredited({
+          retailerId: userId,
+          amount,
+          transactionId: result.txId,
+          sourceLabel: "an administrator",
+        });
+      } else {
+        await notifyRetailerWalletDebited({
+          retailerId: userId,
+          amount,
+          transactionId: result.txId,
+        });
+      }
+    }
 
     return c.json({
       success: true,
@@ -454,6 +533,28 @@ adminRoutes.post("/api/admin/retailer/toggle-status", requireAdmin, async (c) =>
       .where(eq(user.id, userId))
       .returning({ name: user.name, accountStatus: user.accountStatus });
 
+    if (targetUser.distributorId) {
+      if (newStatus === "SUSPENDED") {
+        await notifyDistributorRetailerSuspended({
+          distributorId: targetUser.distributorId,
+          retailerId: userId,
+          retailerName: updatedUser?.name ?? targetUser.name,
+        });
+      } else {
+        await notifyDistributorRetailerRestored({
+          distributorId: targetUser.distributorId,
+          retailerId: userId,
+          retailerName: updatedUser?.name ?? targetUser.name,
+        });
+      }
+    }
+
+    if (newStatus === "SUSPENDED") {
+      await notifyRetailerAccountSuspended({ retailerId: userId });
+    } else {
+      await notifyRetailerAccountRestored({ retailerId: userId });
+    }
+
     return c.json({
       success: true,
       message: `Successfully ${newStatus === "SUSPENDED" ? "suspended" : "activated"} retailer ${updatedUser?.name}`,
@@ -473,7 +574,11 @@ adminRoutes.post("/api/admin/users/approve", requireAdmin, async (c) => {
     }
 
     const [target] = await db
-      .select({ role: user.role, accountStatus: user.accountStatus })
+      .select({
+        role: user.role,
+        accountStatus: user.accountStatus,
+        distributorId: user.distributorId,
+      })
       .from(user)
       .where(eq(user.id, userId))
       .limit(1);
@@ -505,6 +610,16 @@ adminRoutes.post("/api/admin/users/approve", requireAdmin, async (c) => {
       entityId: userId,
     });
 
+    if (target.distributorId) {
+      await notifyDistributorRetailerApproved({
+        distributorId: target.distributorId,
+        retailerId: userId,
+        retailerName: updatedUser.name,
+      });
+    }
+
+    await notifyRetailerAccountApproved({ retailerId: userId });
+
     return c.json({
       success: true,
       message: `User ${updatedUser.name} approved successfully.`,
@@ -523,7 +638,11 @@ adminRoutes.post("/api/admin/users/reject", requireAdmin, async (c) => {
     }
 
     const [target] = await db
-      .select({ role: user.role, accountStatus: user.accountStatus })
+      .select({
+        role: user.role,
+        accountStatus: user.accountStatus,
+        distributorId: user.distributorId,
+      })
       .from(user)
       .where(eq(user.id, userId))
       .limit(1);
@@ -551,6 +670,16 @@ adminRoutes.post("/api/admin/users/reject", requireAdmin, async (c) => {
       type: "RETAILER_PENDING_APPROVAL",
       entityId: userId,
     });
+
+    if (target.distributorId) {
+      await notifyDistributorRetailerRejected({
+        distributorId: target.distributorId,
+        retailerId: userId,
+        retailerName: updatedUser.name,
+      });
+    }
+
+    await notifyRetailerAccountRejected({ retailerId: userId });
 
     return c.json({
       success: true,
@@ -660,7 +789,12 @@ adminRoutes.patch("/api/admin/disputes/:id/resolve", requireAdmin, async (c) => 
       body?.adminNote == null ? null : String(body.adminNote).trim() || null;
 
     const [current] = await db
-      .select({ id: dispute.id, status: dispute.status })
+      .select({
+        id: dispute.id,
+        status: dispute.status,
+        distributorId: dispute.distributorId,
+        subject: dispute.subject,
+      })
       .from(dispute)
       .where(eq(dispute.id, disputeId))
       .limit(1);
@@ -693,6 +827,48 @@ adminRoutes.patch("/api/admin/disputes/:id/resolve", requireAdmin, async (c) => 
       type: "DISPUTE_PENDING",
       entityId: disputeId,
     });
+
+    await markNotificationsReadForEntity({
+      type: "DISTRIBUTOR_DISPUTE_PENDING",
+      entityId: disputeId,
+    });
+
+    const [distributor] = await db
+      .select({ role: user.role })
+      .from(user)
+      .where(eq(user.id, current.distributorId))
+      .limit(1);
+
+    if (distributor?.role === "DISTRIBUTOR") {
+      await notifyDistributorDisputeResolved({
+        distributorId: current.distributorId,
+        disputeId,
+        subject: current.subject,
+      });
+    }
+
+    const [txRow] = await db
+      .select({ userId: transaction.userId })
+      .from(dispute)
+      .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
+      .where(eq(dispute.id, disputeId))
+      .limit(1);
+
+    if (txRow) {
+      const [owner] = await db
+        .select({ role: user.role })
+        .from(user)
+        .where(eq(user.id, txRow.userId))
+        .limit(1);
+
+      if (owner?.role === "RETAILER") {
+        await notifyRetailerDisputeResolved({
+          retailerId: txRow.userId,
+          disputeId,
+          subject: current.subject,
+        });
+      }
+    }
 
     return c.json({
       success: true,

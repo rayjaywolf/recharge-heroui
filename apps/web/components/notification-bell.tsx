@@ -10,10 +10,18 @@ import { NOTIFICATIONS_SYNC_EVENT } from "@/lib/notification-sync";
 
 const POLL_MS = 60_000;
 
+function notificationsPathForRole(role: string): string {
+  if (role === "DISTRIBUTOR") return "/distributor/notifications";
+  if (role === "RETAILER") return "/retailer/notifications";
+  return "/admin/notifications";
+}
+
 export function NotificationBell({
   initialUnreadCount = 0,
+  userRole = "ADMIN",
 }: {
   initialUnreadCount?: number;
+  userRole?: string;
 }) {
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
 
@@ -43,7 +51,7 @@ export function NotificationBell({
       isIconOnly
       variant="ghost"
     >
-      <Link href="/admin/notifications">
+      <Link href={notificationsPathForRole(userRole)}>
         <Bell className="size-4" strokeWidth={2} aria-hidden />
         {unreadCount > 0 ? (
           <span className="absolute right-0.5 top-0.5 flex size-3.5 min-w-3.5 items-center justify-center rounded-full bg-danger px-0.5 text-[9px] font-semibold leading-none text-danger-foreground">

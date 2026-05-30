@@ -11,10 +11,12 @@ export function AppSidebar({
   userRole,
   pendingApprovalsCount = 0,
   pendingSupportCount = 0,
+  pendingFundRequestsCount = 0,
 }: {
   userRole: string;
   pendingApprovalsCount?: number;
   pendingSupportCount?: number;
+  pendingFundRequestsCount?: number;
 }) {
   const { collapsed, isReady } = useDashboardSidebar();
 
@@ -57,6 +59,7 @@ export function AppSidebar({
           className={collapsed ? "pt-1" : undefined}
           collapsed={collapsed}
           pendingApprovalsCount={pendingApprovalsCount}
+          pendingFundRequestsCount={pendingFundRequestsCount}
           pendingSupportCount={pendingSupportCount}
           userRole={userRole}
         />

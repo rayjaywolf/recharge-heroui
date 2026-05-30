@@ -6,7 +6,11 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:distributor-notifications": "vitest run tests/db/notifications.integration.test.ts",
+    "test:retailer-notifications": "vitest run tests/db/notifications.integration.test.ts -t \"retailer notifications\"",
+    "seed:distributor-notifications": "pnpm --filter api exec tsx scripts/seed-distributor-notifications.ts",
+    "seed:retailer-notifications": "pnpm --filter api exec tsx scripts/seed-retailer-notifications.ts"
   },
   "devDependencies": {
     "@types/pg": "^8.11.11",

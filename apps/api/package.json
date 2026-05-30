@@ -8,6 +8,7 @@
     "start": "tsx src/index.ts",
     "dev:bun": "bun run --hot src/index.ts",
     "start:bun": "bun src/index.ts",
+    "seed:distributor-notifications": "tsx scripts/seed-distributor-notifications.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

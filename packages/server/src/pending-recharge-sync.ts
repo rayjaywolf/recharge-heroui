@@ -4,6 +4,10 @@ import { commissionRule, db, transaction, user } from "@repo/db";
 import { incrementBalance } from "./db-utils";
 import { validateProviderCredentials } from "./env-validation";
 import {
+  notifyDistributorRechargeSettled,
+  resolveRechargeSettlementOutcome,
+} from "./notifications";
+import {
   parseRechargeProviderResponse,
   type ParsedRechargeResponse,
 } from "./recharge-gateway";
@@ -51,7 +55,11 @@ export async function settlePendingTransaction(
   }
 
   const [txUser] = await db
-    .select({ distributorId: user.distributorId, role: user.role })
+    .select({
+      distributorId: user.distributorId,
+      role: user.role,
+      name: user.name,
+    })
     .from(user)
     .where(eq(user.id, tx.userId))
     .limit(1);
@@ -144,6 +152,30 @@ export async function settlePendingTransaction(
     }
     return true;
   });
+
+  if (settled && txUser) {
+    const finalStatus = parsed.finalStatus;
+    if (
+      finalStatus === "SUCCESS" ||
+      finalStatus === "FAILED" ||
+      finalStatus === "REFUNDED"
+    ) {
+      await notifyDistributorRechargeSettled({
+        transactionId: tx.id,
+        operator: tx.operator,
+        amount: tx.amount,
+        targetPhone: tx.targetPhone,
+        actorName: txUser.name,
+        actorRole: txUser.role,
+        userId: tx.userId,
+        distributorId: txUser.distributorId,
+        outcome: resolveRechargeSettlementOutcome({
+          status: finalStatus,
+          refunded: parsed.shouldRefund && finalStatus === "FAILED",
+        }),
+      });
+    }
+  }
 
   return settled ? "updated" : "unchanged";
 }

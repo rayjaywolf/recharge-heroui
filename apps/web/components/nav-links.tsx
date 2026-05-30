@@ -15,6 +15,7 @@ export function NavLinksList({
   userRole,
   pendingApprovalsCount = 0,
   pendingSupportCount = 0,
+  pendingFundRequestsCount = 0,
   onNavigate,
   className,
   collapsed = false,
@@ -22,6 +23,7 @@ export function NavLinksList({
   userRole: string;
   pendingApprovalsCount?: number;
   pendingSupportCount?: number;
+  pendingFundRequestsCount?: number;
   onNavigate?: () => void;
   className?: string;
   collapsed?: boolean;
@@ -36,26 +38,53 @@ export function NavLinksList({
           key={link.href}
           link={link}
           isActive={isNavLinkActive(pathname, link.href, userRole)}
-          badge={
-            link.href === "/admin/approvals" && pendingApprovalsCount > 0
-              ? pendingApprovalsCount > 99
-                ? "99+"
-                : String(pendingApprovalsCount)
-              : (link.href === "/admin/support" ||
-                    link.href === "/distributor/support" ||
-                    link.href === "/retailer/support") &&
-                  pendingSupportCount > 0
-                ? pendingSupportCount > 99
-                  ? "99+"
-                  : String(pendingSupportCount)
-                : undefined
-          }
+          badge={resolveNavBadge(link.href, {
+            pendingApprovalsCount,
+            pendingFundRequestsCount,
+            pendingSupportCount,
+          })}
           collapsed={collapsed}
           onNavigate={onNavigate}
         />
       ))}
     </nav>
   );
+}
+
+type NavBadge = {
+  label: string;
+};
+
+function formatNavBadgeCount(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}
+
+function resolveNavBadge(
+  href: string,
+  counts: {
+    pendingApprovalsCount: number;
+    pendingFundRequestsCount: number;
+    pendingSupportCount: number;
+  },
+): NavBadge | undefined {
+  if (href === "/admin/approvals" && counts.pendingApprovalsCount > 0) {
+    return { label: formatNavBadgeCount(counts.pendingApprovalsCount) };
+  }
+
+  if (href === "/distributor/funds" && counts.pendingFundRequestsCount > 0) {
+    return { label: formatNavBadgeCount(counts.pendingFundRequestsCount) };
+  }
+
+  if (
+    (href === "/admin/support" ||
+      href === "/distributor/support" ||
+      href === "/retailer/support") &&
+    counts.pendingSupportCount > 0
+  ) {
+    return { label: formatNavBadgeCount(counts.pendingSupportCount) };
+  }
+
+  return undefined;
 }
 
 function NavLinkItem({
@@ -67,7 +96,7 @@ function NavLinkItem({
 }: {
   link: NavLink;
   isActive: boolean;
-  badge?: string;
+  badge?: NavBadge;
   onNavigate?: () => void;
   collapsed?: boolean;
 }) {
@@ -86,15 +115,18 @@ function NavLinkItem({
       <span className="relative shrink-0">
         <Icon className="size-[1.125rem] opacity-80" />
         {badge && collapsed ? (
-          <span className="absolute -right-1 -top-1 size-2 rounded-full bg-accent" />
+          <span className="absolute -right-1 -top-1 size-2 rounded-full bg-danger ring-2 ring-surface" />
         ) : null}
       </span>
       {!collapsed ? (
         <>
           <span className="flex-1 truncate">{link.name}</span>
           {badge ? (
-            <Chip size="sm" variant="primary">
-              {badge}
+            <Chip
+              className="min-w-5 justify-center bg-danger px-1.5 font-semibold tabular-nums text-danger-foreground"
+              size="sm"
+            >
+              {badge.label}
             </Chip>
           ) : null}
         </>
@@ -121,7 +153,7 @@ function NavLinkItem({
         <Tooltip.Arrow />
         <p className="text-xs">
           {link.name}
-          {badge ? ` (${badge})` : ""}
+          {badge ? ` (${badge.label})` : ""}
         </p>
       </Tooltip.Content>
     </Tooltip>

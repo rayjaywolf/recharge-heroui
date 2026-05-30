@@ -64,7 +64,7 @@ export function RechargeForm({
   const [mpin, setMpin] = useState("");
   const [mpinInvalid, setMpinInvalid] = useState(false);
   const [mpinError, setMpinError] = useState<string | null>(null);
-  const [verifyingMpin, setVerifyingMpin] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [pendingRecharge, setPendingRecharge] = useState<{
     normalizedPhone: string;
     operator: string;
@@ -264,8 +264,10 @@ export function RechargeForm({
     }
   };
 
+  const isConfirming = confirming || submitting;
+
   const handleConfirmMpin = async () => {
-    if (!pendingRecharge || verifyingMpin || submitting) return;
+    if (!pendingRecharge || isConfirming) return;
 
     if (!/^\d{4}$/.test(mpin)) {
       setMpinInvalid(true);
@@ -273,7 +275,7 @@ export function RechargeForm({
       return;
     }
 
-    setVerifyingMpin(true);
+    setConfirming(true);
     setMpinInvalid(false);
     setMpinError(null);
 
@@ -292,7 +294,6 @@ export function RechargeForm({
         return;
       }
 
-      setMpinOpen(false);
       await submitRecharge({ ...pendingRecharge, mpin });
       setPendingRecharge(null);
       setMpin("");
@@ -300,7 +301,7 @@ export function RechargeForm({
       setMpinInvalid(true);
       setMpinError("Could not verify MPIN. Please try again.");
     } finally {
-      setVerifyingMpin(false);
+      setConfirming(false);
     }
   };
 
@@ -347,7 +348,9 @@ export function RechargeForm({
       <Modal>
         <Modal.Backdrop
           isOpen={mpinOpen}
+          isDismissable={!isConfirming}
           onOpenChange={(open) => {
+            if (!open && isConfirming) return;
             setMpinOpen(open);
             if (!open) {
               setMpin("");
@@ -371,22 +374,31 @@ export function RechargeForm({
                   errorMessage={mpinError}
                   hideLabel
                   id="recharge-mpin"
+                  isDisabled={isConfirming}
                   isInvalid={mpinInvalid}
                   value={mpin}
                   onChange={handleMpinChange}
                 />
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="secondary" onPress={() => setMpinOpen(false)}>
+                <Button
+                  isDisabled={isConfirming}
+                  variant="secondary"
+                  onPress={() => setMpinOpen(false)}
+                >
                   Cancel
                 </Button>
                 <Button
-                  isDisabled={verifyingMpin || submitting}
+                  isPending={isConfirming}
                   variant="primary"
-                  onPress={handleConfirmMpin}
+                  onPress={() => void handleConfirmMpin()}
                 >
-                  {verifyingMpin || submitting ? <Spinner size="sm" /> : null}
-                  Confirm and recharge
+                  {({ isPending }) => (
+                    <>
+                      {isPending ? <Spinner color="current" size="sm" /> : null}
+                      {isPending ? "Processing recharge…" : "Confirm and recharge"}
+                    </>
+                  )}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>

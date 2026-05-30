@@ -20,6 +20,7 @@ type DashboardHeaderProps = {
   balance: number;
   pendingApprovalsCount?: number;
   pendingSupportCount?: number;
+  pendingFundRequestsCount?: number;
   unreadNotificationCount?: number;
 };
 
@@ -33,11 +34,15 @@ export function DashboardHeader({
   balance,
   pendingApprovalsCount = 0,
   pendingSupportCount = 0,
+  pendingFundRequestsCount = 0,
   unreadNotificationCount = 0,
 }: DashboardHeaderProps) {
   const { collapsed, toggle } = useDashboardSidebar();
   const showWalletMenu = userRole === "DISTRIBUTOR" || userRole === "RETAILER";
-  const showNotifications = userRole === "ADMIN";
+  const showNotifications =
+    userRole === "ADMIN" ||
+    userRole === "DISTRIBUTOR" ||
+    userRole === "RETAILER";
 
   return (
     <Header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-separator bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -53,6 +58,7 @@ export function DashboardHeader({
 
       <MobileNavDrawer
         pendingApprovalsCount={pendingApprovalsCount}
+        pendingFundRequestsCount={pendingFundRequestsCount}
         pendingSupportCount={pendingSupportCount}
         userRole={userRole}
       >
@@ -82,7 +88,10 @@ export function DashboardHeader({
           <ThemeToggle />
 
           {showNotifications ? (
-            <NotificationBell initialUnreadCount={unreadNotificationCount} />
+            <NotificationBell
+              initialUnreadCount={unreadNotificationCount}
+              userRole={userRole}
+            />
           ) : null}
 
           {showWalletMenu ? (
