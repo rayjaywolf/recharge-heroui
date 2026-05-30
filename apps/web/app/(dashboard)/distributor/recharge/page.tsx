@@ -18,10 +18,8 @@ export default async function DistributorRechargePage() {
       </div>
 
       <Card variant="default">
-        <Card.Content className="flex flex-col items-center py-6">
-          <div className="w-full max-w-lg">
-            <RechargeForm confirmationBasePath="/distributor/recharge/confirmation" />
-          </div>
+        <Card.Content className="p-6">
+          <RechargeForm confirmationBasePath="/distributor/recharge/confirmation" />
         </Card.Content>
       </Card>
     </div>

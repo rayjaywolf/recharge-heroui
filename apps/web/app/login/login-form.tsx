@@ -159,9 +159,13 @@ export function LoginForm() {
           </Card.Content>
 
           <Card.Footer className="mt-4 flex flex-col gap-2">
-            <Button fullWidth isDisabled={loading} type="submit" variant="primary">
-              {loading ? <Spinner size="sm" /> : null}
-              Sign in
+            <Button fullWidth isPending={loading} type="submit" variant="primary">
+              {({ isPending }) => (
+                <>
+                  {isPending ? <Spinner color="current" size="sm" /> : null}
+                  {isPending ? "Signing in…" : "Sign in"}
+                </>
+              )}
             </Button>
           </Card.Footer>
         </Form>

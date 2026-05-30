@@ -55,3 +55,5 @@ apps/web/generated/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+docs

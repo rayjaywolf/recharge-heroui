@@ -38,6 +38,42 @@ export const accountStatusEnum = pgEnum("AccountStatus", [
   "SUSPENDED",
 ]);
 export const disputeStatusEnum = pgEnum("DisputeStatus", ["PENDING", "RESOLVED"]);
+export const operatorLookupCache = pgTable(
+  "operator_lookup_cache",
+  {
+    id: text("id").primaryKey(),
+    phone: text("phone").notNull(),
+    payload: text("payload").notNull(),
+    fetchedAt: timestamp("fetchedAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expiresAt", { precision: 3, mode: "date" }).notNull(),
+  },
+  (table) => [uniqueIndex("operator_lookup_cache_phone_key").on(table.phone)],
+);
+
+export const rechargePlanCache = pgTable(
+  "recharge_plan_cache",
+  {
+    id: text("id").primaryKey(),
+    planapiOperatorCode: text("planapiOperatorCode").notNull(),
+    planapiCircleCode: text("planapiCircleCode").notNull(),
+    operatorLabel: text("operatorLabel").notNull(),
+    circleLabel: text("circleLabel").notNull(),
+    payload: text("payload").notNull(),
+    fetchedAt: timestamp("fetchedAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expiresAt", { precision: 3, mode: "date" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("recharge_plan_cache_operator_circle_key").on(
+      table.planapiOperatorCode,
+      table.planapiCircleCode,
+    ),
+  ],
+);
+
 export const notificationTypeEnum = pgEnum("NotificationType", [
   "RETAILER_PENDING_APPROVAL",
   "DISPUTE_PENDING",

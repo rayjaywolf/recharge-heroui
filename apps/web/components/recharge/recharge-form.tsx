@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Alert,
@@ -23,12 +23,33 @@ import {
   normalizePhoneNumber,
   validatePhoneNumber,
 } from "@/lib/phone";
+import { RechargePlansPicker } from "@/components/recharge/recharge-plans-picker";
 import type { CircleOption, RechargeProvider } from "@/lib/recharge-config";
+import type {
+  RechargePlanCategory,
+  RechargePlansApiResponse,
+} from "@/lib/recharge-plans";
 
 type RechargeConfigResponse = {
   operators: string[];
   operatorProviders: Record<string, RechargeProvider>;
   circlesByProvider: Record<RechargeProvider, CircleOption[]>;
+  operatorLookupEnabled?: boolean;
+  rechargePlansEnabled?: boolean;
+};
+
+type OperatorLookupResponse = {
+  operator: string;
+  circleCode: string | null;
+  circleLabel: string | null;
+  planapi?: {
+    operator: string;
+    opCode: string;
+    circle: string;
+    circleCode: string;
+  };
+  plans?: RechargePlansApiResponse | null;
+  error?: string;
 };
 
 function generateUUID() {
@@ -49,6 +70,7 @@ export function RechargeForm({
 }) {
   const router = useRouter();
   const isSubmitting = useRef(false);
+  const isNavigatingAwayRef = useRef(false);
 
   const [config, setConfig] = useState<RechargeConfigResponse | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
@@ -71,6 +93,18 @@ export function RechargeForm({
     amount: number;
     circleCode?: string;
   } | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [planCategories, setPlanCategories] = useState<RechargePlanCategory[]>(
+    [],
+  );
+  const skipCircleResetRef = useRef(false);
+  const lastLookupPhoneRef = useRef<string | null>(null);
+  const pendingLookupCircleRef = useRef<string | null>(null);
+  const plansScopeRef = useRef<string | null>(null);
+  const planapiCodesRef = useRef<{ opCode: string; circleCode: string } | null>(
+    null,
+  );
 
   useEffect(() => {
     setIdempotencyKey(generateUUID());
@@ -91,6 +125,8 @@ export function RechargeForm({
             operators: data.operators ?? [],
             operatorProviders: data.operatorProviders ?? {},
             circlesByProvider: data.circlesByProvider ?? {},
+            operatorLookupEnabled: Boolean(data.operatorLookupEnabled),
+            rechargePlansEnabled: Boolean(data.rechargePlansEnabled),
           });
           setConfigError(null);
         }
@@ -126,12 +162,224 @@ export function RechargeForm({
     routedProvider === "A1TOPUP";
 
   useEffect(() => {
+    if (skipCircleResetRef.current) {
+      skipCircleResetRef.current = false;
+      return;
+    }
     setCircleCode(null);
   }, [operator]);
 
+  /** Apply circle after operator lookup once provider circle list is available. */
+  useEffect(() => {
+    const pending = pendingLookupCircleRef.current;
+    if (!pending || !operator || circleOptions.length === 0) return;
+
+    if (circleOptions.some((c) => c.code === pending)) {
+      skipCircleResetRef.current = true;
+      setCircleCode(pending);
+      pendingLookupCircleRef.current = null;
+    }
+  }, [operator, circleOptions]);
+
+  const applyPlansFromLookup = useCallback(
+    (data: OperatorLookupResponse) => {
+      if (!config?.rechargePlansEnabled) {
+        setPlanCategories([]);
+        plansScopeRef.current = null;
+        return;
+      }
+
+      const scope = `${data.operator}:${data.circleCode ?? ""}`;
+      plansScopeRef.current = scope;
+      planapiCodesRef.current =
+        data.planapi?.opCode && data.planapi?.circleCode
+          ? {
+              opCode: data.planapi.opCode,
+              circleCode: data.planapi.circleCode,
+            }
+          : null;
+      setPlanCategories(data.plans?.categories ?? []);
+    },
+    [config?.rechargePlansEnabled],
+  );
+
+  const fetchPlansForSelection = useCallback(
+    async (params: {
+      operator: string;
+      circleCode: string | null;
+      planapiOpCode?: string;
+      planapiCircleCode?: string;
+    }) => {
+      if (!config?.rechargePlansEnabled || !params.operator) return;
+
+      const scope = `${params.operator}:${params.circleCode ?? ""}`;
+      if (plansScopeRef.current === scope) {
+        return;
+      }
+
+      setPlansLoading(true);
+      try {
+        const query = new URLSearchParams({ operator: params.operator });
+        if (params.circleCode) query.set("circleCode", params.circleCode);
+        if (params.planapiOpCode) query.set("planapiOpCode", params.planapiOpCode);
+        if (params.planapiCircleCode) {
+          query.set("planapiCircleCode", params.planapiCircleCode);
+        }
+
+        const res = await apiFetch(`/api/recharge/plans?${query.toString()}`);
+        const data = (await res.json()) as RechargePlansApiResponse & {
+          error?: string;
+        };
+
+        if (!res.ok) {
+          setPlanCategories([]);
+          plansScopeRef.current = null;
+          return;
+        }
+
+        plansScopeRef.current = scope;
+        setPlanCategories(data.categories ?? []);
+      } catch {
+        setPlanCategories([]);
+        plansScopeRef.current = null;
+      } finally {
+        setPlansLoading(false);
+      }
+    },
+    [config?.rechargePlansEnabled],
+  );
+
+  const runOperatorLookup = useCallback(
+    async (normalized: string) => {
+      if (!config) {
+        setLookupLoading(false);
+        return;
+      }
+      if (!validatePhoneNumber(normalized)) {
+        setLookupLoading(false);
+        return;
+      }
+      if (lastLookupPhoneRef.current === normalized) {
+        setLookupLoading(false);
+        return;
+      }
+
+      try {
+        const res = await apiFetch(
+          `/api/recharge/operator-lookup?phone=${encodeURIComponent(normalized)}`,
+        );
+        const data = (await res.json()) as OperatorLookupResponse;
+
+        if (!res.ok) {
+          lastLookupPhoneRef.current = normalized;
+          setPlanCategories([]);
+          plansScopeRef.current = null;
+          planapiCodesRef.current = null;
+          toast(
+            "Unable to fetch operator information. Please enter operator and circle manually.",
+            { variant: "danger" },
+          );
+          return;
+        }
+
+        lastLookupPhoneRef.current = normalized;
+        pendingLookupCircleRef.current = data.circleCode ?? null;
+        skipCircleResetRef.current = true;
+        setOperator(data.operator);
+        applyPlansFromLookup(data);
+      } catch {
+        lastLookupPhoneRef.current = normalized;
+        setPlanCategories([]);
+        plansScopeRef.current = null;
+        planapiCodesRef.current = null;
+        toast(
+          "Unable to fetch operator information. Please enter operator and circle manually.",
+          { variant: "danger" },
+        );
+      } finally {
+        setLookupLoading(false);
+      }
+    },
+    [config, applyPlansFromLookup],
+  );
+
+  useEffect(() => {
+    if (!config?.operatorLookupEnabled) return;
+
+    const normalized = normalizePhoneNumber(phone);
+    if (!validatePhoneNumber(normalized)) {
+      setLookupLoading(false);
+      lastLookupPhoneRef.current = null;
+      return;
+    }
+
+    setLookupLoading(true);
+
+    const timeoutId = window.setTimeout(() => {
+      void runOperatorLookup(normalized);
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [phone, config, runOperatorLookup]);
+
+  useEffect(() => {
+    if (!config?.rechargePlansEnabled || lookupLoading) return;
+    if (!operator) {
+      setPlanCategories([]);
+      plansScopeRef.current = null;
+      return;
+    }
+    if (circleRequired && !circleCode) return;
+
+    const scope = `${operator}:${circleCode ?? ""}`;
+    if (plansScopeRef.current === scope) return;
+
+    const timeoutId = window.setTimeout(() => {
+      void fetchPlansForSelection({
+        operator,
+        circleCode,
+        planapiOpCode: planapiCodesRef.current?.opCode,
+        planapiCircleCode: planapiCodesRef.current?.circleCode,
+      });
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    config?.rechargePlansEnabled,
+    operator,
+    circleCode,
+    circleRequired,
+    lookupLoading,
+    fetchPlansForSelection,
+  ]);
+
+  const handlePhoneChange = (value: string) => {
+    setPhone(value);
+    lastLookupPhoneRef.current = null;
+    pendingLookupCircleRef.current = null;
+    plansScopeRef.current = null;
+    planapiCodesRef.current = null;
+    setPlanCategories([]);
+  };
+
+  const handlePhoneBlur = () => {
+    if (!config?.operatorLookupEnabled) return;
+    const normalized = normalizePhoneNumber(phone);
+    if (!validatePhoneNumber(normalized)) return;
+    if (lastLookupPhoneRef.current === normalized || lookupLoading) return;
+    setLookupLoading(true);
+    void runOperatorLookup(normalized);
+  };
+
+  const fieldsLockedForLookup = lookupLoading;
+
   const goToConfirmation = (params: URLSearchParams) => {
+    isNavigatingAwayRef.current = true;
+    setMpinOpen(false);
+    setConfirming(false);
+    setSubmitting(false);
+    isSubmitting.current = false;
     router.push(`${confirmationBasePath}?${params.toString()}`);
-    router.refresh();
   };
 
   const submitRecharge = async ({
@@ -216,8 +464,10 @@ export function RechargeForm({
       });
       goToConfirmation(params);
     } finally {
-      isSubmitting.current = false;
-      setSubmitting(false);
+      if (!isNavigatingAwayRef.current) {
+        isSubmitting.current = false;
+        setSubmitting(false);
+      }
     }
   };
 
@@ -295,13 +545,17 @@ export function RechargeForm({
       }
 
       await submitRecharge({ ...pendingRecharge, mpin });
-      setPendingRecharge(null);
-      setMpin("");
+      if (!isNavigatingAwayRef.current) {
+        setPendingRecharge(null);
+        setMpin("");
+      }
     } catch {
       setMpinInvalid(true);
       setMpinError("Could not verify MPIN. Please try again.");
     } finally {
-      setConfirming(false);
+      if (!isNavigatingAwayRef.current) {
+        setConfirming(false);
+      }
     }
   };
 
@@ -406,7 +660,14 @@ export function RechargeForm({
         </Modal.Backdrop>
       </Modal>
 
-      <Form className="grid w-full max-w-lg gap-4" onSubmit={handleSubmit}>
+      <div
+        className={
+          config.rechargePlansEnabled
+            ? "grid w-full gap-6 lg:grid-cols-2 lg:gap-8"
+            : "w-full max-w-lg"
+        }
+      >
+        <Form className="flex flex-col gap-4" onSubmit={handleSubmit}>
       <TextField isRequired name="phone" type="tel">
         <Label>Phone number</Label>
         <Input
@@ -414,16 +675,25 @@ export function RechargeForm({
           placeholder="10-digit mobile"
           value={phone}
           variant="secondary"
-          onChange={(e) => setPhone(e.target.value)}
+          onBlur={handlePhoneBlur}
+          onChange={(e) => handlePhoneChange(e.target.value)}
         />
       </TextField>
 
       <Select
+        key={`operator-${operator ?? "none"}`}
         isRequired
         className="w-full"
+        isDisabled={fieldsLockedForLookup}
         placeholder="Select operator"
         value={operator}
-        onChange={(value) => setOperator(value != null ? String(value) : null)}
+        onChange={(value) => {
+          lastLookupPhoneRef.current = null;
+          plansScopeRef.current = null;
+          planapiCodesRef.current = null;
+          setPlanCategories([]);
+          setOperator(value != null ? String(value) : null);
+        }}
       >
         <Label>Operator</Label>
         <Select.Trigger>
@@ -442,27 +712,19 @@ export function RechargeForm({
         </Select.Popover>
       </Select>
 
-      <TextField isRequired name="amount" type="number">
-        <Label>Amount (₹)</Label>
-        <Input
-          min={1}
-          placeholder="100"
-          step={1}
-          value={amount}
-          variant="secondary"
-          onChange={(e) => setAmount(e.target.value)}
-        />
-      </TextField>
-
       {circleOptions.length > 0 ? (
         <Select
+          key={`circle-${operator ?? "none"}-${circleCode ?? "none"}`}
           isRequired={circleRequired}
           className="w-full"
+          isDisabled={fieldsLockedForLookup}
           placeholder={circleRequired ? "Select circle" : "Circle (optional)"}
           value={circleCode}
-          onChange={(value) =>
-            setCircleCode(value != null ? String(value) : null)
-          }
+          onChange={(value) => {
+            lastLookupPhoneRef.current = null;
+            plansScopeRef.current = null;
+            setCircleCode(value != null ? String(value) : null);
+          }}
         >
           <Label>
             {circleRequired ? "Circle" : "Circle code"}
@@ -487,7 +749,7 @@ export function RechargeForm({
           </Select.Popover>
         </Select>
       ) : (
-        <TextField isRequired={circleRequired} name="circleCode">
+        <TextField isRequired={circleRequired} isDisabled={fieldsLockedForLookup} name="circleCode">
           <Label>
             {circleRequired ? "Circle code" : "Circle code (optional)"}
           </Label>
@@ -502,16 +764,48 @@ export function RechargeForm({
         </TextField>
       )}
 
+      <TextField isRequired name="amount" type="number">
+        <Label>Amount (₹)</Label>
+        <Input
+          min={1}
+          placeholder="100"
+          step={1}
+          value={amount}
+          variant="secondary"
+          onChange={(e) => setAmount(e.target.value)}
+        />
+      </TextField>
+
       <Button
         className="mt-2 w-full"
-        isDisabled={submitting || !operator}
+        isDisabled={fieldsLockedForLookup || submitting || !operator}
+        isPending={fieldsLockedForLookup}
         type="submit"
         variant="primary"
       >
-        {submitting ? <Spinner size="sm" /> : null}
-        Initiate recharge
+        {({ isPending }) => (
+          <>
+            {isPending ? <Spinner color="current" size="sm" /> : null}
+            {isPending ? "Fetching information" : "Initiate recharge"}
+          </>
+        )}
       </Button>
-      </Form>
+        </Form>
+
+        {config.rechargePlansEnabled ? (
+          <aside className="border-t border-default-200 pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
+            <RechargePlansPicker
+              awaitingSelection={
+                !operator || (circleRequired && !circleCode)
+              }
+              categories={planCategories}
+              loading={plansLoading || lookupLoading}
+              selectedAmount={amount ? Number(amount) : null}
+              onSelectAmount={(value) => setAmount(String(value))}
+            />
+          </aside>
+        ) : null}
+      </div>
     </>
   );
 }

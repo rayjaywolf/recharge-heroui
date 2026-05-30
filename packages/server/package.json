@@ -17,7 +17,10 @@
     "./realrobo": "./src/realrobo.ts",
     "./pending-recharge-sync": "./src/pending-recharge-sync.ts",
     "./mpin": "./src/mpin.ts",
-    "./notifications": "./src/notifications.ts"
+    "./notifications": "./src/notifications.ts",
+    "./planapi": "./src/planapi.ts",
+    "./recharge-plan-cache": "./src/recharge-plan-cache.ts",
+    "./operator-lookup-cache": "./src/operator-lookup-cache.ts"
   },
   "dependencies": {
     "@repo/db": "workspace:*",

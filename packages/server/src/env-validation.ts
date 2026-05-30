@@ -30,6 +30,8 @@ const ENV_VARS: EnvVarConfig[] = [
     description: 'RealRobo lapu_id sent on recharge requests',
   },
   { name: 'MROBOTICS_API_TOKEN', required: false, description: 'MRobotics API token' },
+  { name: 'PLANAPI_USER_ID', required: false, description: 'planapi.in ApiUserID (operator/circle lookup)' },
+  { name: 'PLANAPI_API_PASSWORD', required: false, description: 'planapi.in ApiPassword (operator/circle lookup)' },
   
   // Application
   { name: 'NODE_ENV', required: false, description: 'Node environment (development/production)' },

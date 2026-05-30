@@ -9,7 +9,9 @@
     "./recharge-config": "./src/recharge-config.ts",
     "./recharge-providers": "./src/recharge-providers.ts",
     "./mpin": "./src/mpin.ts",
-    "./notification-href": "./src/notification-href.ts"
+    "./notification-href": "./src/notification-href.ts",
+    "./planapi-mapping": "./src/planapi-mapping.ts",
+    "./recharge-plans": "./src/recharge-plans.ts"
   },
   "devDependencies": {
     "typescript": "^5"

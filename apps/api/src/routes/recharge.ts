@@ -34,6 +34,12 @@ import { syncPendingRealRoboTransactionsForUser } from "@repo/server/pending-rec
 import { validateRealRoboCircle } from "@repo/server/realrobo";
 import { verifyUserMpin } from "@repo/server/mpin";
 import { CIRCLES_BY_PROVIDER, getClientProviders } from "@repo/shared/recharge-config";
+import { isPlanapiConfigured } from "@repo/server/planapi";
+import { lookupMobileOperatorAndCircleCached } from "@repo/server/operator-lookup-cache";
+import {
+  getRechargePlansForPair,
+  isRechargePlansEnabled,
+} from "@repo/server/recharge-plan-cache";
 import { requireSession, type AppVariables } from "../middleware";
 
 const EXCLUDED_OPERATORS = [
@@ -68,6 +74,8 @@ rechargeRoutes.get("/api/recharge/config", requireSession, async (c) => {
       operators: rules.map((r) => r.operator),
       providers: getClientProviders(liveProviders),
       circlesByProvider: CIRCLES_BY_PROVIDER,
+      operatorLookupEnabled: isPlanapiConfigured(),
+      rechargePlansEnabled: isRechargePlansEnabled(),
       operatorProviders: Object.fromEntries(
         routing.map((r) => [r.operator, r.provider]),
       ),
@@ -85,6 +93,131 @@ rechargeRoutes.get("/api/recharge/config", requireSession, async (c) => {
   } catch (error) {
     console.error("Recharge config error:", error);
     return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+rechargeRoutes.get("/api/recharge/operator-lookup", requireSession, async (c) => {
+  try {
+    const phone = c.req.query("phone")?.trim() ?? "";
+    if (!phone) {
+      return c.json({ error: "Phone number is required." }, 400);
+    }
+
+    if (!isPlanapiConfigured()) {
+      return c.json(
+        { error: "Operator lookup is not configured.", available: false },
+        503,
+      );
+    }
+
+    const [rules, routing] = await Promise.all([
+      db
+        .select({ operator: commissionRule.operator })
+        .from(commissionRule)
+        .orderBy(asc(commissionRule.operator)),
+      db
+        .select({
+          operator: operatorProviderConfig.operator,
+          provider: operatorProviderConfig.provider,
+        })
+        .from(operatorProviderConfig),
+    ]);
+
+    const operators = rules.map((r) => r.operator);
+    const operatorProviders = Object.fromEntries(
+      routing.map((r) => [r.operator, r.provider]),
+    );
+
+    const { lookupCached, ...result } = await lookupMobileOperatorAndCircleCached({
+      phone,
+      configuredOperators: operators,
+      circlesByProvider: CIRCLES_BY_PROVIDER,
+      operatorProviders,
+    });
+
+    let plans = null;
+    if (isRechargePlansEnabled()) {
+      try {
+        plans = await getRechargePlansForPair({
+          operatorLabel: result.operator,
+          internalCircleCode: result.circleCode,
+          circleLabel: result.circleLabel,
+          planapiOpCode: result.planapi.opCode,
+          planapiCircleCode: result.planapi.circleCode,
+          planapiCircleName: result.planapi.circle,
+        });
+      } catch (planError) {
+        console.error("Recharge plans fetch after lookup:", planError);
+      }
+    }
+
+    return c.json({
+      available: true,
+      operator: result.operator,
+      circleCode: result.circleCode,
+      circleLabel: result.circleLabel,
+      planapi: result.planapi,
+      plans,
+      lookupCached,
+      plansCached: plans?.cached ?? false,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Operator lookup failed.";
+    console.error("Operator lookup error:", error);
+    return c.json({ error: message, available: true }, 400);
+  }
+});
+
+rechargeRoutes.get("/api/recharge/plans", requireSession, async (c) => {
+  try {
+    const operator = c.req.query("operator")?.trim() ?? "";
+    const circleCode = c.req.query("circleCode")?.trim() || null;
+    const planapiOpCode = c.req.query("planapiOpCode")?.trim() || null;
+    const planapiCircleCode = c.req.query("planapiCircleCode")?.trim() || null;
+
+    if (!operator) {
+      return c.json({ error: "Operator is required." }, 400);
+    }
+
+    if (!isRechargePlansEnabled()) {
+      return c.json(
+        { error: "Recharge plans are not configured.", available: false },
+        503,
+      );
+    }
+
+    const circleLabel =
+      circleCode != null
+        ? (Object.values(CIRCLES_BY_PROVIDER)
+            .flat()
+            .find((c) => c.code === circleCode)?.label ?? null)
+        : null;
+
+    const plans = await getRechargePlansForPair({
+      operatorLabel: operator,
+      internalCircleCode: circleCode,
+      circleLabel,
+      planapiOpCode,
+      planapiCircleCode,
+    });
+
+    if (!plans) {
+      return c.json(
+        {
+          error:
+            "Could not resolve operator and circle for plan lookup. Select a supported circle.",
+        },
+        400,
+      );
+    }
+
+    return c.json({ available: true, ...plans });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Could not load recharge plans.";
+    console.error("Recharge plans error:", error);
+    return c.json({ error: message, available: true }, 400);
   }
 });
 

@@ -1,9 +1,14 @@
 /** Normalize Indian mobile numbers to 10 digits (no country code). */
 export function normalizePhoneNumber(phone: string): string {
-  const cleanPhone = phone.replace(/\D/g, "");
+  let cleanPhone = phone.replace(/\D/g, "");
 
   if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) {
-    return cleanPhone.substring(2);
+    cleanPhone = cleanPhone.substring(2);
+  }
+
+  // Common in India: 0 + 10-digit mobile
+  if (cleanPhone.length === 11 && cleanPhone.startsWith("0")) {
+    cleanPhone = cleanPhone.substring(1);
   }
 
   return cleanPhone;
