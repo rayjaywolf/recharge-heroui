@@ -67,7 +67,44 @@ export function DashboardHeader({
         </Button>
       </MobileNavDrawer>
 
-      <div className="ml-auto flex min-w-0 items-center gap-4">
+      <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-0">
+          <ThemeToggle />
+          {showNotifications ? (
+            <NotificationBell
+              initialUnreadCount={unreadNotificationCount}
+              userRole={userRole}
+            />
+          ) : null}
+          <div className="ml-2">
+            {showWalletMenu ? (
+              <WalletBalanceMenu balance={balance} userRole={userRole} />
+            ) : (
+              <Chip
+                className="inline-flex items-center gap-2.5 font-medium"
+                size="md"
+                variant="secondary"
+              >
+                <Wallet
+                  className="size-4 shrink-0 text-success"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                <Money
+                  amount={balance}
+                  className="leading-none text-success"
+                  fractionDigits={2}
+                />
+              </Chip>
+            )}
+          </div>
+        </div>
+
+        <div
+          aria-hidden
+          className="hidden h-6 w-px shrink-0 bg-separator sm:block"
+        />
+
         <Link
           aria-label="View profile"
           href="/profile"
@@ -84,57 +121,17 @@ export function DashboardHeader({
           </div>
         </Link>
 
-        <div className="flex items-center gap-2 sm:border-l sm:border-separator sm:pl-4">
-          <ThemeToggle />
+        <Link
+          aria-label="View profile"
+          href="/profile"
+          className="rounded-md p-1 hover:bg-content2/50 sm:hidden"
+        >
+          <div className="flex size-8 items-center justify-center overflow-hidden rounded-full">
+            <Avatar name={userName} size={28} variant="beam" />
+          </div>
+        </Link>
 
-          {showNotifications ? (
-            <NotificationBell
-              initialUnreadCount={unreadNotificationCount}
-              userRole={userRole}
-            />
-          ) : null}
-
-          {showWalletMenu ? (
-            <WalletBalanceMenu balance={balance} userRole={userRole} />
-          ) : (
-            <Chip
-              className="inline-flex items-center gap-2.5 font-medium"
-              size="md"
-              variant="secondary"
-            >
-              <Wallet
-                className="size-4 shrink-0 text-success"
-                strokeWidth={2}
-                aria-hidden
-              />
-              <Money
-                amount={balance}
-                className="leading-none text-success"
-                fractionDigits={2}
-              />
-            </Chip>
-          )}
-
-          <Link
-            aria-label="View profile"
-            href="/profile"
-            className="min-w-0 rounded-md py-1 hover:bg-content2/50 sm:hidden"
-          >
-            <div className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center overflow-hidden rounded-full">
-                <Avatar name={userName} size={28} variant="beam" />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {userName}
-                </p>
-                <p className="text-xs text-muted">{formatRole(userRole)}</p>
-              </div>
-            </div>
-          </Link>
-
-          <LogoutButton />
-        </div>
+        <LogoutButton />
       </div>
     </Header>
   );
