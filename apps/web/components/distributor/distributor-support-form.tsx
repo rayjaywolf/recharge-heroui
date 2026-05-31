@@ -21,6 +21,7 @@ import {
 
 import { Money } from "@/components/money";
 import { apiFetch } from "@/lib/api-client";
+import { formatInr } from "@/lib/format-money";
 import { formatTableDateTime } from "@/lib/utils";
 
 export type DistributorSupportTransactionOption = {
@@ -60,11 +61,15 @@ export function DistributorSupportForm({
     const q = search.trim().toLowerCase();
     if (!q) return baseOptions;
     return baseOptions.filter((tx) => {
+      const amountFormatted = formatInr(tx.amount).toLowerCase();
       const composed = [
         tx.operator,
         tx.targetPhone,
         tx.apiReferenceId ?? "",
         tx.id,
+        String(tx.amount),
+        amountFormatted,
+        amountFormatted.replace(/[₹,\s]/g, ""),
       ]
         .join(" ")
         .toLowerCase();
@@ -145,9 +150,9 @@ export function DistributorSupportForm({
               <Autocomplete.Indicator />
             </Autocomplete.Trigger>
             <Autocomplete.Popover>
-              <div className="border-b border-separator p-2">
-                <SearchField>
-                  <SearchField.Group>
+              <div className="border-b border-separator px-3 py-2">
+                <SearchField className="w-full !px-0">
+                  <SearchField.Group className="w-full">
                     <SearchField.SearchIcon />
                     <SearchField.Input
                       placeholder="Search transaction..."
@@ -165,8 +170,8 @@ export function DistributorSupportForm({
                     id={tx.id}
                     textValue={`${tx.operator} ${tx.targetPhone} ${tx.apiReferenceId ?? ""} ${tx.id}`}
                   >
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0">
+                    <div className="flex w-full min-w-0 flex-1 items-center gap-4">
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-foreground">
                           {tx.operator} · {tx.targetPhone}
                         </p>
@@ -175,9 +180,11 @@ export function DistributorSupportForm({
                           {tx.apiReferenceId ? ` · Ref: ${tx.apiReferenceId}` : ""}
                         </p>
                       </div>
-                      <Money amount={tx.amount} className="text-sm" />
+                      <Money
+                        amount={tx.amount}
+                        className="shrink-0 text-sm tabular-nums"
+                      />
                     </div>
-                    <ListBox.ItemIndicator />
                   </ListBox.Item>
                 ))}
               </ListBox>

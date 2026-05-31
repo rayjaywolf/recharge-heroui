@@ -278,7 +278,7 @@ export function NotificationsList({
 
           <CheckboxGroup
             aria-label="Notifications"
-            className="[&_[data-slot=checkbox]]:mt-3 [&_[data-slot=checkbox]:first]:mt-1"
+            className="[&_[data-slot=checkbox]]:mt-3 [&_[data-slot=checkbox]:first-child]:mt-1"
             value={selected}
             onChange={setSelected}
           >

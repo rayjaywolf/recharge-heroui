@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
@@ -391,10 +391,9 @@ export const dispute = pgTable(
     index("dispute_transactionId_idx").on(table.transactionId),
     index("dispute_status_idx").on(table.status),
     index("dispute_resolvedBy_idx").on(table.resolvedBy),
-    uniqueIndex("dispute_transactionId_status_key").on(
-      table.transactionId,
-      table.status,
-    ),
+    uniqueIndex("dispute_transactionId_pending_key")
+      .on(table.transactionId)
+      .where(sql`status = 'PENDING'`),
     foreignKey({
       columns: [table.resolvedBy],
       foreignColumns: [user.id],

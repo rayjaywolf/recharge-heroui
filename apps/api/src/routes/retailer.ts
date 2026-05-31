@@ -277,17 +277,25 @@ retailerRoutes.post("/api/retailer/disputes", requireRetailer, async (c) => {
       );
     }
 
-    const [pending] = await db
-      .select({ id: dispute.id })
+    const [existing] = await db
+      .select({ id: dispute.id, status: dispute.status })
       .from(dispute)
-      .where(
-        and(eq(dispute.transactionId, transactionId), eq(dispute.status, "PENDING")),
-      )
+      .where(eq(dispute.transactionId, transactionId))
       .limit(1);
 
-    if (pending) {
+    if (existing?.status === "PENDING") {
       return c.json(
         { error: "A pending dispute already exists for this transaction." },
+        409,
+      );
+    }
+
+    if (existing?.status === "RESOLVED") {
+      return c.json(
+        {
+          error:
+            "This transaction already has a resolved dispute. Contact admin if you need to reopen it.",
+        },
         409,
       );
     }

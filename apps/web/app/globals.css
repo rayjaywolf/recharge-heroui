@@ -22,7 +22,8 @@
     --danger-foreground: oklch(99.11% 0 0);
     --default: oklch(94.00% 0.0087 155.00);
     --default-foreground: oklch(21.03% 0.0059 155.00);
-    --field-background: oklch(100.00% 0.0043 155.00);
+    /* Distinct from --surface so primary fields/selects read on cards */
+    --field-background: var(--default);
     --field-border: transparent;
     --field-foreground: oklch(21.03% 0.0087 155.00);
     --field-placeholder: oklch(55.17% 0.0174 155.00);
@@ -103,7 +104,29 @@
     --danger-foreground: oklch(99.11% 0 0);
     --default: oklch(27.40% 0.0087 155.00);
     --default-foreground: oklch(99.11% 0 0);
-    --field-background: oklch(21.03% 0.0174 155.00);
+    --default-hover: color-mix(
+      in oklab,
+      var(--default) 96%,
+      var(--default-foreground) 4%
+    );
+    /* Distinct from --surface so primary fields/selects read on cards */
+    --field-background: var(--default);
+    --field-hover: color-mix(
+      in oklab,
+      var(--field-background) 90%,
+      var(--field-foreground) 2%
+    );
+    --field-focus: var(--field-background);
+    --field-border-hover: color-mix(
+      in oklab,
+      var(--field-border, var(--border)) 88%,
+      var(--field-foreground) 10%
+    );
+    --field-border-focus: color-mix(
+      in oklab,
+      var(--field-border, var(--border)) 74%,
+      var(--field-foreground) 22%
+    );
     --field-border: transparent;
     --field-foreground: oklch(99.11% 0.0087 155.00);
     --field-placeholder: oklch(70.50% 0.0174 155.00);
@@ -176,24 +199,14 @@
     color: var(--success-soft-foreground) !important;
   }
 
-  /* Keep toast text aligned with earnings success text color (light mode only). */
-  .light [data-slot="toast"],
-  .light [data-slot="toast"] *,
-  .light .toast,
-  .light .toast *,
-  .default [data-slot="toast"],
-  .default [data-slot="toast"] *,
-  .default .toast,
-  .default .toast *,
-  [data-theme="light"] [data-slot="toast"],
-  [data-theme="light"] [data-slot="toast"] *,
-  [data-theme="light"] .toast,
-  [data-theme="light"] .toast *,
-  [data-theme="default"] [data-slot="toast"],
-  [data-theme="default"] [data-slot="toast"] *,
-  [data-theme="default"] .toast,
-  [data-theme="default"] .toast * {
-    color: var(--success-soft-foreground) !important;
+  /* Success toasts: dark emphasis on title/icon, normal body text (not chip soft green). */
+  .toast--success .toast__title,
+  .toast--success .toast__indicator {
+    color: var(--success-emphasis) !important;
+  }
+
+  .toast--success .toast__description {
+    color: var(--foreground) !important;
   }
 
   /* Force date picker/calendar popovers to white background in light mode only. */

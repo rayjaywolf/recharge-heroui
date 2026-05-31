@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   commissionRule,
@@ -794,6 +794,7 @@ adminRoutes.patch("/api/admin/disputes/:id/resolve", requireAdmin, async (c) => 
         status: dispute.status,
         distributorId: dispute.distributorId,
         subject: dispute.subject,
+        transactionId: dispute.transactionId,
       })
       .from(dispute)
       .where(eq(dispute.id, disputeId))
@@ -807,21 +808,34 @@ adminRoutes.patch("/api/admin/disputes/:id/resolve", requireAdmin, async (c) => 
       return c.json({ error: "Dispute is already resolved." }, 409);
     }
 
-    const [updated] = await db
-      .update(dispute)
-      .set({
-        status: "RESOLVED",
-        adminNote,
-        resolvedBy: adminUser.id,
-        resolvedAt: new Date(),
-      })
-      .where(eq(dispute.id, disputeId))
-      .returning({
-        id: dispute.id,
-        status: dispute.status,
-        adminNote: dispute.adminNote,
-        resolvedAt: dispute.resolvedAt,
-      });
+    const [updated] = await db.transaction(async (tx) => {
+      // Legacy rows: a second PENDING after an earlier RESOLVED for the same tx.
+      await tx
+        .delete(dispute)
+        .where(
+          and(
+            eq(dispute.transactionId, current.transactionId),
+            eq(dispute.status, "RESOLVED"),
+            ne(dispute.id, disputeId),
+          ),
+        );
+
+      return tx
+        .update(dispute)
+        .set({
+          status: "RESOLVED",
+          adminNote,
+          resolvedBy: adminUser.id,
+          resolvedAt: new Date(),
+        })
+        .where(eq(dispute.id, disputeId))
+        .returning({
+          id: dispute.id,
+          status: dispute.status,
+          adminNote: dispute.adminNote,
+          resolvedAt: dispute.resolvedAt,
+        });
+    });
 
     await markNotificationsReadForEntity({
       type: "DISPUTE_PENDING",
