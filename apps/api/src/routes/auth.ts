@@ -1,14 +1,21 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
-import { db, user } from "@repo/db";
+import { and, count, eq } from "drizzle-orm";
+import { db, dispute, fundRequest, transaction, user } from "@repo/db";
 import { auth } from "@repo/server/auth";
-import { setUserMpin, verifyUserMpin } from "@repo/server/mpin";
+import {
+  ensureUserMpinBackfill,
+  setUserMpin,
+  verifyUserMpin,
+} from "@repo/server/mpin";
 import { validateMpin } from "@repo/shared/mpin";
 import {
   assertCanRegisterRetailer,
   parseRetailerRegistrationInput,
   RegistrationConflictError,
 } from "@repo/server/retailer-registration";
+import { ensureUserAvatar } from "@repo/server/user-avatar";
+import { getAllProviderBalances } from "@repo/server/provider-balances";
+import { getUnreadNotificationCount } from "@repo/server/notifications";
 import { requireSession, type AppVariables } from "../middleware";
 
 export const authRoutes = new Hono<{ Variables: AppVariables }>();
@@ -146,5 +153,121 @@ authRoutes.post("/api/profile/change-name", requireSession, async (c) => {
   } catch (error) {
     console.error("Change name error:", error);
     return c.json({ error: "Failed to update name." }, 500);
+  }
+});
+
+authRoutes.get("/api/dashboard/bootstrap", requireSession, async (c) => {
+  try {
+    const session = c.get("session");
+    const [found] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, session.user.id))
+      .limit(1);
+
+    if (!found) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    const pendingApprovalsCount =
+      found.role === "ADMIN"
+        ? (
+            await db
+              .select({ total: count() })
+              .from(user)
+              .where(and(eq(user.role, "RETAILER"), eq(user.accountStatus, "PENDING")))
+          )[0]?.total ?? 0
+        : 0;
+
+    const unreadNotificationCount =
+      found.role === "ADMIN" || found.role === "DISTRIBUTOR" || found.role === "RETAILER"
+        ? await getUnreadNotificationCount(found.id)
+        : 0;
+
+    const pendingFundRequestsCount =
+      found.role === "DISTRIBUTOR"
+        ? (
+            await db
+              .select({ total: count() })
+              .from(fundRequest)
+              .where(
+                and(
+                  eq(fundRequest.distributorId, found.id),
+                  eq(fundRequest.status, "PENDING"),
+                ),
+              )
+          )[0]?.total ?? 0
+        : 0;
+
+    let pendingSupportCount = 0;
+    if (found.role === "ADMIN") {
+      const [row] = await db
+        .select({ total: count() })
+        .from(dispute)
+        .where(eq(dispute.status, "PENDING"));
+      pendingSupportCount = row?.total ?? 0;
+    } else if (found.role === "DISTRIBUTOR") {
+      const [row] = await db
+        .select({ total: count() })
+        .from(dispute)
+        .where(
+          and(
+            eq(dispute.distributorId, found.id),
+            eq(dispute.status, "PENDING"),
+          ),
+        );
+      pendingSupportCount = row?.total ?? 0;
+    } else if (found.role === "RETAILER") {
+      const [row] = await db
+        .select({ total: count() })
+        .from(dispute)
+        .innerJoin(transaction, eq(dispute.transactionId, transaction.id))
+        .where(
+          and(
+            eq(transaction.userId, found.id),
+            eq(dispute.status, "PENDING"),
+          ),
+        );
+      pendingSupportCount = row?.total ?? 0;
+    }
+
+    let mpinMustReset = false;
+    if (found.role !== "ADMIN") {
+      const mpinState = await ensureUserMpinBackfill(found.id, found.role);
+      mpinMustReset = mpinState.mpinMustReset;
+    }
+
+    const userImage = await ensureUserAvatar(found.id, found.name, found.image);
+
+    let adminProviderBalance: number | null = null;
+    if (found.role === "ADMIN") {
+      const balances = await getAllProviderBalances();
+      const realRobo = balances.find((row) => row.id === "REALROBO");
+      if (realRobo?.status === "ok" && realRobo.balance != null) {
+        adminProviderBalance = realRobo.balance;
+      }
+    }
+
+    return c.json({
+      user: {
+        id: found.id,
+        role: found.role,
+        name: found.name,
+        balance: found.balance,
+        accountStatus: found.accountStatus,
+        image: userImage,
+      },
+      ui: {
+        pendingApprovalsCount,
+        unreadNotificationCount,
+        pendingFundRequestsCount,
+        pendingSupportCount,
+        mpinMustReset,
+        adminProviderBalance,
+      },
+    });
+  } catch (error) {
+    console.error("Dashboard bootstrap error:", error);
+    return c.json({ error: "Failed to load dashboard data." }, 500);
   }
 });
