@@ -10,7 +10,7 @@ import { ensureUserMpinBackfill } from "@repo/server/mpin";
 import { ensureUserAvatar } from "@repo/server/user-avatar";
 import { getUnreadNotificationCount } from "@repo/server/notifications";
 import { getPendingFundRequestsCount } from "@/lib/pending-fund-requests";
-import { getRealRoboBalance } from "@repo/server/realrobo";
+import { getAllProviderBalances } from "@/lib/provider-balances";
 
 export default async function DashboardLayout({
   children,
@@ -96,9 +96,10 @@ export default async function DashboardLayout({
   let adminProviderBalance: number | null = null;
   if (found.role === "ADMIN") {
     try {
-      const realRobo = await getRealRoboBalance();
-      if (realRobo.status) {
-        adminProviderBalance = realRobo.data.balance;
+      const balances = await getAllProviderBalances();
+      const realRobo = balances.find((row) => row.id === "REALROBO");
+      if (realRobo?.status === "ok" && realRobo.balance != null) {
+        adminProviderBalance = realRobo.balance;
       }
     } catch (error) {
       console.error("Admin header RealRobo balance fetch failed:", error);
