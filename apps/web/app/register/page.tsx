@@ -27,6 +27,7 @@ import { BUSINESS_TYPES } from "@/lib/business-types";
 import { INDIAN_STATES } from "@/lib/indian-states";
 import { normalizeEmail, validateEmail } from "@/lib/email";
 import { normalizePhoneNumber, validatePhoneNumber } from "@/lib/phone";
+import { getRegisterErrorMessage } from "./register-error";
 
 export default function RegisterPage() {
   const [businessType, setBusinessType] = useState<string | null>(null);
@@ -94,7 +95,7 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Registration failed.");
+        setError(getRegisterErrorMessage(data));
         return;
       }
 

@@ -22,8 +22,14 @@
     --danger-foreground: oklch(99.11% 0 0);
     --default: oklch(94.00% 0.0087 155.00);
     --default-foreground: oklch(21.03% 0.0059 155.00);
-    /* Distinct from --surface so primary fields/selects read on cards */
-    --field-background: var(--default);
+    /* Make all fields pure white in light mode. */
+    --field-background: oklch(100% 0 0);
+    --field-hover: color-mix(
+      in oklab,
+      var(--field-background) 96%,
+      var(--field-foreground) 4%
+    );
+    --field-focus: var(--field-background);
     --field-border: transparent;
     --field-foreground: oklch(21.03% 0.0087 155.00);
     --field-placeholder: oklch(55.17% 0.0174 155.00);
@@ -109,8 +115,8 @@
       var(--default) 96%,
       var(--default-foreground) 4%
     );
-    /* Distinct from --surface so primary fields/selects read on cards */
-    --field-background: var(--default);
+    /* Dark-mode equivalent of white light fields: use base dark surface. */
+    --field-background: var(--surface);
     --field-hover: color-mix(
       in oklab,
       var(--field-background) 90%,
@@ -195,6 +201,34 @@
 
 /* Match HeroUI Success soft chip text (`chip--success.chip--soft`). */
 @layer utilities {
+  /*
+   * Force all form controls (input/select/textarea/date triggers) to use the
+   * same field background across the app.
+   */
+  .light [data-slot="input-wrapper"],
+  .light [data-slot="trigger"][aria-haspopup],
+  .light [data-slot="inner-wrapper"],
+  .default [data-slot="input-wrapper"],
+  .default [data-slot="trigger"][aria-haspopup],
+  .default [data-slot="inner-wrapper"],
+  [data-theme="light"] [data-slot="input-wrapper"],
+  [data-theme="light"] [data-slot="trigger"][aria-haspopup],
+  [data-theme="light"] [data-slot="inner-wrapper"],
+  [data-theme="default"] [data-slot="input-wrapper"],
+  [data-theme="default"] [data-slot="trigger"][aria-haspopup],
+  [data-theme="default"] [data-slot="inner-wrapper"] {
+    background-color: oklch(100% 0 0) !important;
+  }
+
+  .dark [data-slot="input-wrapper"],
+  .dark [data-slot="trigger"][aria-haspopup],
+  .dark [data-slot="inner-wrapper"],
+  [data-theme="dark"] [data-slot="input-wrapper"],
+  [data-theme="dark"] [data-slot="trigger"][aria-haspopup],
+  [data-theme="dark"] [data-slot="inner-wrapper"] {
+    background-color: var(--surface) !important;
+  }
+
   .text-success {
     color: var(--success-soft-foreground) !important;
   }

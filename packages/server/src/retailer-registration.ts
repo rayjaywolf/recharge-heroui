@@ -40,6 +40,31 @@ export class RegistrationConflictError extends Error {
   }
 }
 
+type ExistingRetailerMatch = {
+  phoneNumber: string | null;
+  whatsappNumber: string | null;
+  accountStatus: string;
+};
+
+export function buildRegistrationConflictMessage(
+  existing: ExistingRetailerMatch,
+  normalizedPhone: string,
+): string {
+  const phoneMatches =
+    existing.phoneNumber === normalizedPhone ||
+    existing.whatsappNumber === normalizedPhone;
+
+  if (existing.accountStatus === "PENDING") {
+    return phoneMatches
+      ? "An application with this phone number is already pending review."
+      : "An application with this email is already pending review.";
+  }
+
+  return phoneMatches
+    ? "An account with this phone number already exists. Sign in instead."
+    : "An account with this email already exists. Sign in instead.";
+}
+
 export function parseRetailerRegistrationInput(
   body: Record<string, unknown>,
 ): { normalizedPhone: string; accountEmail: string; input: RetailerRegistrationInput } {
@@ -162,23 +187,8 @@ export async function assertCanRegisterRetailer(
     return;
   }
 
-  const phoneMatches =
-    existing.phoneNumber === normalizedPhone ||
-    existing.whatsappNumber === normalizedPhone;
-
-  if (existing.accountStatus === "PENDING") {
-    throw new RegistrationConflictError(
-      phoneMatches
-        ? "An application with this phone number is already pending review."
-        : "An application with this email is already pending review.",
-      409,
-    );
-  }
-
   throw new RegistrationConflictError(
-    phoneMatches
-      ? "An account with this phone number already exists. Sign in instead."
-      : "An account with this email already exists. Sign in instead.",
+    buildRegistrationConflictMessage(existing, normalizedPhone),
     409,
   );
 }
