@@ -30,10 +30,25 @@ const extraTrustedOrigins =
   process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean) ??
   [];
 
+/**
+ * Pin the cookie security flag instead of inferring it from each instance's
+ * baseURL. The Koyeb API (sets the cookie) and the Vercel web app (reads it via
+ * `auth.api.getSession`) run separate Better Auth instances; if they disagree on
+ * `useSecureCookies`, they look for different cookie names (`__Secure-…` vs `…`)
+ * and the web app bounces freshly signed-in users back to /login.
+ */
+const useSecureCookies =
+  process.env.BETTER_AUTH_SECURE_COOKIES === "true" ||
+  (process.env.BETTER_AUTH_SECURE_COOKIES !== "false" &&
+    process.env.NODE_ENV === "production");
+
 export const auth = betterAuth({
   // Prefer API URL so mobile + Koyeb sessions match the host clients call.
   // Web still works via Next proxy (cookies scoped to the browser origin).
   baseURL: apiOrigin ?? webOrigin ?? "http://localhost:3001",
+  advanced: {
+    useSecureCookies,
+  },
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {

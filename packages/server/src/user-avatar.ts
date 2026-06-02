@@ -53,21 +53,33 @@ function isExternalImageUrl(image: string): boolean {
   return image.startsWith("http://") || image.startsWith("https://");
 }
 
-/** Backfill when `image` is missing or legacy SVG (Flutter cannot render those reliably). */
+/** Broken or dev-only URLs that must not be returned to clients (e.g. Flutter on device). */
+export function shouldRegenerateStoredAvatar(image: string): boolean {
+  if (isPngDataUrl(image)) return false;
+  if (image.startsWith("data:image/svg+xml")) return true;
+  if (image.includes("/api/avatars/")) return true;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(image)) {
+    return true;
+  }
+  return !isExternalImageUrl(image);
+}
+
+function isTrustedExternalAvatar(image: string): boolean {
+  return isExternalImageUrl(image) && !shouldRegenerateStoredAvatar(image);
+}
+
+/** Backfill when `image` is missing or not a portable PNG / OAuth URL. */
 export async function ensureUserAvatar(
   userId: string,
   name: string,
   image: string | null | undefined,
 ): Promise<string> {
   const trimmed = image?.trim();
-  if (trimmed) {
-    if (isPngDataUrl(trimmed) || isExternalImageUrl(trimmed)) {
-      return trimmed;
-    }
-    // Legacy `data:image/svg+xml;base64,...` from earlier deploy — upgrade to PNG.
-    if (trimmed.startsWith("data:image/svg+xml")) {
-      return assignUserAvatar(userId, name);
-    }
+  if (trimmed && isPngDataUrl(trimmed)) {
+    return trimmed;
+  }
+  if (trimmed && isTrustedExternalAvatar(trimmed)) {
+    return trimmed;
   }
   return assignUserAvatar(userId, name);
 }

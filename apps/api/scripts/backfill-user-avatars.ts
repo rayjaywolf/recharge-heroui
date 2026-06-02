@@ -1,33 +1,32 @@
 import "dotenv/config";
 import { eq, isNull, or, sql } from "drizzle-orm";
 import { db, pool, user } from "@repo/db";
-import { assignUserAvatar } from "@repo/server/user-avatar";
+import {
+  assignUserAvatar,
+  shouldRegenerateStoredAvatar,
+} from "@repo/server/user-avatar";
 
 async function main() {
   const rows = await db
     .select({ id: user.id, name: user.name, email: user.email, image: user.image })
-    .from(user)
-    .where(
-      or(
-        isNull(user.image),
-        eq(user.image, ""),
-        sql`${user.image} LIKE 'data:image/svg+xml%'`,
-      ),
-    );
+    .from(user);
 
-  if (rows.length === 0) {
-    console.log("All users already have boring-avatar images.");
+  const needsUpdate = rows.filter((row) => {
+    const img = row.image?.trim() ?? "";
+    return !img || shouldRegenerateStoredAvatar(img);
+  });
+
+  if (needsUpdate.length === 0) {
+    console.log("All users already have portable PNG (or OAuth) avatars.");
     return;
   }
 
-  let updated = 0;
-  for (const row of rows) {
+  for (const row of needsUpdate) {
     const seed = row.name?.trim() || row.email || row.id;
     await assignUserAvatar(row.id, seed);
-    updated += 1;
   }
 
-  console.log(`✅ Assigned avatars for ${updated} user(s).`);
+  console.log(`✅ Assigned PNG avatars for ${needsUpdate.length} user(s).`);
 }
 
 main()

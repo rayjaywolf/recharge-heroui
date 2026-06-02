@@ -10,6 +10,7 @@
     "start:bun": "bun src/index.ts",
     "seed:distributor-notifications": "tsx scripts/seed-distributor-notifications.ts",
     "backfill:user-avatars": "tsx scripts/backfill-user-avatars.ts",
+    "inspect:user-images": "tsx scripts/inspect-user-images.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
