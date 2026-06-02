@@ -3,9 +3,8 @@
 import { Menu, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Button, Chip, Header } from "@heroui/react";
-import Avatar from "boring-avatars";
-
 import { Money } from "@/components/money";
+import { UserAvatar } from "@/components/user-avatar";
 import { SidebarPanelIcon } from "@/components/sidebar-panel-icon";
 import { WalletBalanceMenu } from "@/components/wallet-balance-menu";
 import { useDashboardSidebar } from "@/components/dashboard-sidebar-context";
@@ -16,6 +15,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 type DashboardHeaderProps = {
   userName: string;
+  userImage: string;
   userRole: string;
   balance: number;
   pendingApprovalsCount?: number;
@@ -30,6 +30,7 @@ function formatRole(role: string): string {
 
 export function DashboardHeader({
   userName,
+  userImage,
   userRole,
   balance,
   pendingApprovalsCount = 0,
@@ -110,8 +111,8 @@ export function DashboardHeader({
           href="/profile"
           className="hidden min-w-0 items-center gap-2 rounded-md py-1 hover:bg-content2/50 sm:inline-flex"
         >
-          <div className="flex size-8 items-center justify-center overflow-hidden rounded-full">
-            <Avatar name={userName} size={28} variant="beam" />
+          <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full">
+            <UserAvatar image={userImage} alt={userName} size={32} />
           </div>
           <div className="min-w-0 text-right">
             <p className="truncate text-sm font-medium text-foreground">
@@ -126,8 +127,8 @@ export function DashboardHeader({
           href="/profile"
           className="rounded-md p-1 hover:bg-content2/50 sm:hidden"
         >
-          <div className="flex size-8 items-center justify-center overflow-hidden rounded-full">
-            <Avatar name={userName} size={28} variant="beam" />
+          <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full">
+            <UserAvatar image={userImage} alt={userName} size={32} />
           </div>
         </Link>
 

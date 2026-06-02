@@ -25,6 +25,7 @@ import { apiFetch } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 import { BUSINESS_TYPES } from "@/lib/business-types";
 import { INDIAN_STATES } from "@/lib/indian-states";
+import { normalizeEmail, validateEmail } from "@/lib/email";
 import { normalizePhoneNumber, validatePhoneNumber } from "@/lib/phone";
 
 export default function RegisterPage() {
@@ -41,6 +42,7 @@ export default function RegisterPage() {
     const formData = new FormData(e.currentTarget);
     const name = String(formData.get("name") ?? "").trim();
     const phoneNumber = String(formData.get("phoneNumber") ?? "").trim();
+    const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
     const address = String(formData.get("address") ?? "").trim();
     const pincode = String(formData.get("pincode") ?? "").trim();
@@ -64,6 +66,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (email.length > 0 && !validateEmail(normalizeEmail(email))) {
+      setError("Enter a valid email address.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -72,6 +79,7 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name,
           phoneNumber: normalizedPhone,
+          ...(email ? { email: normalizeEmail(email) } : {}),
           password,
           address,
           pincode,
@@ -152,14 +160,36 @@ export default function RegisterPage() {
                 <Description>Login credentials for your store.</Description>
                 <FieldGroup className="mt-4 grid gap-4 sm:grid-cols-2">
                   <TextField isRequired name="name">
-                    <Label>Full name</Label>
-                    <Input placeholder="John Doe" variant="secondary" />
+                    <Label htmlFor="register-full-name">Full name</Label>
+                    <Input
+                      autoComplete="name"
+                      id="register-full-name"
+                      name="name"
+                      placeholder="John Doe"
+                      type="text"
+                      variant="secondary"
+                    />
                   </TextField>
                   <TextField isRequired name="phoneNumber" type="tel">
-                    <Label>Phone number</Label>
+                    <Label htmlFor="register-phone">Phone number</Label>
                     <Input
+                      autoComplete="tel-national"
+                      id="register-phone"
                       inputMode="numeric"
+                      name="phoneNumber"
                       placeholder="10-digit mobile"
+                      type="tel"
+                      variant="secondary"
+                    />
+                  </TextField>
+                  <TextField name="email" type="email">
+                    <Label htmlFor="register-email">Email (optional)</Label>
+                    <Input
+                      autoComplete="email"
+                      id="register-email"
+                      name="email"
+                      placeholder="you@example.com"
+                      type="email"
                       variant="secondary"
                     />
                   </TextField>
@@ -169,8 +199,15 @@ export default function RegisterPage() {
                     name="password"
                     type="password"
                   >
-                    <Label>Password</Label>
-                    <Input placeholder="••••••••" variant="secondary" />
+                    <Label htmlFor="register-password">Password</Label>
+                    <Input
+                      autoComplete="new-password"
+                      id="register-password"
+                      name="password"
+                      placeholder="••••••••"
+                      type="password"
+                      variant="secondary"
+                    />
                   </TextField>
                 </FieldGroup>
               </Fieldset>

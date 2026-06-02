@@ -20,13 +20,17 @@
     "./notifications": "./src/notifications.ts",
     "./planapi": "./src/planapi.ts",
     "./recharge-plan-cache": "./src/recharge-plan-cache.ts",
-    "./operator-lookup-cache": "./src/operator-lookup-cache.ts"
+    "./operator-lookup-cache": "./src/operator-lookup-cache.ts",
+    "./retailer-top-amounts-cache": "./src/retailer-top-amounts-cache.ts",
+    "./user-avatar": "./src/user-avatar.ts"
   },
   "dependencies": {
     "@repo/db": "workspace:*",
     "@repo/shared": "workspace:*",
     "better-auth": "^1.5.6",
-    "drizzle-orm": "^0.44.2"
+    "boring-avatars-vanilla": "^1.0.2",
+    "drizzle-orm": "^0.44.2",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "typescript": "^5"

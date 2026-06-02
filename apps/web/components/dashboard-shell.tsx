@@ -10,6 +10,7 @@ import { MpinGate } from "@/components/mpin-gate";
 type DashboardShellProps = {
   children: ReactNode;
   userName: string;
+  userImage: string;
   userRole: string;
   balance: number;
   pendingApprovalsCount?: number;
@@ -22,6 +23,7 @@ type DashboardShellProps = {
 export function DashboardShell({
   children,
   userName,
+  userImage,
   userRole,
   balance,
   pendingApprovalsCount = 0,
@@ -49,6 +51,7 @@ export function DashboardShell({
             pendingSupportCount={pendingSupportCount}
             unreadNotificationCount={unreadNotificationCount}
             userName={userName}
+            userImage={userImage}
             userRole={userRole}
           >
             {children}

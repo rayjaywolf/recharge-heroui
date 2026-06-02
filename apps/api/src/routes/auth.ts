@@ -13,8 +13,7 @@ import { requireSession, type AppVariables } from "../middleware";
 
 export const authRoutes = new Hono<{ Variables: AppVariables }>();
 
-authRoutes.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
-
+// Must be registered before the Better Auth `/api/auth/*` catch-all.
 authRoutes.post("/api/auth/register-retailer", async (c) => {
   try {
     const body = await c.req.json();
@@ -60,6 +59,8 @@ authRoutes.post("/api/auth/register-retailer", async (c) => {
     return c.json({ error: message }, 500);
   }
 });
+
+authRoutes.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 authRoutes.post("/api/profile/verify-mpin", requireSession, async (c) => {
   try {

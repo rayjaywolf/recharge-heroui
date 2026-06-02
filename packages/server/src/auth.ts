@@ -16,17 +16,24 @@ import {
 
 import { assignRandomMpin } from "./mpin";
 import { notifyAdminsRetailerPendingApproval } from "./notifications";
+import { assignUserAvatar } from "./user-avatar";
 import "./startup-validation";
 
 export { db } from "@repo/db";
 
-const publicAppUrl =
-  process.env.WEB_ORIGIN?.replace(/\/$/, "") ??
-  process.env.BETTER_AUTH_URL?.replace(/\/$/, "") ??
-  "http://localhost:3000";
+/** Web dashboard (may proxy `/api/*` through Next). */
+const webOrigin = process.env.WEB_ORIGIN?.replace(/\/$/, "");
+/** Public API URL — used by the retailer mobile app and direct API clients. */
+const apiOrigin = process.env.BETTER_AUTH_URL?.replace(/\/$/, "");
+
+const extraTrustedOrigins =
+  process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean) ??
+  [];
 
 export const auth = betterAuth({
-  baseURL: publicAppUrl,
+  // Prefer API URL so mobile + Koyeb sessions match the host clients call.
+  // Web still works via Next proxy (cookies scoped to the browser origin).
+  baseURL: apiOrigin ?? webOrigin ?? "http://localhost:3001",
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {
@@ -38,10 +45,15 @@ export const auth = betterAuth({
   }),
   trustedOrigins: [
     "http://localhost:3000",
-    process.env.BETTER_AUTH_URL,
-    process.env.WEB_ORIGIN,
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://10.0.2.2:3001",
+    apiOrigin,
+    webOrigin,
+    ...extraTrustedOrigins,
     "flutter://",
     "exp://",
+    "capacitor://localhost",
   ].filter((origin): origin is string => Boolean(origin)),
   user: {
     additionalFields: {
@@ -97,6 +109,14 @@ export const auth = betterAuth({
                 retailerName: createdUser.name,
               });
             }
+          }
+
+          if (!createdUser.image?.trim()) {
+            const displayName =
+              createdUser.name?.trim() ||
+              createdUser.email ||
+              createdUser.id;
+            await assignUserAvatar(createdUser.id, displayName);
           }
 
           const whatsapp = (createdUser as { whatsappNumber?: string | null })

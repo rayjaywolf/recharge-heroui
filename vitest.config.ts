@@ -13,6 +13,18 @@ export default defineConfig({
         import.meta.dirname,
         "packages/server/src/recharge-gateway.ts",
       ),
+      "@repo/server/retailer-registration": path.resolve(
+        import.meta.dirname,
+        "packages/server/src/retailer-registration.ts",
+      ),
+      "@repo/shared/email": path.resolve(
+        import.meta.dirname,
+        "packages/shared/src/email.ts",
+      ),
+      "@repo/shared/phone": path.resolve(
+        import.meta.dirname,
+        "packages/shared/src/phone.ts",
+      ),
     },
   },
   test: {

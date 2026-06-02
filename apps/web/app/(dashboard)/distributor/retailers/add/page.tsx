@@ -24,6 +24,7 @@ import {
 import { apiFetch } from "@/lib/api-client";
 import { BUSINESS_TYPES } from "@/lib/business-types";
 import { INDIAN_STATES } from "@/lib/indian-states";
+import { normalizeEmail, validateEmail } from "@/lib/email";
 import { normalizePhoneNumber, validatePhoneNumber } from "@/lib/phone";
 
 export default function AddDistributorRetailerPage() {
@@ -40,6 +41,7 @@ export default function AddDistributorRetailerPage() {
     const formData = new FormData(e.currentTarget);
     const name = String(formData.get("name") ?? "").trim();
     const phoneNumber = String(formData.get("phoneNumber") ?? "").trim();
+    const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
     const address = String(formData.get("address") ?? "").trim();
     const pincode = String(formData.get("pincode") ?? "").trim();
@@ -67,6 +69,11 @@ export default function AddDistributorRetailerPage() {
       return;
     }
 
+    if (email.length > 0 && !validateEmail(normalizeEmail(email))) {
+      setError("Enter a valid email address.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -75,6 +82,7 @@ export default function AddDistributorRetailerPage() {
         body: JSON.stringify({
           name,
           phoneNumber: normalizedPhone,
+          ...(email ? { email: normalizeEmail(email) } : {}),
           password,
           address,
           pincode,
@@ -153,14 +161,42 @@ export default function AddDistributorRetailerPage() {
                 <Description>Login credentials for the retailer.</Description>
                 <FieldGroup className="mt-4 grid gap-4 sm:grid-cols-2">
                   <TextField isRequired name="name">
-                    <Label>Full name</Label>
-                    <Input placeholder="John Doe" variant="secondary" />
+                    <Label htmlFor="distributor-retailer-full-name">
+                      Full name
+                    </Label>
+                    <Input
+                      autoComplete="name"
+                      id="distributor-retailer-full-name"
+                      name="name"
+                      placeholder="John Doe"
+                      type="text"
+                      variant="secondary"
+                    />
                   </TextField>
                   <TextField isRequired name="phoneNumber" type="tel">
-                    <Label>Phone number</Label>
+                    <Label htmlFor="distributor-retailer-phone">
+                      Phone number
+                    </Label>
                     <Input
+                      autoComplete="tel-national"
+                      id="distributor-retailer-phone"
                       inputMode="numeric"
+                      name="phoneNumber"
                       placeholder="10-digit mobile"
+                      type="tel"
+                      variant="secondary"
+                    />
+                  </TextField>
+                  <TextField name="email" type="email">
+                    <Label htmlFor="distributor-retailer-email">
+                      Email (optional)
+                    </Label>
+                    <Input
+                      autoComplete="email"
+                      id="distributor-retailer-email"
+                      name="email"
+                      placeholder="retailer@example.com"
+                      type="email"
                       variant="secondary"
                     />
                   </TextField>
@@ -170,8 +206,17 @@ export default function AddDistributorRetailerPage() {
                     name="password"
                     type="password"
                   >
-                    <Label>Initial password</Label>
-                    <Input placeholder="••••••••" variant="secondary" />
+                    <Label htmlFor="distributor-retailer-password">
+                      Initial password
+                    </Label>
+                    <Input
+                      autoComplete="new-password"
+                      id="distributor-retailer-password"
+                      name="password"
+                      placeholder="••••••••"
+                      type="password"
+                      variant="secondary"
+                    />
                   </TextField>
                 </FieldGroup>
               </Fieldset>

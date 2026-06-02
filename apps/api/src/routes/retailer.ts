@@ -10,6 +10,7 @@ import {
   user,
 } from "@repo/db";
 import { resolveDateRange } from "@repo/server/date-range";
+import { ensureUserAvatar } from "@repo/server/user-avatar";
 import {
   notifyAdminsDisputePending,
   notifyDistributorDisputePending,
@@ -60,8 +61,14 @@ retailerRoutes.get("/api/retailer/profile", requireRetailer, async (c) => {
           columns: {
             id: true,
             name: true,
-            whatsappNumber: true,
             email: true,
+            phoneNumber: true,
+            whatsappNumber: true,
+            address: true,
+            pincode: true,
+            state: true,
+            businessType: true,
+            gstNumber: true,
           },
         },
       },
@@ -71,10 +78,14 @@ retailerRoutes.get("/api/retailer/profile", requireRetailer, async (c) => {
       return c.json({ error: "User not found" }, 404);
     }
 
+    const image = await ensureUserAvatar(found.id, found.name, found.image);
+
     return c.json({
       id: found.id,
       name: found.name,
+      image,
       email: found.email,
+      phoneNumber: found.phoneNumber,
       balance: found.balance,
       earnings: found.earnings,
       whatsappNumber: found.whatsappNumber,
@@ -82,8 +93,14 @@ retailerRoutes.get("/api/retailer/profile", requireRetailer, async (c) => {
         ? {
             id: found.distributor.id,
             name: found.distributor.name,
-            whatsappNumber: found.distributor.whatsappNumber,
             email: found.distributor.email,
+            phoneNumber: found.distributor.phoneNumber,
+            whatsappNumber: found.distributor.whatsappNumber,
+            address: found.distributor.address,
+            pincode: found.distributor.pincode,
+            state: found.distributor.state,
+            businessType: found.distributor.businessType,
+            gstNumber: found.distributor.gstNumber,
           }
         : null,
     });

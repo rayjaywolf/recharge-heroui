@@ -7,6 +7,7 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { auth } from "@/lib/auth";
 import { getPendingApprovalsCount } from "@/lib/pending-approvals";
 import { ensureUserMpinBackfill } from "@repo/server/mpin";
+import { ensureUserAvatar } from "@repo/server/user-avatar";
 import { getUnreadNotificationCount } from "@repo/server/notifications";
 import { getPendingFundRequestsCount } from "@/lib/pending-fund-requests";
 
@@ -91,6 +92,8 @@ export default async function DashboardLayout({
     mpinMustReset = mpinState.mpinMustReset;
   }
 
+  const userImage = await ensureUserAvatar(found.id, found.name, found.image);
+
   return (
     <DashboardShell
       balance={found.balance}
@@ -100,6 +103,7 @@ export default async function DashboardLayout({
       unreadNotificationCount={unreadNotificationCount}
       mpinMustReset={mpinMustReset}
       userName={found.name}
+      userImage={userImage}
       userRole={found.role}
     >
       {children}

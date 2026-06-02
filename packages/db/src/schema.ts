@@ -74,6 +74,28 @@ export const rechargePlanCache = pgTable(
   ],
 );
 
+export const retailerTopAmountsCache = pgTable(
+  "retailer_top_amounts_cache",
+  {
+    id: text("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    operator: text("operator").notNull(),
+    amounts: text("amounts").notNull(),
+    fetchedAt: timestamp("fetchedAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expiresAt", { precision: 3, mode: "date" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("retailer_top_amounts_cache_user_operator_key").on(
+      table.userId,
+      table.operator,
+    ),
+  ],
+);
+
 export const notificationTypeEnum = pgEnum("NotificationType", [
   "RETAILER_PENDING_APPROVAL",
   "DISPUTE_PENDING",

@@ -40,6 +40,10 @@ import {
   getRechargePlansForPair,
   isRechargePlansEnabled,
 } from "@repo/server/recharge-plan-cache";
+import {
+  getRetailerTopAmounts,
+  invalidateRetailerTopAmountsCache,
+} from "@repo/server/retailer-top-amounts-cache";
 import { requireSession, type AppVariables } from "../middleware";
 
 const EXCLUDED_OPERATORS = [
@@ -218,6 +222,27 @@ rechargeRoutes.get("/api/recharge/plans", requireSession, async (c) => {
       error instanceof Error ? error.message : "Could not load recharge plans.";
     console.error("Recharge plans error:", error);
     return c.json({ error: message, available: true }, 400);
+  }
+});
+
+rechargeRoutes.get("/api/recharge/top-amounts", requireSession, async (c) => {
+  try {
+    const session = c.get("session");
+    const operator = c.req.query("operator")?.trim() ?? "";
+
+    if (!operator) {
+      return c.json({ error: "Operator is required." }, 400);
+    }
+
+    const { amounts, cached } = await getRetailerTopAmounts({
+      userId: session.user.id,
+      operator,
+    });
+
+    return c.json({ amounts, cached });
+  } catch (error) {
+    console.error("Top recharge amounts error:", error);
+    return c.json({ error: "Internal server error" }, 500);
   }
 });
 
@@ -688,6 +713,8 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
         400,
       );
     }
+
+    void invalidateRetailerTopAmountsCache(session.user.id, operator);
 
     return c.json({
       success: true,

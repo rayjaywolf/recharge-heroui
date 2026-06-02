@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 type DashboardMainProps = {
   children: ReactNode;
   userName: string;
+  userImage: string;
   userRole: string;
   balance: number;
   pendingApprovalsCount?: number;
@@ -20,6 +21,7 @@ type DashboardMainProps = {
 export function DashboardMain({
   children,
   userName,
+  userImage,
   userRole,
   balance,
   pendingApprovalsCount = 0,
@@ -43,6 +45,7 @@ export function DashboardMain({
         pendingSupportCount={pendingSupportCount}
         unreadNotificationCount={unreadNotificationCount}
         userName={userName}
+        userImage={userImage}
         userRole={userRole}
       />
 

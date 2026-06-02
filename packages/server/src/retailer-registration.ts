@@ -7,6 +7,7 @@ import {
   transaction,
   user,
 } from "@repo/db";
+import { normalizeEmail, validateEmail } from "@repo/shared/email";
 import {
   normalizePhoneNumber,
   phoneToPlaceholderEmail,
@@ -16,6 +17,8 @@ import {
 export type RetailerRegistrationInput = {
   name: string;
   phoneNumber: string;
+  /** Real contact email when provided at sign-up; omitted when phone-only. */
+  email?: string;
   password: string;
   address?: string;
   pincode?: string;
@@ -59,12 +62,29 @@ export function parseRetailerRegistrationInput(
     );
   }
 
+  const rawEmail = body.email != null ? String(body.email).trim() : "";
+  let contactEmail: string | undefined;
+  let accountEmail = phoneToPlaceholderEmail(normalizedPhone);
+
+  if (rawEmail.length > 0) {
+    const normalizedEmail = normalizeEmail(rawEmail);
+    if (!validateEmail(normalizedEmail)) {
+      throw new RegistrationConflictError(
+        "Enter a valid email address.",
+        400,
+      );
+    }
+    contactEmail = normalizedEmail;
+    accountEmail = normalizedEmail;
+  }
+
   return {
     normalizedPhone,
-    accountEmail: phoneToPlaceholderEmail(normalizedPhone),
+    accountEmail,
     input: {
       name: String(body.name),
       phoneNumber: normalizedPhone,
+      email: contactEmail,
       password: String(body.password),
       address: body.address ? String(body.address) : undefined,
       pincode: body.pincode ? String(body.pincode) : undefined,
@@ -142,15 +162,23 @@ export async function assertCanRegisterRetailer(
     return;
   }
 
+  const phoneMatches =
+    existing.phoneNumber === normalizedPhone ||
+    existing.whatsappNumber === normalizedPhone;
+
   if (existing.accountStatus === "PENDING") {
     throw new RegistrationConflictError(
-      "An application with this phone number is already pending review.",
+      phoneMatches
+        ? "An application with this phone number is already pending review."
+        : "An application with this email is already pending review.",
       409,
     );
   }
 
   throw new RegistrationConflictError(
-    "An account with this phone number already exists. Sign in instead.",
+    phoneMatches
+      ? "An account with this phone number already exists. Sign in instead."
+      : "An account with this email already exists. Sign in instead.",
     409,
   );
 }

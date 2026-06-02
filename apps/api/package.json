@@ -9,6 +9,7 @@
     "dev:bun": "bun run --hot src/index.ts",
     "start:bun": "bun src/index.ts",
     "seed:distributor-notifications": "tsx scripts/seed-distributor-notifications.ts",
+    "backfill:user-avatars": "tsx scripts/backfill-user-avatars.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

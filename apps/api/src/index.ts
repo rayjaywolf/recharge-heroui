@@ -13,10 +13,19 @@ const { serve } = await import("@hono/node-server");
 const { default: app } = await import("./app");
 
 const port = Number(process.env.PORT ?? 3001);
+const hostname = process.env.HOST ?? "0.0.0.0";
 
 console.log(`API server listening on http://localhost:${port}`);
+
+if (hostname === "0.0.0.0") {
+  console.log(
+    "Physical devices: use your machine's Wi‑Fi IP, e.g. http://192.168.x.x:" +
+      port,
+  );
+}
 
 serve({
   fetch: app.fetch,
   port,
+  hostname,
 });

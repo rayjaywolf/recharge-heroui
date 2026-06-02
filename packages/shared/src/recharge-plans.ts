@@ -4,6 +4,7 @@ export type RechargePlanItem = {
   amount: number;
   validity: string;
   description: string;
+  data?: string;
   type?: string;
 };
 
@@ -32,8 +33,41 @@ type PlanapiPlanRow = {
   rs?: number | string;
   validity?: string;
   desc?: string;
+  data?: string;
+  Data?: string;
   Type?: string;
 };
+
+/** Short data label for list UIs (parsed from planapi desc when needed). */
+export function extractPlanDataLabel(plan: RechargePlanItem): string | undefined {
+  const explicit = plan.data?.trim();
+  if (explicit) return explicit;
+
+  const desc = plan.description.trim();
+  if (!desc) return undefined;
+
+  const dataColon = desc.match(/\bData\s*:\s*([^|]+)/i);
+  if (dataColon?.[1]?.trim()) return dataColon[1].trim();
+
+  const getData = desc.match(
+    /(?:Get\s+)?(\d+(?:\.\d+)?\s*(?:GB|MB)\s*Data[^.|\n]*)/i,
+  );
+  if (getData?.[1]?.trim()) return getData[1].trim();
+
+  const gbPerDay = desc.match(/(\d+(?:\.\d+)?\s*(?:GB|MB)\s*\/\s*day)/i);
+  if (gbPerDay?.[1]?.trim()) return gbPerDay[1].trim();
+
+  const gbData = desc.match(/(\d+(?:\.\d+)?\s*(?:GB|MB)\s*(?:4G\/5G\s*)?[Dd]ata)/i);
+  if (gbData?.[1]?.trim()) return gbData[1].trim();
+
+  const unlimited = desc.match(/Unlimited\s+(?:5G\s+)?[Dd]ata[^).\n|]*/i);
+  if (unlimited?.[0]?.trim()) return unlimited[0].trim();
+
+  const unlimitedLower = desc.match(/[Uu]nlimited\s+data[^.]*/);
+  if (unlimitedLower?.[0]?.trim()) return unlimitedLower[0].trim();
+
+  return undefined;
+}
 
 /** Flatten planapi NewMobilePlans / Operatorplan RDATA into a stable catalog shape. */
 export function normalizePlanapiPlansPayload(params: {
@@ -54,12 +88,21 @@ export function normalizePlanapiPlansPayload(params: {
       const amount = Number(row.rs);
       if (!Number.isFinite(amount) || amount <= 0) continue;
 
-      plans.push({
+      const description = String(row.desc ?? "").trim() || name;
+      const item: RechargePlanItem = {
         amount: Math.round(amount),
         validity: String(row.validity ?? "").trim() || "—",
-        description: String(row.desc ?? "").trim() || name,
+        description,
+        data:
+          String(row.data ?? row.Data ?? "").trim() ||
+          extractPlanDataLabel({
+            amount: Math.round(amount),
+            validity: String(row.validity ?? "").trim() || "—",
+            description,
+          }),
         type: row.Type ? String(row.Type) : undefined,
-      });
+      };
+      plans.push(item);
     }
 
     if (plans.length > 0) {

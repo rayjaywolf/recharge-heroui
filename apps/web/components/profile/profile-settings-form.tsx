@@ -107,11 +107,15 @@ export function ProfileSettingsForm({ currentName }: ProfileSettingsFormProps) {
         <Form onSubmit={handleChangeName}>
           <Card.Content className="space-y-3">
             <TextField isRequired name="name">
-              <Label>Full name</Label>
+              <Label htmlFor="profile-full-name">Full name</Label>
               <Input
+                autoComplete="name"
+                id="profile-full-name"
                 maxLength={80}
                 minLength={2}
+                name="name"
                 placeholder="Enter your name"
+                type="text"
                 value={name}
                 variant="secondary"
                 onChange={(e) => setName(e.target.value)}
