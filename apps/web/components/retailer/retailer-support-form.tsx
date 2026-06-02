@@ -22,6 +22,7 @@ import {
 import { Money } from "@/components/money";
 import { apiFetch } from "@/lib/api-client";
 import { formatInr } from "@/lib/format-money";
+import { formatEnumLabel, operatorLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 
 export type RetailerSupportTransactionOption = {
@@ -171,15 +172,15 @@ export function RetailerSupportForm({
                   <ListBox.Item
                     key={tx.id}
                     id={tx.id}
-                    textValue={`${tx.operator} ${tx.targetPhone} ${tx.apiReferenceId ?? ""} ${tx.id}`}
+                    textValue={`${operatorLabel(tx.operator)} ${tx.targetPhone} ${tx.apiReferenceId ?? ""} ${tx.id}`}
                   >
                     <div className="flex w-full min-w-0 flex-1 items-center gap-4">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-foreground">
-                          {tx.operator} · {tx.targetPhone}
+                          {operatorLabel(tx.operator)} · {tx.targetPhone}
                         </p>
                         <p className="truncate text-xs text-muted">
-                          {formatTableDateTime(tx.createdAt)} · {tx.status}
+                          {formatTableDateTime(tx.createdAt)} · {formatEnumLabel(tx.status)}
                           {tx.apiReferenceId ? ` · Ref: ${tx.apiReferenceId}` : ""}
                         </p>
                       </div>

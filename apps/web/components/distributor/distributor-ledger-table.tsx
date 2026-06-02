@@ -20,6 +20,7 @@ import {
   distributorSelfYourMarginPercent,
   isDistributorSelfRecharge,
 } from "@/lib/distributor-self-recharge";
+import { operatorLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 
 function DetailItem({
@@ -105,7 +106,9 @@ export function DistributorLedgerTable({
                   <Table.Cell className="font-medium">
                     {distributorLedgerActorLabel(tx)}
                   </Table.Cell>
-                  <Table.Cell className="font-semibold">{tx.operator}</Table.Cell>
+                  <Table.Cell className="font-semibold">
+                    {operatorLabel(tx.operator)}
+                  </Table.Cell>
                   <Table.Cell className="font-mono text-xs text-muted">
                     {tx.targetPhone || "—"}
                   </Table.Cell>
@@ -153,7 +156,7 @@ export function DistributorLedgerTable({
                     <p className="mt-1 text-sm text-muted">
                       {selected.targetPhone
                         ? `Activity for ${selected.targetPhone}`
-                        : selected.operator}
+                        : operatorLabel(selected.operator)}
                     </p>
                   </Modal.Header>
 
@@ -179,7 +182,7 @@ export function DistributorLedgerTable({
                         label="Retailer"
                         value={distributorLedgerActorLabel(selected)}
                       />
-                      <DetailItem label="Type" value={selected.operator} />
+                      <DetailItem label="Type" value={operatorLabel(selected.operator)} />
                       <DetailItem
                         label="Phone"
                         mono

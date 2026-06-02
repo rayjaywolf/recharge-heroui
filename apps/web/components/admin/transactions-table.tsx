@@ -10,6 +10,7 @@ import { TransactionStatusChip } from "@/components/admin/transaction-status-chi
 import { TransactionPdfDownloadButton } from "@/components/admin/transaction-pdf-download-button";
 import { Money } from "@/components/money";
 import { formatRechargeProvider } from "@/lib/recharge-provider";
+import { operatorLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 
 export type AdminTransactionRow = {
@@ -89,7 +90,7 @@ export function TransactionsTable({
                       </span>
                     </Table.Cell>
                     <Table.Cell className="font-semibold">
-                      {tx.operator}
+                      {operatorLabel(tx.operator)}
                     </Table.Cell>
                     <Table.Cell className="font-mono text-xs text-muted">
                       {tx.targetPhone}

@@ -5,6 +5,7 @@ import { Chip, Table } from "@heroui/react";
 
 import { AdminTableCard, AdminTableEmpty } from "@/components/admin/admin-table-card";
 import { Money } from "@/components/money";
+import { operatorLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 
 export type RetailerDisputeRow = {
@@ -69,7 +70,7 @@ export function RetailerDisputesTable({
                       {row.subject}
                     </Table.Cell>
                     <Table.Cell className="max-w-[220px] text-sm text-muted">
-                      {row.operator}, {row.targetPhone}
+                      {operatorLabel(row.operator)}, {row.targetPhone}
                     </Table.Cell>
                     <Table.Cell className="font-mono text-xs text-muted">
                       {row.transactionId}

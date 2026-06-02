@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { Chip } from "@heroui/react";
+import { Chip, Table } from "@heroui/react";
 import { fundRequest, transaction } from "@repo/db";
 
 import {
@@ -9,6 +9,7 @@ import {
 import { Money } from "@/components/money";
 import { RetailerFundRequestForm } from "@/components/retailer/retailer-fund-request-form";
 import { requireRetailer } from "@/lib/retailer-auth";
+import { formatEnumLabel, transactionLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 import { db } from "@repo/db";
 
@@ -68,8 +69,8 @@ export default async function RetailerFundsPage() {
     ...walletTx.map((row) => ({
       id: row.id,
       kind: "transaction" as const,
-      title: row.operator,
-      subtitle: row.apiMessage || row.operator,
+      title: transactionLabel(row.operator, "").title,
+      subtitle: null as string | null,
       amount: row.amount,
       status: row.status,
       createdAt: row.createdAt.toISOString(),
@@ -105,28 +106,40 @@ export default async function RetailerFundsPage() {
         {history.length === 0 ? (
           <AdminTableEmpty message="No funding history yet." />
         ) : (
-          <div className="space-y-3">
-            {history.map((item) => (
-              <div
-                key={`${item.kind}-${item.id}`}
-                className="rounded-lg border border-separator p-3"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-foreground">{item.title}</p>
-                  <Chip color={statusColor(item.status)} size="sm" variant="soft">
-                    {item.status}
-                  </Chip>
-                </div>
-                <p className="mt-1 text-sm text-muted">{item.subtitle}</p>
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-muted">
-                    {formatTableDateTime(item.createdAt)}
-                  </p>
-                  <Money amount={item.amount} className="text-sm font-semibold" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <Table>
+            <Table.ScrollContainer>
+              <Table.Content aria-label="Funding history table" className="min-w-full">
+                <Table.Header>
+                  <Table.Column>Date</Table.Column>
+                  <Table.Column>Type</Table.Column>
+                  <Table.Column>Details</Table.Column>
+                  <Table.Column>Amount</Table.Column>
+                  <Table.Column>Status</Table.Column>
+                </Table.Header>
+                <Table.Body>
+                  {history.map((item) => (
+                    <Table.Row key={`${item.kind}-${item.id}`}>
+                      <Table.Cell className="text-sm text-muted">
+                        {formatTableDateTime(item.createdAt)}
+                      </Table.Cell>
+                      <Table.Cell>{item.title}</Table.Cell>
+                      <Table.Cell className="text-muted">
+                        {item.subtitle ?? "—"}
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Money amount={item.amount} className="text-sm font-semibold" />
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Chip color={statusColor(item.status)} size="sm" variant="soft">
+                          {formatEnumLabel(item.status)}
+                        </Chip>
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Content>
+            </Table.ScrollContainer>
+          </Table>
         )}
       </AdminTableCard>
     </div>

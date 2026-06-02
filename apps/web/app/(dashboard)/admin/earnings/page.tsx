@@ -13,6 +13,7 @@ import { StatCard } from "@/components/admin/stat-card";
 import { fetchAdminEarnings } from "@/lib/admin-earnings-query";
 import { formatInr } from "@/lib/format-money";
 import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
+import { operatorLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 
@@ -193,7 +194,7 @@ export default async function AdminEarningsPage({
                         {formatTableDateTime(tx.createdAt)}
                       </Table.Cell>
                       <Table.Cell className="font-medium">{tx.user.name}</Table.Cell>
-                      <Table.Cell>{tx.operator}</Table.Cell>
+                      <Table.Cell>{operatorLabel(tx.operator)}</Table.Cell>
                       <Table.Cell>
                         <TransactionStatusChip status={tx.status} />
                       </Table.Cell>

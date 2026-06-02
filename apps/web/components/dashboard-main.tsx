@@ -12,6 +12,7 @@ type DashboardMainProps = {
   userImage: string;
   userRole: string;
   balance: number;
+  adminProviderBalance?: number | null;
   pendingApprovalsCount?: number;
   pendingSupportCount?: number;
   pendingFundRequestsCount?: number;
@@ -24,6 +25,7 @@ export function DashboardMain({
   userImage,
   userRole,
   balance,
+  adminProviderBalance = null,
   pendingApprovalsCount = 0,
   pendingSupportCount = 0,
   pendingFundRequestsCount = 0,
@@ -39,6 +41,7 @@ export function DashboardMain({
       )}
     >
       <DashboardHeader
+        adminProviderBalance={adminProviderBalance}
         balance={balance}
         pendingApprovalsCount={pendingApprovalsCount}
         pendingFundRequestsCount={pendingFundRequestsCount}

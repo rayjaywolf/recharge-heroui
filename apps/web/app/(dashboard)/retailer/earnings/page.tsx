@@ -11,6 +11,7 @@ import { TransactionStatusChip } from "@/components/admin/transaction-status-chi
 import { Money } from "@/components/money";
 import { formatInr } from "@/lib/format-money";
 import { fetchRetailerEarnings } from "@/lib/retailer-earnings-query";
+import { operatorLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 
 function pickSearchParams(
@@ -115,7 +116,7 @@ export default async function RetailerEarningsPage({
                       <Table.Cell className="whitespace-nowrap text-sm text-muted">
                         {formatTableDateTime(tx.createdAt)}
                       </Table.Cell>
-                      <Table.Cell>{tx.operator}</Table.Cell>
+                      <Table.Cell>{operatorLabel(tx.operator)}</Table.Cell>
                       <Table.Cell>
                         <TransactionStatusChip status={tx.status} />
                       </Table.Cell>

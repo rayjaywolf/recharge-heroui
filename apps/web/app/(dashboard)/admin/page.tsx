@@ -30,6 +30,7 @@ import { StatCard } from "@/components/admin/stat-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 import { formatInr } from "@/lib/format-money";
 import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
+import { operatorLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 
 async function successRateBetween(start: Date, end?: Date) {
@@ -269,7 +270,7 @@ export default async function AdminOverviewPage() {
                         {formatTableDateTime(tx.createdAt)}
                       </Table.Cell>
                       <Table.Cell className="font-medium">{tx.userName}</Table.Cell>
-                      <Table.Cell>{tx.operator}</Table.Cell>
+                      <Table.Cell>{operatorLabel(tx.operator)}</Table.Cell>
                       <Table.Cell className="font-mono text-sm text-muted">
                         {tx.targetPhone}
                       </Table.Cell>

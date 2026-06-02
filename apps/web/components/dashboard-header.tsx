@@ -18,6 +18,7 @@ type DashboardHeaderProps = {
   userImage: string;
   userRole: string;
   balance: number;
+  adminProviderBalance?: number | null;
   pendingApprovalsCount?: number;
   pendingSupportCount?: number;
   pendingFundRequestsCount?: number;
@@ -33,6 +34,7 @@ export function DashboardHeader({
   userImage,
   userRole,
   balance,
+  adminProviderBalance = null,
   pendingApprovalsCount = 0,
   pendingSupportCount = 0,
   pendingFundRequestsCount = 0,
@@ -40,6 +42,7 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   const { collapsed, toggle } = useDashboardSidebar();
   const showWalletMenu = userRole === "DISTRIBUTOR" || userRole === "RETAILER";
+  const showAdminProviderBalance = userRole === "ADMIN";
   const showNotifications =
     userRole === "ADMIN" ||
     userRole === "DISTRIBUTOR" ||
@@ -80,6 +83,26 @@ export function DashboardHeader({
           <div className="ml-2">
             {showWalletMenu ? (
               <WalletBalanceMenu balance={balance} userRole={userRole} />
+            ) : showAdminProviderBalance ? (
+              <Button
+                className="inline-flex h-9 items-center gap-2.5 px-3 font-medium"
+                variant="secondary"
+              >
+                <Wallet
+                  className="size-4 shrink-0 text-success"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                {adminProviderBalance != null ? (
+                  <Money
+                    amount={adminProviderBalance}
+                    className="leading-none text-success"
+                    fractionDigits={2}
+                  />
+                ) : (
+                  <span className="leading-none text-muted">--</span>
+                )}
+              </Button>
             ) : (
               <Chip
                 className="inline-flex items-center gap-2.5 font-medium"

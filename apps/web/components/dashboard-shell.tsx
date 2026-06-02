@@ -13,6 +13,7 @@ type DashboardShellProps = {
   userImage: string;
   userRole: string;
   balance: number;
+  adminProviderBalance?: number | null;
   pendingApprovalsCount?: number;
   pendingSupportCount?: number;
   pendingFundRequestsCount?: number;
@@ -26,6 +27,7 @@ export function DashboardShell({
   userImage,
   userRole,
   balance,
+  adminProviderBalance = null,
   pendingApprovalsCount = 0,
   pendingSupportCount = 0,
   pendingFundRequestsCount = 0,
@@ -45,6 +47,7 @@ export function DashboardShell({
           />
 
           <DashboardMain
+            adminProviderBalance={adminProviderBalance}
             balance={balance}
             pendingApprovalsCount={pendingApprovalsCount}
             pendingFundRequestsCount={pendingFundRequestsCount}

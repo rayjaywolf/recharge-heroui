@@ -8,6 +8,7 @@ import { TransactionStatusChip } from "@/components/admin/transaction-status-chi
 import { TransactionPdfDownloadButton } from "@/components/admin/transaction-pdf-download-button";
 import type { AdminTransactionRow } from "@/components/admin/transactions-table";
 import { Money } from "@/components/money";
+import { operatorLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 
 function DetailItem({
@@ -83,7 +84,9 @@ export function RetailerLedgerTable({
                   <Table.Cell className="text-sm text-muted">
                     {formatTableDateTime(tx.createdAt)}
                   </Table.Cell>
-                  <Table.Cell className="font-semibold">{tx.operator}</Table.Cell>
+                  <Table.Cell className="font-semibold">
+                    {operatorLabel(tx.operator)}
+                  </Table.Cell>
                   <Table.Cell className="font-mono text-xs text-muted">
                     {tx.targetPhone || "—"}
                   </Table.Cell>
@@ -149,7 +152,7 @@ export function RetailerLedgerTable({
                         label="Date & time"
                         value={formatDateTime(selected.createdAt)}
                       />
-                      <DetailItem label="Type" value={selected.operator} />
+                      <DetailItem label="Type" value={operatorLabel(selected.operator)} />
                       <DetailItem
                         label="Phone"
                         mono

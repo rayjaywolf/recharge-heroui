@@ -27,6 +27,7 @@ import {
   buildRetailerRechargeVolumeFilter,
 } from "@/lib/retailer-recharge-volume";
 import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
+import { operatorLabel } from "@/lib/transaction-label";
 import { LEDGER_EXCLUDED_OPERATORS } from "@/lib/transaction-filters";
 import { formatTableDateTime } from "@/lib/utils";
 
@@ -232,7 +233,9 @@ export default async function RetailerOverviewPage() {
                       <Table.Cell className="whitespace-nowrap text-sm text-muted">
                         {formatTableDateTime(tx.createdAt)}
                       </Table.Cell>
-                      <Table.Cell className="font-medium">{tx.operator}</Table.Cell>
+                      <Table.Cell className="font-medium">
+                        {operatorLabel(tx.operator)}
+                      </Table.Cell>
                       <Table.Cell className="font-mono text-sm text-muted">
                         {tx.targetPhone || "—"}
                       </Table.Cell>

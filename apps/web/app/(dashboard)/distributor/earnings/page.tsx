@@ -11,6 +11,7 @@ import { StatCard } from "@/components/admin/stat-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 import { fetchDistributorEarnings } from "@/lib/distributor-earnings-query";
 import { formatInr } from "@/lib/format-money";
+import { operatorLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 
 function pickSearchParams(
@@ -120,7 +121,7 @@ export default async function DistributorEarningsPage({
                         {formatTableDateTime(tx.createdAt)}
                       </Table.Cell>
                       <Table.Cell className="font-medium">{tx.user.name}</Table.Cell>
-                      <Table.Cell>{tx.operator}</Table.Cell>
+                      <Table.Cell>{operatorLabel(tx.operator)}</Table.Cell>
                       <Table.Cell>
                         <TransactionStatusChip status={tx.status} />
                       </Table.Cell>

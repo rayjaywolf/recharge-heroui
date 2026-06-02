@@ -1,4 +1,5 @@
 import { Chip } from "@heroui/react";
+import { formatEnumLabel } from "@/lib/transaction-label";
 
 type TxStatus = "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
 
@@ -18,7 +19,7 @@ export function TransactionStatusChip({ status }: { status: string }) {
 
   return (
     <Chip color={color} size="sm" variant="soft">
-      {status}
+      {formatEnumLabel(status)}
     </Chip>
   );
 }
