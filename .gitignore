@@ -57,4 +57,6 @@ apps/web/generated/
 next-env.d.ts
 
 docs
-# retailer_recharge_app — tracked in monorepo; remove nested .git if present
+
+# Flutter retailer app (local-only; nested git repo)
+/retailer_recharge_app/
