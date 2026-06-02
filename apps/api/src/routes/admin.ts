@@ -33,6 +33,7 @@ import {
   resolveRechargeSettlementOutcome,
 } from "@repo/server/notifications";
 import { checkMRoboticsStatus } from "@repo/server/mrobotics";
+import { getAllProviderBalances } from "@repo/server/provider-balances";
 import {
   settlePendingTransaction,
   syncPendingRealRoboTransactionsForUser,
@@ -48,6 +49,16 @@ import {
 import { requireAdmin, type AppVariables } from "../middleware";
 
 export const adminRoutes = new Hono<{ Variables: AppVariables }>();
+
+adminRoutes.get("/api/admin/provider-balances", requireAdmin, async (c) => {
+  try {
+    const balances = await getAllProviderBalances();
+    return c.json({ balances });
+  } catch (error) {
+    console.error("Provider balances error:", error);
+    return c.json({ error: "Failed to load provider balances." }, 500);
+  }
+});
 
 adminRoutes.post("/api/admin/transactions/:id/refresh-status", requireAdmin, async (c) => {
   try {
