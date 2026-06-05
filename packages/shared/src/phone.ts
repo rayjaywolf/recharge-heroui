@@ -24,38 +24,23 @@ export function validatePhoneNumber(phone: string): boolean {
   return false;
 }
 
-/** Suffix for synthetic emails stored for phone-only sign-up (Better Auth requires an email). */
-export const PHONE_PLACEHOLDER_EMAIL_SUFFIX = "@phone.rechargepro.local";
-
-/** Internal placeholder when the user signs up without an email. */
-export function phoneToPlaceholderEmail(phone: string): string {
-  return `${normalizePhoneNumber(phone)}${PHONE_PLACEHOLDER_EMAIL_SUFFIX}`;
-}
-
-export function isPlaceholderEmail(email: string): boolean {
-  return email.endsWith(PHONE_PLACEHOLDER_EMAIL_SUFFIX);
-}
-
 type UserContactFields = {
-  email: string;
+  email?: string | null;
   phoneNumber?: string | null;
   whatsappNumber?: string | null;
 };
 
-/** Phone to show in UI (never the synthetic email). */
+/** Phone to show in UI. */
 export function getDisplayPhone(user: UserContactFields): string | null {
   if (user.phoneNumber) return user.phoneNumber;
   if (user.whatsappNumber) return user.whatsappNumber;
-  if (isPlaceholderEmail(user.email)) {
-    const extracted = user.email.slice(0, -PHONE_PLACEHOLDER_EMAIL_SUFFIX.length);
-    return validatePhoneNumber(extracted) ? extracted : null;
-  }
   return null;
 }
 
-/** Real email for UI, or null when the account is phone-only. */
-export function getDisplayEmail(email: string): string | null {
-  return isPlaceholderEmail(email) ? null : email;
+/** Real email for UI, or null when unset. */
+export function getDisplayEmail(email: string | null | undefined): string | null {
+  const trimmed = email?.trim();
+  return trimmed ? trimmed : null;
 }
 
 /** Single-line contact for tables and dropdowns. */

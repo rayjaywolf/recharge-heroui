@@ -8,17 +8,13 @@ import {
   user,
 } from "@repo/db";
 import { normalizeEmail, validateEmail } from "@repo/shared/email";
-import {
-  normalizePhoneNumber,
-  phoneToPlaceholderEmail,
-  validatePhoneNumber,
-} from "@repo/shared/phone";
+import { normalizePhoneNumber, validatePhoneNumber } from "@repo/shared/phone";
 
 export type RetailerRegistrationInput = {
   name: string;
   phoneNumber: string;
-  /** Real contact email when provided at sign-up; omitted when phone-only. */
-  email?: string;
+  /** Contact email (required at sign-up). */
+  email: string;
   password: string;
   address?: string;
   pincode?: string;
@@ -88,19 +84,13 @@ export function parseRetailerRegistrationInput(
   }
 
   const rawEmail = body.email != null ? String(body.email).trim() : "";
-  let contactEmail: string | undefined;
-  let accountEmail = phoneToPlaceholderEmail(normalizedPhone);
+  if (!rawEmail) {
+    throw new RegistrationConflictError("Email is required.", 400);
+  }
 
-  if (rawEmail.length > 0) {
-    const normalizedEmail = normalizeEmail(rawEmail);
-    if (!validateEmail(normalizedEmail)) {
-      throw new RegistrationConflictError(
-        "Enter a valid email address.",
-        400,
-      );
-    }
-    contactEmail = normalizedEmail;
-    accountEmail = normalizedEmail;
+  const accountEmail = normalizeEmail(rawEmail);
+  if (!validateEmail(accountEmail)) {
+    throw new RegistrationConflictError("Enter a valid email address.", 400);
   }
 
   return {
@@ -109,7 +99,7 @@ export function parseRetailerRegistrationInput(
     input: {
       name: String(body.name),
       phoneNumber: normalizedPhone,
-      email: contactEmail,
+      email: accountEmail,
       password: String(body.password),
       address: body.address ? String(body.address) : undefined,
       pincode: body.pincode ? String(body.pincode) : undefined,

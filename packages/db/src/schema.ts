@@ -125,7 +125,7 @@ export const user = pgTable(
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
-    email: text("email").notNull(),
+    email: text("email"),
     emailVerified: boolean("emailVerified").notNull().default(false),
     phoneNumber: text("phoneNumber"),
     phoneNumberVerified: boolean("phoneNumberVerified").notNull().default(false),

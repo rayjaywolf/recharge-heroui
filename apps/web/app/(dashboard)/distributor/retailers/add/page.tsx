@@ -69,7 +69,12 @@ export default function AddDistributorRetailerPage() {
       return;
     }
 
-    if (email.length > 0 && !validateEmail(normalizeEmail(email))) {
+    if (!email) {
+      setError("Email is required.");
+      return;
+    }
+
+    if (!validateEmail(normalizeEmail(email))) {
       setError("Enter a valid email address.");
       return;
     }
@@ -82,7 +87,7 @@ export default function AddDistributorRetailerPage() {
         body: JSON.stringify({
           name,
           phoneNumber: normalizedPhone,
-          ...(email ? { email: normalizeEmail(email) } : {}),
+          email: normalizeEmail(email),
           password,
           address,
           pincode,
@@ -187,10 +192,8 @@ export default function AddDistributorRetailerPage() {
                       variant="secondary"
                     />
                   </TextField>
-                  <TextField name="email" type="email">
-                    <Label htmlFor="distributor-retailer-email">
-                      Email (optional)
-                    </Label>
+                  <TextField isRequired name="email" type="email">
+                    <Label htmlFor="distributor-retailer-email">Email</Label>
                     <Input
                       autoComplete="email"
                       id="distributor-retailer-email"

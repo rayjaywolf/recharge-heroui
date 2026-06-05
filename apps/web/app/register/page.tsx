@@ -67,7 +67,12 @@ export default function RegisterPage() {
       return;
     }
 
-    if (email.length > 0 && !validateEmail(normalizeEmail(email))) {
+    if (!email) {
+      setError("Email is required.");
+      return;
+    }
+
+    if (!validateEmail(normalizeEmail(email))) {
       setError("Enter a valid email address.");
       return;
     }
@@ -80,7 +85,7 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name,
           phoneNumber: normalizedPhone,
-          ...(email ? { email: normalizeEmail(email) } : {}),
+          email: normalizeEmail(email),
           password,
           address,
           pincode,
@@ -183,8 +188,8 @@ export default function RegisterPage() {
                       variant="secondary"
                     />
                   </TextField>
-                  <TextField name="email" type="email">
-                    <Label htmlFor="register-email">Email (optional)</Label>
+                  <TextField isRequired name="email" type="email">
+                    <Label htmlFor="register-email">Email</Label>
                     <Input
                       autoComplete="email"
                       id="register-email"
