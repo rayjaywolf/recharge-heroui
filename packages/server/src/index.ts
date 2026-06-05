@@ -6,6 +6,7 @@ export * from "./retailer-registration";
 export * from "./operator-provider";
 export * from "./recharge-gateway";
 export {
+  syncPendingRealRoboTransactions,
   syncPendingRealRoboTransactionsForUser,
   type SyncPendingRealRoboResult,
 } from "./pending-recharge-sync";

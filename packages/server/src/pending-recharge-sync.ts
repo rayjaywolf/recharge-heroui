@@ -172,9 +172,8 @@ export async function settlePendingTransaction(
 }
 
 /** Poll RealRobo for pending recharges and update local transaction rows. */
-export async function syncPendingRealRoboTransactionsForUser(
-  userId: string,
-  options?: { limit?: number },
+export async function syncPendingRealRoboTransactions(
+  options?: { userId?: string; limit?: number },
 ): Promise<SyncPendingRealRoboResult> {
   validateProviderCredentials("REALROBO");
 
@@ -189,16 +188,18 @@ export async function syncPendingRealRoboTransactionsForUser(
 
   const limit = options?.limit ?? DEFAULT_LIMIT;
 
+  const conditions = [
+    eq(transaction.status, "PENDING"),
+    eq(transaction.provider, "REALROBO"),
+  ];
+  if (options?.userId) {
+    conditions.push(eq(transaction.userId, options.userId));
+  }
+
   const pending = await db
     .select()
     .from(transaction)
-    .where(
-      and(
-        eq(transaction.userId, userId),
-        eq(transaction.status, "PENDING"),
-        eq(transaction.provider, "REALROBO"),
-      ),
-    )
+    .where(and(...conditions))
     .limit(limit);
 
   for (const tx of pending) {
@@ -235,4 +236,11 @@ export async function syncPendingRealRoboTransactionsForUser(
   }
 
   return result;
+}
+
+export async function syncPendingRealRoboTransactionsForUser(
+  userId: string,
+  options?: { limit?: number },
+): Promise<SyncPendingRealRoboResult> {
+  return syncPendingRealRoboTransactions({ ...options, userId });
 }

@@ -25,6 +25,7 @@ import {
   AdminTableCard,
   AdminTableEmpty,
 } from "@/components/admin/admin-table-card";
+import { LedgerRefreshPendingButton } from "@/components/distributor/ledger-refresh-pending-button";
 import { Money } from "@/components/money";
 import { StatCard } from "@/components/admin/stat-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
@@ -197,13 +198,16 @@ export default async function AdminOverviewPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Overview
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Today's analytics and overview of the platform
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Overview
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            Today's analytics and overview of the platform
+          </p>
+        </div>
+        <LedgerRefreshPendingButton endpoint="/api/admin/sync-pending" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

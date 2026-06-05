@@ -7,14 +7,18 @@ import { Button, toast } from "@heroui/react";
 
 import { apiFetch } from "@/lib/api-client";
 
-export function LedgerRefreshPendingButton() {
+export function LedgerRefreshPendingButton({
+  endpoint = "/api/recharge/sync-pending",
+}: {
+  endpoint?: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleRefresh = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch("/api/recharge/sync-pending", {
+      const res = await apiFetch(endpoint, {
         method: "POST",
       });
       const data = await res.json();

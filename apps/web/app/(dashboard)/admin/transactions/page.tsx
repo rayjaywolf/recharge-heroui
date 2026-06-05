@@ -1,5 +1,6 @@
 import { fetchAdminTransactions } from "@/lib/admin-transactions-query";
 
+import { LedgerRefreshPendingButton } from "@/components/distributor/ledger-refresh-pending-button";
 import { TransactionsFilterBar } from "@/components/admin/transactions-filter-bar";
 import { TransactionsDownloadButton } from "@/components/admin/transactions-download-button";
 import { TransactionsTable } from "@/components/admin/transactions-table";
@@ -38,7 +39,10 @@ export default async function AdminTransactionsPage({
             View recharge and ledger activity.
           </p>
         </div>
-        <TransactionsDownloadButton data={rows} />
+        <div className="flex flex-wrap items-center gap-2">
+          <LedgerRefreshPendingButton endpoint="/api/admin/sync-pending" />
+          <TransactionsDownloadButton data={rows} />
+        </div>
       </div>
 
       <TransactionsFilterBar
