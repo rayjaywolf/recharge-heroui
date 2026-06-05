@@ -6,6 +6,7 @@ import {
   gt,
   gte,
   ilike,
+  inArray,
   lte,
   or,
   type SQL,
@@ -13,6 +14,7 @@ import {
 import { db, transaction, user, type TxStatus } from "@repo/db";
 
 import type { EarningRow } from "@/components/admin/earnings-download-button";
+import { resolveCarrierFilterOperators } from "@/lib/transaction-filters";
 
 export type AdminEarningsSearchParams = {
   status?: string;
@@ -116,8 +118,11 @@ export function buildEarningsWhereClause(
     conditions.push(eq(transaction.status, params.status as TxStatus));
   }
 
-  if (params.operator && params.operator !== "ALL") {
-    conditions.push(eq(transaction.operator, params.operator));
+  const carrierOperators = resolveCarrierFilterOperators(params.operator ?? "");
+  if (carrierOperators.length === 1) {
+    conditions.push(eq(transaction.operator, carrierOperators[0]!));
+  } else if (carrierOperators.length > 1) {
+    conditions.push(inArray(transaction.operator, carrierOperators));
   }
 
   const search = params.search?.trim();

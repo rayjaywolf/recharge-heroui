@@ -6,6 +6,7 @@ import {
   gt,
   gte,
   ilike,
+  inArray,
   lt,
   lte,
   or,
@@ -15,6 +16,7 @@ import {
 import { db, transaction } from "@repo/db";
 
 import { resolveEarningsSort, type AdminEarningsSearchParams } from "@/lib/admin-earnings-query";
+import { resolveCarrierFilterOperators } from "@/lib/transaction-filters";
 import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
 import { buildRetailerRechargeVolumeFilter } from "@/lib/retailer-recharge-volume";
 import { requireRetailer } from "@/lib/retailer-auth";
@@ -43,8 +45,11 @@ export async function fetchRetailerEarnings(params: AdminEarningsSearchParams) {
   if (status !== "ALL") {
     conditions.push(eq(transaction.status, status as "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED"));
   }
-  if (params.operator && params.operator !== "ALL") {
-    conditions.push(eq(transaction.operator, params.operator));
+  const carrierOperators = resolveCarrierFilterOperators(params.operator ?? "");
+  if (carrierOperators.length === 1) {
+    conditions.push(eq(transaction.operator, carrierOperators[0]!));
+  } else if (carrierOperators.length > 1) {
+    conditions.push(inArray(transaction.operator, carrierOperators));
   }
   if (params.search?.trim()) {
     const pattern = `%${params.search.trim()}%`;

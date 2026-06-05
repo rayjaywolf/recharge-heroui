@@ -16,6 +16,7 @@ import {
   FUND_TRANSFER_OPERATORS,
   LEDGER_EXCLUDED_OPERATORS,
   RECHARGE_EXCLUDED_OPERATORS,
+  resolveCarrierFilterOperators,
   type AdminTransactionTypeFilter,
 } from "@/lib/transaction-filters";
 
@@ -152,8 +153,11 @@ export function buildTransactionWhereClause(
     conditions.push(eq(transaction.status, status as TxStatus));
   }
 
-  if (params.operator && params.operator !== "ALL") {
-    conditions.push(eq(transaction.operator, params.operator));
+  const carrierOperators = resolveCarrierFilterOperators(params.operator ?? "");
+  if (carrierOperators.length === 1) {
+    conditions.push(eq(transaction.operator, carrierOperators[0]!));
+  } else if (carrierOperators.length > 1) {
+    conditions.push(inArray(transaction.operator, carrierOperators));
   }
 
   const search = params.search?.trim();

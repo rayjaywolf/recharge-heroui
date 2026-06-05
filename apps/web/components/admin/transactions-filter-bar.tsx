@@ -17,7 +17,10 @@ import {
 import { ReportDateRangePicker } from "@/components/admin/report-date-range-picker";
 import type { TransactionsSort } from "@/lib/admin-transactions-query";
 import { rangeToQueryStrings, toDateRange } from "@/lib/date-range-field";
-import type { AdminTransactionTypeFilter } from "@/lib/transaction-filters";
+import {
+  CARRIER_FILTER_OPTIONS,
+  type AdminTransactionTypeFilter,
+} from "@/lib/transaction-filters";
 
 const STATUS_OPTIONS = [
   { id: "ALL", label: "All outcomes" },
@@ -25,14 +28,6 @@ const STATUS_OPTIONS = [
   { id: "PENDING", label: "Pending" },
   { id: "FAILED", label: "Failed" },
   { id: "REFUNDED", label: "Refunded" },
-] as const;
-
-const OPERATOR_OPTIONS = [
-  { id: "ALL", label: "All carriers" },
-  { id: "JIO", label: "Jio" },
-  { id: "AIRTEL", label: "Airtel" },
-  { id: "VI", label: "Vodafone Idea" },
-  { id: "BSNL", label: "BSNL" },
 ] as const;
 
 const CATEGORY_OPTIONS: { id: AdminTransactionTypeFilter; label: string }[] = [
@@ -266,7 +261,7 @@ export function TransactionsFilterBar({
           </Select.Trigger>
           <Select.Popover>
             <ListBox>
-              {OPERATOR_OPTIONS.map((opt) => (
+              {CARRIER_FILTER_OPTIONS.map((opt) => (
                 <ListBox.Item key={opt.id} id={opt.id} textValue={opt.label}>
                   {opt.label}
                   <ListBox.ItemIndicator />
