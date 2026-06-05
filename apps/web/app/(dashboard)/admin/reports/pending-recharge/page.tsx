@@ -22,6 +22,7 @@ export default async function PendingRechargeReportPage({
         showCategoryDropdown: false,
       }}
       searchParams={query}
+      showRefreshPending
       title="Pending recharge"
     />
   );

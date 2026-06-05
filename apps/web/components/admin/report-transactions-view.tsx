@@ -5,6 +5,7 @@ import {
 } from "@/lib/admin-transactions-query";
 
 import { BackToReportsLink } from "@/components/admin/back-to-reports-link";
+import { LedgerRefreshPendingButton } from "@/components/distributor/ledger-refresh-pending-button";
 import { TransactionsFilterBar } from "@/components/admin/transactions-filter-bar";
 import { TransactionsDownloadButton } from "@/components/admin/transactions-download-button";
 import { TransactionsTable } from "@/components/admin/transactions-table";
@@ -17,6 +18,7 @@ export async function ReportTransactionsView({
   fetchOptions,
   filterOptions,
   downloadFileName,
+  showRefreshPending,
 }: {
   title: string;
   description: string;
@@ -31,6 +33,7 @@ export async function ReportTransactionsView({
     emphasizeSearch?: boolean;
   };
   downloadFileName: string;
+  showRefreshPending?: boolean;
 }) {
   const { rows, type, status, sort } = await fetchAdminTransactions(
     searchParams,
@@ -47,7 +50,12 @@ export async function ReportTransactionsView({
           </h1>
           <p className="mt-1 text-sm text-muted">{description}</p>
         </div>
-        <TransactionsDownloadButton data={rows} fileName={downloadFileName} />
+        <div className="flex flex-wrap items-center gap-2">
+          {showRefreshPending ? (
+            <LedgerRefreshPendingButton endpoint="/api/admin/sync-pending" />
+          ) : null}
+          <TransactionsDownloadButton data={rows} fileName={downloadFileName} />
+        </div>
       </div>
 
       <TransactionsFilterBar
