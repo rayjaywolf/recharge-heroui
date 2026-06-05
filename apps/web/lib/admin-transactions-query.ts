@@ -9,6 +9,7 @@ import {
   lte,
   notInArray,
   or,
+  sql,
   type SQL,
 } from "drizzle-orm";
 import { db, transaction, user, type TxStatus } from "@repo/db";
@@ -59,6 +60,12 @@ export function resolveTransactionTypeFilter(
   if (options?.lockedType) return options.lockedType;
   if (typeParam === "FUNDS" || typeParam === "ALL") return typeParam;
   return options?.defaultType ?? "RECHARGE";
+}
+
+/** Match recharge amount when search text appears in the digits (e.g. "147" → ₹147, ₹1147). */
+export function transactionAmountSearchCondition(search: string): SQL {
+  const pattern = `%${search}%`;
+  return sql`CAST(${transaction.amount} AS TEXT) LIKE ${pattern}`;
 }
 
 export function resolveTransactionsSort(
@@ -170,12 +177,14 @@ export function buildTransactionWhereClause(
             ilike(transaction.apiReferenceId, pattern),
             ilike(transaction.id, pattern),
             ilike(transaction.apiMessage, pattern),
+            transactionAmountSearchCondition(search),
           )!
         : or(
             ilike(transaction.targetPhone, pattern),
             ilike(transaction.apiReferenceId, pattern),
             ilike(transaction.id, pattern),
             ilike(transaction.apiMessage, pattern),
+            transactionAmountSearchCondition(search),
             ilike(user.name, pattern),
             ilike(user.email, pattern),
           )!,

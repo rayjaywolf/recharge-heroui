@@ -16,6 +16,7 @@ import {
 import { db, transaction } from "@repo/db";
 
 import { resolveEarningsSort, type AdminEarningsSearchParams } from "@/lib/admin-earnings-query";
+import { transactionAmountSearchCondition } from "@/lib/admin-transactions-query";
 import { resolveCarrierFilterOperators } from "@/lib/transaction-filters";
 import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
 import { buildRetailerRechargeVolumeFilter } from "@/lib/retailer-recharge-volume";
@@ -51,13 +52,15 @@ export async function fetchRetailerEarnings(params: AdminEarningsSearchParams) {
   } else if (carrierOperators.length > 1) {
     conditions.push(inArray(transaction.operator, carrierOperators));
   }
-  if (params.search?.trim()) {
-    const pattern = `%${params.search.trim()}%`;
+  const search = params.search?.trim();
+  if (search) {
+    const pattern = `%${search}%`;
     conditions.push(
       or(
         ilike(transaction.targetPhone, pattern),
         ilike(transaction.id, pattern),
         ilike(transaction.operator, pattern),
+        transactionAmountSearchCondition(search),
       )!,
     );
   }

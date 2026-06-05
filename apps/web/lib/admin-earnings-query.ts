@@ -14,6 +14,7 @@ import {
 import { db, transaction, user, type TxStatus } from "@repo/db";
 
 import type { EarningRow } from "@/components/admin/earnings-download-button";
+import { transactionAmountSearchCondition } from "@/lib/admin-transactions-query";
 import { resolveCarrierFilterOperators } from "@/lib/transaction-filters";
 
 export type AdminEarningsSearchParams = {
@@ -133,6 +134,7 @@ export function buildEarningsWhereClause(
         ilike(transaction.targetPhone, pattern),
         ilike(transaction.id, pattern),
         ilike(transaction.operator, pattern),
+        transactionAmountSearchCondition(search),
         ilike(user.name, pattern),
         ilike(user.email, pattern),
       )!,

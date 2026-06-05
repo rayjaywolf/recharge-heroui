@@ -142,7 +142,7 @@ export function EarningsFilterBar({
           <SearchField.Group>
             <SearchField.SearchIcon />
             <SearchField.Input
-              placeholder="Retailer, carrier, phone…"
+              placeholder="Retailer, carrier, phone, amount…"
               value={search}
               onKeyDown={(e) => {
                 if (e.key === "Enter") pushFilters();

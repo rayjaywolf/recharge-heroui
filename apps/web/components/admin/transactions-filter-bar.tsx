@@ -173,7 +173,7 @@ export function TransactionsFilterBar({
           <SearchField.Group>
             <SearchField.SearchIcon />
             <SearchField.Input
-              placeholder="Phone, user, or reference ID…"
+              placeholder="Phone, amount, user, or reference…"
               value={search}
               onKeyDown={(e) => {
                 if (e.key === "Enter") pushFilters();
