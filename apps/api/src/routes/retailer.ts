@@ -84,7 +84,7 @@ retailerRoutes.get("/api/retailer/profile", requireRetailer, async (c) => {
       id: found.id,
       name: found.name,
       image,
-      email: found.email,
+      email: found.email ?? null,
       phoneNumber: found.phoneNumber,
       balance: found.balance,
       earnings: found.earnings,

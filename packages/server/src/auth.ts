@@ -30,6 +30,21 @@ const extraTrustedOrigins =
   process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean) ??
   [];
 
+const authFallbackUrl =
+  apiOrigin ?? webOrigin ?? "http://localhost:3001";
+
+/** Dev: accept requests from LAN IPs / emulators (physical device USB debugging). */
+const devAllowedHosts = [
+  "localhost:*",
+  "127.0.0.1:*",
+  "10.0.2.2:*",
+  "192.168.*.*:*",
+  "10.*.*.*:*",
+  "172.*.*.*:*",
+] as const;
+
+const isProduction = process.env.NODE_ENV === "production";
+
 /**
  * Pin the cookie security flag instead of inferring it from each instance's
  * baseURL. The Koyeb API (sets the cookie) and the Vercel web app (reads it via
@@ -44,8 +59,14 @@ const useSecureCookies =
 
 export const auth = betterAuth({
   // Prefer API URL so mobile + Koyeb sessions match the host clients call.
-  // Web still works via Next proxy (cookies scoped to the browser origin).
-  baseURL: apiOrigin ?? webOrigin ?? "http://localhost:3001",
+  // In dev, resolve per-request host so `http://192.168.x.x:3001` works on device.
+  baseURL: isProduction
+    ? authFallbackUrl
+    : {
+        allowedHosts: [...devAllowedHosts],
+        protocol: "auto",
+        fallback: authFallbackUrl,
+      },
   advanced: {
     useSecureCookies,
   },
@@ -63,6 +84,11 @@ export const auth = betterAuth({
     "http://localhost:3001",
     "http://127.0.0.1:3001",
     "http://10.0.2.2:3001",
+    "http://localhost:*",
+    "http://127.0.0.1:*",
+    "http://10.0.2.2:*",
+    "http://192.168.*.*:*",
+    "http://10.*.*.*:*",
     apiOrigin,
     webOrigin,
     ...extraTrustedOrigins,
