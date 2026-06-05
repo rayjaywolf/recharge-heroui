@@ -18,21 +18,15 @@ import {
   Clock,
   Wallet,
 } from "lucide-react";
-import { Link, Table } from "@heroui/react";
+import { Link } from "@heroui/react";
 import { db, transaction, user } from "@repo/db";
 
-import {
-  AdminTableCard,
-  AdminTableEmpty,
-} from "@/components/admin/admin-table-card";
+import { AdminRecentTransactionsTable } from "@/components/admin/admin-recent-transactions-table";
+import { AdminTableCard } from "@/components/admin/admin-table-card";
 import { LedgerRefreshPendingButton } from "@/components/distributor/ledger-refresh-pending-button";
-import { Money } from "@/components/money";
 import { StatCard } from "@/components/admin/stat-card";
-import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 import { formatInr } from "@/lib/format-money";
 import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
-import { operatorLabel } from "@/lib/transaction-label";
-import { formatTableDateTime } from "@/lib/utils";
 
 async function successRateBetween(start: Date, end?: Date) {
   const conditions = [
@@ -250,47 +244,7 @@ export default async function AdminOverviewPage() {
         }
         title="Recent transactions"
       >
-        {recentLedger.length === 0 ? (
-          <AdminTableEmpty message="No recent API transactions found." />
-        ) : (
-          <Table>
-            <Table.ScrollContainer>
-              <Table.Content
-                aria-label="Recent transactions"
-                className="min-w-[640px]"
-              >
-                <Table.Header>
-                  <Table.Column isRowHeader>Time</Table.Column>
-                  <Table.Column>User</Table.Column>
-                  <Table.Column>Carrier</Table.Column>
-                  <Table.Column>Phone</Table.Column>
-                  <Table.Column>Amount</Table.Column>
-                  <Table.Column>Status</Table.Column>
-                </Table.Header>
-                <Table.Body>
-                  {recentLedger.map((tx) => (
-                    <Table.Row key={tx.id} className="whitespace-nowrap">
-                      <Table.Cell className="whitespace-nowrap text-sm text-muted">
-                        {formatTableDateTime(tx.createdAt)}
-                      </Table.Cell>
-                      <Table.Cell className="font-medium">{tx.userName}</Table.Cell>
-                      <Table.Cell>{operatorLabel(tx.operator)}</Table.Cell>
-                      <Table.Cell className="font-mono text-sm text-muted">
-                        {tx.targetPhone}
-                      </Table.Cell>
-                      <Table.Cell className="font-semibold">
-                        <Money amount={tx.amount} />
-                      </Table.Cell>
-                      <Table.Cell>
-                        <TransactionStatusChip status={tx.status} />
-                      </Table.Cell>
-                    </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table.Content>
-            </Table.ScrollContainer>
-          </Table>
-        )}
+        <AdminRecentTransactionsTable rows={recentLedger} />
       </AdminTableCard>
     </div>
   );
