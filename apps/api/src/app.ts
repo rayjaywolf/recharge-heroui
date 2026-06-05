@@ -41,7 +41,12 @@ const defaultCorsOrigin =
 
 const app = new Hono<{ Variables: AppVariables }>();
 
-app.use("*", logger());
+app.use(
+  "*",
+  logger((msg) => {
+    console.log(`[${new Date().toISOString()}] ${msg}`);
+  }),
+);
 
 app.use(
   "*",

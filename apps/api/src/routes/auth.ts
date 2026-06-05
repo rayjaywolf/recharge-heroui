@@ -113,7 +113,7 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
       errorBody = { message: "Could not read response body.", error };
     }
 
-    console.warn("[auth] request failed", {
+    console.warn(`[${new Date().toISOString()}] [auth] request failed`, {
       method: c.req.method,
       pathname,
       status,
@@ -128,7 +128,7 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
       errorBody,
     });
   } else {
-    console.info("[auth] request ok", {
+    console.info(`[${new Date().toISOString()}] [auth] request ok`, {
       method: c.req.method,
       pathname,
       status,
