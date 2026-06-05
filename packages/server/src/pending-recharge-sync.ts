@@ -8,15 +8,18 @@ import {
   notifyDistributorRechargeSettled,
   resolveRechargeSettlementOutcome,
 } from "./notifications";
+import { checkA1TopupStatus } from "./a1topup";
+import { getAvailableProviders, type LiveProvider } from "./env-validation";
 import {
   parseRechargeProviderResponse,
   type ParsedRechargeResponse,
 } from "./recharge-gateway";
+import { checkMRoboticsStatus } from "./mrobotics";
 import { checkRealRoboStatus } from "./realrobo";
 
 const DEFAULT_LIMIT = 50;
 
-export type SyncPendingRealRoboResult = {
+export type SyncPendingResult = {
   checked: number;
   updated: number;
   succeeded: number;
@@ -24,6 +27,9 @@ export type SyncPendingRealRoboResult = {
   stillPending: number;
   errors: Array<{ transactionId: string; message: string }>;
 };
+
+/** @deprecated Use SyncPendingResult */
+export type SyncPendingRealRoboResult = SyncPendingResult;
 
 type PendingTransaction = typeof transaction.$inferSelect;
 
@@ -171,13 +177,8 @@ export async function settlePendingTransaction(
   return settled ? "updated" : "unchanged";
 }
 
-/** Poll RealRobo for pending recharges and update local transaction rows. */
-export async function syncPendingRealRoboTransactions(
-  options?: { userId?: string; limit?: number },
-): Promise<SyncPendingRealRoboResult> {
-  validateProviderCredentials("REALROBO");
-
-  const result: SyncPendingRealRoboResult = {
+function emptySyncResult(): SyncPendingResult {
+  return {
     checked: 0,
     updated: 0,
     succeeded: 0,
@@ -185,12 +186,34 @@ export async function syncPendingRealRoboTransactions(
     stillPending: 0,
     errors: [],
   };
+}
 
+function mergeSyncResults(...results: SyncPendingResult[]): SyncPendingResult {
+  return results.reduce(
+    (acc, result) => ({
+      checked: acc.checked + result.checked,
+      updated: acc.updated + result.updated,
+      succeeded: acc.succeeded + result.succeeded,
+      failed: acc.failed + result.failed,
+      stillPending: acc.stillPending + result.stillPending,
+      errors: [...acc.errors, ...result.errors],
+    }),
+    emptySyncResult(),
+  );
+}
+
+async function syncPendingProviderTransactions(
+  provider: LiveProvider,
+  options?: { userId?: string; limit?: number },
+): Promise<SyncPendingResult> {
+  validateProviderCredentials(provider);
+
+  const result = emptySyncResult();
   const limit = options?.limit ?? DEFAULT_LIMIT;
 
   const conditions = [
     eq(transaction.status, "PENDING"),
-    eq(transaction.provider, "REALROBO"),
+    eq(transaction.provider, provider),
   ];
   if (options?.userId) {
     conditions.push(eq(transaction.userId, options.userId));
@@ -206,13 +229,14 @@ export async function syncPendingRealRoboTransactions(
     result.checked += 1;
 
     try {
-      const apiResult = await checkRealRoboStatus(tx.id);
-      const parsed = parseRechargeProviderResponse(
-        "REALROBO",
-        apiResult,
-        tx.id,
-      );
+      const apiResult =
+        provider === "REALROBO"
+          ? await checkRealRoboStatus(tx.id)
+          : provider === "A1TOPUP"
+            ? await checkA1TopupStatus(tx.id)
+            : await checkMRoboticsStatus(tx.id);
 
+      const parsed = parseRechargeProviderResponse(provider, apiResult, tx.id);
       const outcome = await settlePendingTransaction(tx, parsed);
 
       if (parsed.finalStatus === "PENDING") {
@@ -230,7 +254,9 @@ export async function syncPendingRealRoboTransactions(
       result.errors.push({
         transactionId: tx.id,
         message:
-          err instanceof Error ? err.message : "RealRobo status check failed",
+          err instanceof Error
+            ? err.message
+            : `${provider} status check failed`,
       });
     }
   }
@@ -238,9 +264,46 @@ export async function syncPendingRealRoboTransactions(
   return result;
 }
 
+/** Poll configured providers for pending recharges and update local rows. */
+export async function syncPendingRechargeTransactions(
+  options?: { userId?: string; limit?: number },
+): Promise<SyncPendingResult> {
+  const configured = new Set(getAvailableProviders());
+  const providers: LiveProvider[] = ["REALROBO", "A1TOPUP", "MROBOTICS"];
+  const results: SyncPendingResult[] = [];
+
+  for (const provider of providers) {
+    if (!configured.has(provider)) continue;
+    results.push(await syncPendingProviderTransactions(provider, options));
+  }
+
+  return mergeSyncResults(...results);
+}
+
+/** Poll RealRobo for pending recharges and update local transaction rows. */
+export async function syncPendingRealRoboTransactions(
+  options?: { userId?: string; limit?: number },
+): Promise<SyncPendingResult> {
+  return syncPendingProviderTransactions("REALROBO", options);
+}
+
+/** Poll A1Topup for pending recharges and update local transaction rows. */
+export async function syncPendingA1TopupTransactions(
+  options?: { userId?: string; limit?: number },
+): Promise<SyncPendingResult> {
+  return syncPendingProviderTransactions("A1TOPUP", options);
+}
+
 export async function syncPendingRealRoboTransactionsForUser(
   userId: string,
   options?: { limit?: number },
-): Promise<SyncPendingRealRoboResult> {
+): Promise<SyncPendingResult> {
   return syncPendingRealRoboTransactions({ ...options, userId });
+}
+
+export async function syncPendingRechargeTransactionsForUser(
+  userId: string,
+  options?: { limit?: number },
+): Promise<SyncPendingResult> {
+  return syncPendingRechargeTransactions({ ...options, userId });
 }

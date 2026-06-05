@@ -11,6 +11,7 @@
     "./date-range": "./src/date-range.ts",
     "./retailer-registration": "./src/retailer-registration.ts",
     "./operator-provider": "./src/operator-provider.ts",
+    "./a1topup": "./src/a1topup.ts",
     "./recharge-gateway": "./src/recharge-gateway.ts",
     "./provider-balances": "./src/provider-balances.ts",
     "./mrobotics": "./src/mrobotics.ts",

@@ -38,6 +38,41 @@ describe("REALROBO provider response parsing", () => {
 });
 
 describe("A1TOPUP provider response parsing", () => {
+  it("maps Success status to SUCCESS (case-insensitive)", () => {
+    const parsed = parseRechargeProviderResponse(
+      "A1TOPUP",
+      {
+        status: "Success",
+        opid: "RJ0317161622000269New",
+        txid: "5804",
+        orderid: "tx_success_1",
+      },
+      "tx_success_1",
+    );
+
+    expect(parsed.finalStatus).toBe("SUCCESS");
+    expect(parsed.shouldRefund).toBe(false);
+    expect(parsed.apiReferenceId).toContain("5804");
+    expect(parsed.apiReferenceId).toContain("RJ0317161622000269New");
+  });
+
+  it("maps Failure status to FAILED with refund", () => {
+    const parsed = parseRechargeProviderResponse(
+      "A1TOPUP",
+      {
+        status: "Failure",
+        message: "Insufficient balance",
+        txid: "5805",
+        orderid: "tx_failed_1",
+      },
+      "tx_failed_1",
+    );
+
+    expect(parsed.finalStatus).toBe("FAILED");
+    expect(parsed.shouldRefund).toBe(true);
+    expect(parsed.apiMessage).toBe("Insufficient balance");
+  });
+
   it("maps timeout/network fallback to PENDING without refund", () => {
     const parsed = parseRechargeProviderResponse(
       "A1TOPUP",

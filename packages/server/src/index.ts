@@ -6,10 +6,15 @@ export * from "./retailer-registration";
 export * from "./operator-provider";
 export * from "./recharge-gateway";
 export {
+  syncPendingA1TopupTransactions,
+  syncPendingRechargeTransactions,
+  syncPendingRechargeTransactionsForUser,
   syncPendingRealRoboTransactions,
   syncPendingRealRoboTransactionsForUser,
   type SyncPendingRealRoboResult,
+  type SyncPendingResult,
 } from "./pending-recharge-sync";
+export { checkA1TopupStatus, mapA1OperatorCode } from "./a1topup";
 export * from "./provider-balances";
 export { getMRoboticsBalance, performMRoboticsRecharge } from "./mrobotics";
 export {

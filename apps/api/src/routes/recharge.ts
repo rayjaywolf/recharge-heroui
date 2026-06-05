@@ -31,7 +31,10 @@ import {
   parseRechargeProviderResponse,
   type ParsedRechargeResponse,
 } from "@repo/server/recharge-gateway";
-import { syncPendingRealRoboTransactionsForUser } from "@repo/server/pending-recharge-sync";
+import {
+  settlePendingTransaction,
+  syncPendingRechargeTransactionsForUser,
+} from "@repo/server/pending-recharge-sync";
 import { validateRealRoboCircle } from "@repo/server/realrobo";
 import { verifyUserMpin } from "@repo/server/mpin";
 import { CIRCLES_BY_PROVIDER, getClientProviders } from "@repo/shared/recharge-config";
@@ -363,7 +366,7 @@ rechargeRoutes.get("/api/recharge/transactions", requireSession, async (c) => {
 rechargeRoutes.post("/api/recharge/sync-pending", requireSession, async (c) => {
   try {
     const session = c.get("session");
-    const result = await syncPendingRealRoboTransactionsForUser(
+    const result = await syncPendingRechargeTransactionsForUser(
       session.user.id,
     );
 
@@ -376,7 +379,7 @@ rechargeRoutes.post("/api/recharge/sync-pending", requireSession, async (c) => {
 
     const message =
       result.checked === 0
-        ? "No pending RealRobo recharges to check."
+        ? "No pending recharges to check."
         : result.updated > 0
           ? `Updated ${result.updated} of ${result.checked} pending recharge${result.checked === 1 ? "" : "s"}${parts.length > 0 ? ` (${parts.join(", ")})` : ""}.`
           : `Checked ${result.checked} pending recharge${result.checked === 1 ? "" : "s"}; no status changes yet${parts.length > 0 ? ` (${parts.join(", ")})` : ""}.`;
@@ -388,11 +391,51 @@ rechargeRoutes.post("/api/recharge/sync-pending", requireSession, async (c) => {
     });
   } catch (error) {
     console.error("Sync pending recharges error:", error);
-    const msg = error instanceof Error ? error.message : "Internal server error";
-    if (msg.includes("REALROBO_API_TOKEN")) {
-      return c.json({ error: "RealRobo is not configured." }, 503);
-    }
     return c.json({ error: "Could not refresh pending recharges." }, 500);
+  }
+});
+
+/** A1Topup callback: `?txid=<orderId>&status=Success|Failure&opid=<ref>` */
+rechargeRoutes.get("/api/recharge/a1topup/callback", async (c) => {
+  try {
+    const orderId = c.req.query("txid") || c.req.query("orderid");
+    const status = c.req.query("status");
+    const opid = c.req.query("opid");
+
+    if (!orderId) {
+      return c.text("Missing txid", 400);
+    }
+
+    const [found] = await db
+      .select()
+      .from(transaction)
+      .where(eq(transaction.id, orderId))
+      .limit(1);
+
+    if (
+      !found ||
+      found.provider !== "A1TOPUP" ||
+      found.status !== "PENDING"
+    ) {
+      return c.text("OK", 200);
+    }
+
+    const parsed = parseRechargeProviderResponse(
+      "A1TOPUP",
+      {
+        status: status ?? undefined,
+        opid: opid ?? undefined,
+        txid: orderId,
+        orderid: orderId,
+      },
+      found.id,
+    );
+
+    await settlePendingTransaction(found, parsed);
+    return c.text("OK", 200);
+  } catch (error) {
+    console.error("A1Topup callback error:", error);
+    return c.text("OK", 200);
   }
 });
 

@@ -36,11 +36,12 @@ import {
   notifyRetailerWalletDebited,
   resolveRechargeSettlementOutcome,
 } from "@repo/server/notifications";
+import { checkA1TopupStatus } from "@repo/server/a1topup";
 import { checkMRoboticsStatus } from "@repo/server/mrobotics";
 import { getAllProviderBalances } from "@repo/server/provider-balances";
 import {
   settlePendingTransaction,
-  syncPendingRealRoboTransactions,
+  syncPendingRechargeTransactions,
   syncPendingRealRoboTransactionsForUser,
 } from "@repo/server/pending-recharge-sync";
 import { parseRechargeProviderResponse } from "@repo/server/recharge-gateway";
@@ -67,7 +68,7 @@ adminRoutes.get("/api/admin/provider-balances", requireAdmin, async (c) => {
 
 adminRoutes.post("/api/admin/sync-pending", requireAdmin, async (c) => {
   try {
-    const result = await syncPendingRealRoboTransactions({ limit: 100 });
+    const result = await syncPendingRechargeTransactions({ limit: 100 });
 
     const parts: string[] = [];
     if (result.succeeded > 0) parts.push(`${result.succeeded} succeeded`);
@@ -78,7 +79,7 @@ adminRoutes.post("/api/admin/sync-pending", requireAdmin, async (c) => {
 
     const message =
       result.checked === 0
-        ? "No pending RealRobo recharges to check."
+        ? "No pending recharges to check."
         : result.updated > 0
           ? `Updated ${result.updated} of ${result.checked} pending recharge${result.checked === 1 ? "" : "s"}${parts.length > 0 ? ` (${parts.join(", ")})` : ""}.`
           : `Checked ${result.checked} pending recharge${result.checked === 1 ? "" : "s"}; no status changes yet${parts.length > 0 ? ` (${parts.join(", ")})` : ""}.`;
@@ -90,10 +91,6 @@ adminRoutes.post("/api/admin/sync-pending", requireAdmin, async (c) => {
     });
   } catch (error) {
     console.error("Admin sync pending recharges error:", error);
-    const msg = error instanceof Error ? error.message : "Internal server error";
-    if (msg.includes("REALROBO_API_TOKEN")) {
-      return c.json({ error: "RealRobo is not configured." }, 503);
-    }
     return c.json({ error: "Could not refresh pending recharges." }, 500);
   }
 });
@@ -152,6 +149,28 @@ adminRoutes.post("/api/admin/transactions/:id/refresh-status", requireAdmin, asy
       return c.json({
         success: true,
         message: "Status refreshed from MRobotics.",
+        transaction: updated ?? found,
+      });
+    }
+
+    if (found.provider === "A1TOPUP") {
+      const statusResponse = await checkA1TopupStatus(found.id);
+      const parsed = parseRechargeProviderResponse(
+        "A1TOPUP",
+        statusResponse,
+        found.id,
+      );
+
+      await settlePendingTransaction(found, parsed);
+      const [updated] = await db
+        .select()
+        .from(transaction)
+        .where(eq(transaction.id, found.id))
+        .limit(1);
+
+      return c.json({
+        success: true,
+        message: "Status refreshed from A1TopUp.",
         transaction: updated ?? found,
       });
     }

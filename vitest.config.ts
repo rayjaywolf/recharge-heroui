@@ -9,6 +9,10 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "apps/web"),
       "@repo/db": path.resolve(import.meta.dirname, "packages/db/src/index.ts"),
+      "@repo/server/a1topup": path.resolve(
+        import.meta.dirname,
+        "packages/server/src/a1topup.ts",
+      ),
       "@repo/server/recharge-gateway": path.resolve(
         import.meta.dirname,
         "packages/server/src/recharge-gateway.ts",
