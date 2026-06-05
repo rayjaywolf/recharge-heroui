@@ -14,6 +14,10 @@ import {
 } from "@repo/db";
 import { decrementBalance, incrementBalance } from "@repo/server/db-utils";
 import {
+  creditAdminCommission,
+  debitAdminCommission,
+} from "@repo/server/user-earnings";
+import {
   markNotificationsReadForEntity,
   notifyDistributorDisputeResolved,
   notifyDistributorRechargeSettled,
@@ -269,17 +273,7 @@ adminRoutes.patch("/api/admin/transactions/:id/manual-status", requireAdmin, asy
         }
 
         if (found.adminCommission > 0) {
-          const [adminUser] = await tx
-            .select({ id: user.id })
-            .from(user)
-            .where(eq(user.role, "ADMIN"))
-            .limit(1);
-          if (adminUser) {
-            await tx
-              .update(user)
-              .set({ earnings: sql`${user.earnings} - ${found.adminCommission}` })
-              .where(eq(user.id, adminUser.id));
-          }
+          await debitAdminCommission(tx, found.adminCommission);
         }
       }
 
@@ -323,17 +317,7 @@ adminRoutes.patch("/api/admin/transactions/:id/manual-status", requireAdmin, asy
         }
 
         if (nextAdminCommission > 0) {
-          const [adminUser] = await tx
-            .select({ id: user.id })
-            .from(user)
-            .where(eq(user.role, "ADMIN"))
-            .limit(1);
-          if (adminUser) {
-            await tx
-              .update(user)
-              .set({ earnings: sql`${user.earnings} + ${nextAdminCommission}` })
-              .where(eq(user.id, adminUser.id));
-          }
+          await creditAdminCommission(tx, nextAdminCommission);
         }
       }
 

@@ -1,5 +1,6 @@
 import { and, asc, count, eq, inArray, notInArray, sum } from "drizzle-orm";
 import { db, transaction, user, type Role } from "@repo/db";
+import { computeUserEarningsMap } from "@repo/server/user-earnings";
 import { RECHARGE_EXCLUDED_OPERATORS } from "@/lib/transaction-filters";
 
 export type UserReportRow = {
@@ -32,7 +33,6 @@ async function attachRechargeStats(
     phoneNumber: string | null;
     role: string;
     balance: number;
-    earnings: number;
     accountStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
     createdAt: Date;
     distributorName: string | null;
@@ -84,6 +84,8 @@ async function attachRechargeStats(
     pendingGroups.map((g) => [g.userId, g.count]),
   );
 
+  const earningsByUser = await computeUserEarningsMap(db);
+
   return users.map((u) => {
     const success = successByUser.get(u.id);
     return {
@@ -93,7 +95,7 @@ async function attachRechargeStats(
       phoneNumber: u.phoneNumber,
       role: u.role,
       balance: u.balance,
-      earnings: u.earnings,
+      earnings: earningsByUser.get(u.id) ?? 0,
       accountStatus: u.accountStatus,
       createdAt: u.createdAt.toISOString(),
       distributorName: u.distributorName,
@@ -119,7 +121,6 @@ export async function fetchUserReportRows(
       phoneNumber: true,
       role: true,
       balance: true,
-      earnings: true,
       accountStatus: true,
       createdAt: true,
     },
@@ -137,7 +138,6 @@ export async function fetchUserReportRows(
     phoneNumber: u.phoneNumber,
     role: u.role,
     balance: u.balance,
-    earnings: u.earnings,
     accountStatus: u.accountStatus,
     createdAt: u.createdAt,
     distributorName: u.distributor?.name ?? null,

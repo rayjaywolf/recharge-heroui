@@ -15,6 +15,7 @@ import {
 } from "@repo/shared/phone";
 import { validateMpin } from "@repo/shared/mpin";
 import { decrementBalance, incrementBalance } from "@repo/server/db-utils";
+import { creditAdminCommission } from "@repo/server/user-earnings";
 import { resolveDateRange } from "@repo/server/date-range";
 import {
   getAvailableProviders,
@@ -669,17 +670,7 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
         }
 
         if (adminCommission > 0) {
-          const [adminUser] = await tx
-            .select({ id: user.id })
-            .from(user)
-            .where(eq(user.role, "ADMIN"))
-            .limit(1);
-          if (adminUser) {
-            await tx
-              .update(user)
-              .set({ earnings: sql`${user.earnings} + ${adminCommission}` })
-              .where(eq(user.id, adminUser.id));
-          }
+          await creditAdminCommission(tx, adminCommission);
         }
       }
 

@@ -9,6 +9,7 @@ import {
 import { notFound } from "next/navigation";
 import { Card, Chip, Link as HeroLink, Table } from "@heroui/react";
 import { db, transaction, user } from "@repo/db";
+import { getUserEarnings } from "@repo/server/user-earnings";
 import { RECHARGE_EXCLUDED_OPERATORS } from "@/lib/transaction-filters";
 
 import {
@@ -55,16 +56,32 @@ export default async function AdminUserDetailPage({
     rechargeFilter,
   );
 
-  const [[volumeRow], [txCountRow]] = await Promise.all([
+  const [[volumeRow], [txCountRow], lifetimeEarnings] = await Promise.all([
     db
       .select({ total: sum(transaction.amount) })
       .from(transaction)
       .where(successRechargeFilter),
     db.select({ total: count() }).from(transaction).where(successRechargeFilter),
+    getUserEarnings(db, id),
   ]);
 
   const allTimeVolume = Number(volumeRow?.total ?? 0);
   const transactionCount = txCountRow?.total ?? 0;
+
+  const accountStatusLabel =
+    found.accountStatus === "SUSPENDED"
+      ? "Suspended"
+      : found.accountStatus === "PENDING"
+        ? "Pending"
+        : found.accountStatus === "REJECTED"
+          ? "Rejected"
+          : "Active";
+  const accountStatusColor =
+    found.accountStatus === "SUSPENDED" || found.accountStatus === "REJECTED"
+      ? "danger"
+      : found.accountStatus === "PENDING"
+        ? "warning"
+        : "success";
 
   const contactPhone = getDisplayPhone(found);
   const contactEmail = getDisplayEmail(found.email);
@@ -89,12 +106,8 @@ export default async function AdminUserDetailPage({
           <Chip size="sm" variant="secondary">
             {found.role}
           </Chip>
-          <Chip
-            color={found.accountStatus === "SUSPENDED" ? "danger" : "success"}
-            size="sm"
-            variant="soft"
-          >
-            {found.accountStatus === "SUSPENDED" ? "Suspended" : "Active"}
+          <Chip color={accountStatusColor} size="sm" variant="soft">
+            {accountStatusLabel}
           </Chip>
         </div>
         <p className="mt-1 text-sm text-muted">
@@ -113,7 +126,7 @@ export default async function AdminUserDetailPage({
           description="Lifetime commission earnings"
           icon={Wallet}
           title="Earnings"
-          value={formatInr(Math.round(found.earnings))}
+          value={formatInr(lifetimeEarnings, { fractionDigits: 2 })}
         />
         <StatCard
           description={`All-time volume with ${transactionCount} transactions`}

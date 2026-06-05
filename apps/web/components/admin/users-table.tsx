@@ -207,7 +207,7 @@ export function UsersTable({
           <SearchField.Group>
             <SearchField.SearchIcon />
             <SearchField.Input
-              placeholder="Search by name, phone, or email…"
+              placeholder="Search by name or phone…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -224,12 +224,11 @@ export function UsersTable({
           <Table.ScrollContainer>
             <Table.Content
               aria-label={titleWithCount}
-              className="min-w-[820px]"
+              className="min-w-[720px]"
             >
               <Table.Header>
                 <Table.Column isRowHeader>Name</Table.Column>
                 <Table.Column>Phone</Table.Column>
-                <Table.Column>Email</Table.Column>
                 {!hideDistributorCol ? (
                   <Table.Column>Distributor</Table.Column>
                 ) : null}
@@ -241,7 +240,6 @@ export function UsersTable({
               <Table.Body>
                 {filteredData.map((user) => {
                   const phone = getDisplayPhone(user);
-                  const displayEmail = getDisplayEmail(user.email);
                   const isBusy = busyId === user.id;
 
                   return (
@@ -255,9 +253,6 @@ export function UsersTable({
                       </Table.Cell>
                       <Table.Cell className="text-sm text-muted">
                         {phone ?? "—"}
-                      </Table.Cell>
-                      <Table.Cell className="text-sm text-muted">
-                        {displayEmail ?? "—"}
                       </Table.Cell>
                       {!hideDistributorCol ? (
                         <Table.Cell className="text-sm text-muted">

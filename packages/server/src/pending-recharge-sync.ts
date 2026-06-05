@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { commissionRule, db, transaction, user } from "@repo/db";
 
 import { incrementBalance } from "./db-utils";
+import { creditAdminCommission } from "./user-earnings";
 import { validateProviderCredentials } from "./env-validation";
 import {
   notifyDistributorRechargeSettled,
@@ -137,17 +138,7 @@ export async function settlePendingTransaction(
       }
 
       if (adminCommission > 0) {
-        const [adminUser] = await dbTx
-          .select({ id: user.id })
-          .from(user)
-          .where(eq(user.role, "ADMIN"))
-          .limit(1);
-        if (adminUser) {
-          await dbTx
-            .update(user)
-            .set({ earnings: sql`${user.earnings} + ${adminCommission}` })
-            .where(eq(user.id, adminUser.id));
-        }
+        await creditAdminCommission(dbTx, adminCommission);
       }
     }
     return true;

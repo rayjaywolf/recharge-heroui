@@ -67,7 +67,77 @@ authRoutes.post("/api/auth/register-retailer", async (c) => {
   }
 });
 
-authRoutes.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+function shouldLogAuthDetails(pathname: string): boolean {
+  if (process.env.DETAILED_API_LOGS === "false") return false;
+  return (
+    pathname.startsWith("/api/auth/sign-in") ||
+    pathname.startsWith("/api/auth/sign-up") ||
+    pathname.startsWith("/api/auth/sign-out")
+  );
+}
+
+authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
+  const startedAt = Date.now();
+  const url = new URL(c.req.url);
+  const pathname = url.pathname;
+  const detailed = shouldLogAuthDetails(pathname);
+
+  const res = await auth.handler(c.req.raw);
+
+  if (!detailed) return res;
+
+  // Never log request bodies (passwords). Only metadata + response error body.
+  const elapsedMs = Date.now() - startedAt;
+  const status = res.status;
+
+  const origin = c.req.header("origin") ?? null;
+  const referer = c.req.header("referer") ?? null;
+  const userAgent = c.req.header("user-agent") ?? null;
+  const secFetchSite = c.req.header("sec-fetch-site") ?? null;
+  const secFetchMode = c.req.header("sec-fetch-mode") ?? null;
+  const cfConnectingIp = c.req.header("cf-connecting-ip") ?? null;
+  const xForwardedFor = c.req.header("x-forwarded-for") ?? null;
+
+  if (status >= 400) {
+    let errorBody: unknown = null;
+    try {
+      const cloned = res.clone();
+      const contentType = cloned.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        errorBody = await cloned.json();
+      } else {
+        const text = await cloned.text();
+        errorBody = text.length > 2000 ? text.slice(0, 2000) + "…" : text;
+      }
+    } catch (error) {
+      errorBody = { message: "Could not read response body.", error };
+    }
+
+    console.warn("[auth] request failed", {
+      method: c.req.method,
+      pathname,
+      status,
+      elapsedMs,
+      origin,
+      referer,
+      secFetchSite,
+      secFetchMode,
+      userAgent,
+      cfConnectingIp,
+      xForwardedFor,
+      errorBody,
+    });
+  } else {
+    console.info("[auth] request ok", {
+      method: c.req.method,
+      pathname,
+      status,
+      elapsedMs,
+    });
+  }
+
+  return res;
+});
 
 authRoutes.post("/api/profile/verify-mpin", requireSession, async (c) => {
   try {

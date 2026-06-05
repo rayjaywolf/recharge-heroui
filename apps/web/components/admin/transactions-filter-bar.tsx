@@ -2,23 +2,21 @@
 
 import { useEffect, useState } from "react";
 import type { DateValue } from "@internationalized/date";
-import { parseDate } from "@internationalized/date";
 import { FilterX } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   Button,
   Card,
-  DateField,
-  DateRangePicker,
   Label,
   ListBox,
-  RangeCalendar,
   SearchField,
   Select,
   type RangeValue,
 } from "@heroui/react";
 
+import { ReportDateRangePicker } from "@/components/admin/report-date-range-picker";
 import type { TransactionsSort } from "@/lib/admin-transactions-query";
+import { rangeToQueryStrings, toDateRange } from "@/lib/date-range-field";
 import type { AdminTransactionTypeFilter } from "@/lib/transaction-filters";
 
 const STATUS_OPTIONS = [
@@ -55,32 +53,6 @@ const SORT_OPTIONS: { id: TransactionsSort; label: string }[] = [
   { id: "retailer_asc", label: "Retailer A–Z" },
   { id: "operator_asc", label: "Carrier A–Z" },
 ];
-
-function toDateRange(
-  dateFrom: string,
-  dateTo: string,
-): RangeValue<DateValue> | null {
-  try {
-    const start = dateFrom ? parseDate(dateFrom) : null;
-    const end = dateTo ? parseDate(dateTo) : null;
-    if (start && end) return { start, end };
-    if (start) return { start, end: start };
-    if (end) return { start: end, end };
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function rangeToQueryStrings(range: RangeValue<DateValue> | null): {
-  dateFrom: string;
-  dateTo: string;
-} {
-  return {
-    dateFrom: range?.start?.toString() ?? "",
-    dateTo: range?.end?.toString() ?? "",
-  };
-}
 
 export function TransactionsFilterBar({
   initialStatus,
@@ -335,10 +307,8 @@ export function TransactionsFilterBar({
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <DateRangePicker
-          className="min-w-[260px] flex-1 basis-[280px] sm:max-w-[360px]"
-          endName="dateTo"
-          startName="dateFrom"
+        <ReportDateRangePicker
+          calendarAriaLabel="Transaction date range"
           value={dateRange}
           onChange={(range) => {
             setDateRange(range);
@@ -349,59 +319,7 @@ export function TransactionsFilterBar({
               pushFilters({ dateFrom: from, dateTo: to });
             }
           }}
-        >
-          <Label>Date range</Label>
-          <DateField.Group
-            fullWidth
-            className="bg-white dark:bg-surface"
-            variant="secondary"
-          >
-            <DateField.Input slot="start">
-              {(segment) => <DateField.Segment segment={segment} />}
-            </DateField.Input>
-            <DateRangePicker.RangeSeparator />
-            <DateField.Input slot="end">
-              {(segment) => <DateField.Segment segment={segment} />}
-            </DateField.Input>
-            <DateField.Suffix>
-              <DateRangePicker.Trigger>
-                <DateRangePicker.TriggerIndicator />
-              </DateRangePicker.Trigger>
-            </DateField.Suffix>
-          </DateField.Group>
-          <DateRangePicker.Popover className="bg-white dark:bg-surface">
-            <RangeCalendar
-              aria-label="Transaction date range"
-              className="bg-white dark:bg-surface"
-            >
-              <RangeCalendar.Header>
-                <RangeCalendar.YearPickerTrigger>
-                  <RangeCalendar.YearPickerTriggerHeading />
-                  <RangeCalendar.YearPickerTriggerIndicator />
-                </RangeCalendar.YearPickerTrigger>
-                <RangeCalendar.NavButton slot="previous" />
-                <RangeCalendar.NavButton slot="next" />
-              </RangeCalendar.Header>
-              <RangeCalendar.Grid>
-                <RangeCalendar.GridHeader>
-                  {(day) => (
-                    <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>
-                  )}
-                </RangeCalendar.GridHeader>
-                <RangeCalendar.GridBody>
-                  {(date) => <RangeCalendar.Cell date={date} />}
-                </RangeCalendar.GridBody>
-              </RangeCalendar.Grid>
-              <RangeCalendar.YearPickerGrid>
-                <RangeCalendar.YearPickerGridBody>
-                  {({ year }) => (
-                    <RangeCalendar.YearPickerCell year={year} />
-                  )}
-                </RangeCalendar.YearPickerGridBody>
-              </RangeCalendar.YearPickerGrid>
-            </RangeCalendar>
-          </DateRangePicker.Popover>
-        </DateRangePicker>
+        />
 
         <div className="flex shrink-0 items-center gap-2">
           <Button variant="primary" onPress={() => pushFilters()}>
