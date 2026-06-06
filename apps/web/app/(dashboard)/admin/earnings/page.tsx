@@ -9,6 +9,12 @@ import { StatCard } from "@/components/admin/stat-card";
 import { fetchAdminEarnings } from "@/lib/admin-earnings-query";
 import { formatInr } from "@/lib/format-money";
 import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
+import {
+  getPageItemRange,
+  searchParamsToQueryString,
+} from "@/lib/table-pagination";
+
+import { TablePagination } from "@/components/admin/table-pagination";
 
 function pickSearchParams(
   resolved: { [key: string]: string | string[] | undefined },
@@ -20,6 +26,7 @@ function pickSearchParams(
     dateFrom: resolved.dateFrom as string | undefined,
     dateTo: resolved.dateTo as string | undefined,
     sort: resolved.sort as string | undefined,
+    page: resolved.page as string | undefined,
   };
 }
 
@@ -30,7 +37,22 @@ export default async function AdminEarningsPage({
 }) {
   const resolvedParams = await searchParams;
   const query = pickSearchParams(resolvedParams);
-  const { rows, status, sort } = await fetchAdminEarnings(query);
+  const [{ rows, status, sort, totalCount, page, pageSize }, exportData] =
+    await Promise.all([
+      fetchAdminEarnings(query, { paginate: true }),
+      fetchAdminEarnings(query, { exportAll: true }),
+    ]);
+
+  const queryParams = searchParamsToQueryString({
+    status: status !== "ALL" ? status : undefined,
+    operator:
+      query.operator && query.operator !== "ALL" ? query.operator : undefined,
+    search: query.search?.trim() || undefined,
+    dateFrom: query.dateFrom || undefined,
+    dateTo: query.dateTo || undefined,
+    sort: sort !== "date_desc" ? sort : undefined,
+  });
+  const { start, end } = getPageItemRange(page, totalCount, pageSize);
 
   const { todayStart, yesterdayStart } = getDayBounds();
 
@@ -156,14 +178,20 @@ export default async function AdminEarningsPage({
 
       <AdminTableCard
         description={
-          rows.length > 0
-            ? `Showing up to ${rows.length} matching transactions.`
+          totalCount > 0
+            ? `Showing ${start}–${end} of ${totalCount} matching transactions.`
             : "Adjust filters to find earning transactions."
         }
-        headerAction={<EarningsDownloadButton data={rows} />}
+        headerAction={<EarningsDownloadButton data={exportData.rows} />}
         title="Earnings ledger"
       >
         <AdminEarningsTable rows={rows} />
+        <TablePagination
+          basePath="/admin/earnings"
+          page={page}
+          queryParams={queryParams}
+          totalCount={totalCount}
+        />
       </AdminTableCard>
     </div>
   );

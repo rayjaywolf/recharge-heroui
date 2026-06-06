@@ -1,6 +1,5 @@
-import { and, count, eq } from "drizzle-orm";
-import { fundRequest } from "@repo/db";
-import { db } from "@repo/db";
+import { and, count, eq, isNull } from "drizzle-orm";
+import { db, fundRequest } from "@repo/db";
 
 export async function getPendingFundRequestsCount(
   distributorId: string,
@@ -11,6 +10,20 @@ export async function getPendingFundRequestsCount(
     .where(
       and(
         eq(fundRequest.distributorId, distributorId),
+        eq(fundRequest.status, "PENDING"),
+      ),
+    );
+  return row?.total ?? 0;
+}
+
+/** Retailers without a distributor — routed to admin for approval. */
+export async function getPendingDirectFundRequestsCount(): Promise<number> {
+  const [row] = await db
+    .select({ total: count() })
+    .from(fundRequest)
+    .where(
+      and(
+        isNull(fundRequest.distributorId),
         eq(fundRequest.status, "PENDING"),
       ),
     );

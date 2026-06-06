@@ -79,7 +79,11 @@ export default async function RetailerFundsPage() {
       id: row.id,
       kind: "request" as const,
       title: "Fund request",
-      subtitle: row.remarks || "Awaiting distributor response",
+      subtitle:
+        row.remarks ||
+        (retailer.distributorId
+          ? "Awaiting distributor response"
+          : "Awaiting administrator response"),
       amount: row.amount,
       status: row.status,
       createdAt: row.createdAt.toISOString(),
@@ -93,11 +97,13 @@ export default async function RetailerFundsPage() {
           Funds
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Request wallet funds from your distributor and track updates.
+          {retailer.distributorId
+            ? "Request wallet funds from your distributor and track updates."
+            : "Request wallet funds from the administrator and track updates."}
         </p>
       </div>
 
-      <RetailerFundRequestForm />
+      <RetailerFundRequestForm routedToAdmin={!retailer.distributorId} />
 
       <AdminTableCard
         description="Wallet movements and fund request updates."
@@ -110,7 +116,7 @@ export default async function RetailerFundsPage() {
             <Table.ScrollContainer>
               <Table.Content aria-label="Funding history table" className="min-w-full">
                 <Table.Header>
-                  <Table.Column>Date</Table.Column>
+                  <Table.Column isRowHeader>Date</Table.Column>
                   <Table.Column>Type</Table.Column>
                   <Table.Column>Details</Table.Column>
                   <Table.Column>Amount</Table.Column>

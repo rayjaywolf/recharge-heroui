@@ -1,7 +1,8 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { Chip, Table } from "@heroui/react";
-import { db, transaction, user } from "@repo/db";
+import { db, fundRequest, transaction, user } from "@repo/db";
 
+import { AdminFundRequestsTable } from "@/components/admin/admin-fund-requests-table";
 import {
   AdminTableCard,
   AdminTableEmpty,
@@ -47,6 +48,24 @@ export default async function AdminFundingPage() {
     .where(inArray(transaction.operator, ["MANUAL_CREDIT", "MANUAL_DEBIT"]))
     .orderBy(desc(transaction.createdAt));
 
+  const pendingDirectRequests = await db
+    .select({
+      id: fundRequest.id,
+      amount: fundRequest.amount,
+      remarks: fundRequest.remarks,
+      createdAt: fundRequest.createdAt,
+      retailerName: user.name,
+    })
+    .from(fundRequest)
+    .innerJoin(user, eq(fundRequest.retailerId, user.id))
+    .where(
+      and(
+        isNull(fundRequest.distributorId),
+        eq(fundRequest.status, "PENDING"),
+      ),
+    )
+    .orderBy(desc(fundRequest.createdAt));
+
   const rows: FundingLedgerRow[] = bankLedger.map((tx) => ({
     id: tx.id,
     createdAt: tx.createdAt.toISOString(),
@@ -71,6 +90,16 @@ export default async function AdminFundingPage() {
           Manage user balances and funding operations.
         </p>
       </div>
+
+      <AdminFundRequestsTable
+        requests={pendingDirectRequests.map((request) => ({
+          id: request.id,
+          retailerName: request.retailerName,
+          amount: request.amount,
+          remarks: request.remarks,
+          createdAt: request.createdAt.toISOString(),
+        }))}
+      />
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
         <div className="min-w-0">

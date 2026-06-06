@@ -71,7 +71,10 @@ function resolveNavBadge(
     return { label: formatNavBadgeCount(counts.pendingApprovalsCount) };
   }
 
-  if (href === "/distributor/funds" && counts.pendingFundRequestsCount > 0) {
+  if (
+    (href === "/distributor/funds" || href === "/admin/funding") &&
+    counts.pendingFundRequestsCount > 0
+  ) {
     return { label: formatNavBadgeCount(counts.pendingFundRequestsCount) };
   }
 

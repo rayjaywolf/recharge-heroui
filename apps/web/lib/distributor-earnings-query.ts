@@ -10,13 +10,18 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, transaction, user } from "@repo/db";
 
-import { fetchEarnings, type AdminEarningsSearchParams } from "@/lib/admin-earnings-query";
+import {
+  fetchEarnings,
+  type AdminEarningsSearchParams,
+  type FetchEarningsOptions,
+} from "@/lib/admin-earnings-query";
 import { buildDistributorRechargeVolumeFilter } from "@/lib/distributor-recharge-volume";
 import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
 import { auth } from "@/lib/auth";
 
 export async function fetchDistributorEarnings(
   params: AdminEarningsSearchParams,
+  options?: Pick<FetchEarningsOptions, "paginate" | "exportAll">,
 ) {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -38,6 +43,8 @@ export async function fetchDistributorEarnings(
 
   const earningsResult = await fetchEarnings(params, {
     distributorId: distributor.id,
+    paginate: options?.paginate,
+    exportAll: options?.exportAll,
   });
 
   const { todayStart, yesterdayStart } = getDayBounds();

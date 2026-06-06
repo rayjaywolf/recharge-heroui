@@ -152,6 +152,7 @@ export function FundingControls({ users }: { users: FundingUserOption[] }) {
           <Autocomplete
             placeholder="Choose a user…"
             value={userId}
+            variant="secondary"
             onChange={(value) => setUserId(value != null ? String(value) : null)}
           >
             <Label>Select user</Label>
@@ -162,7 +163,7 @@ export function FundingControls({ users }: { users: FundingUserOption[] }) {
             </Autocomplete.Trigger>
             <Autocomplete.Popover>
               <div className="border-b border-separator p-2">
-                <SearchField>
+                <SearchField variant="secondary">
                   <SearchField.Group>
                     <SearchField.SearchIcon />
                     <SearchField.Input
@@ -251,7 +252,7 @@ export function FundingControls({ users }: { users: FundingUserOption[] }) {
         </form>
       </Card.Content>
 
-      <Card.Footer>
+      <Card.Footer className="mt-4">
         <Button
           className="w-full gap-2"
           form="funding-form"

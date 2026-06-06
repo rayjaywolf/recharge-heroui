@@ -45,13 +45,13 @@ async function main() {
     retailerId: retailer.id,
     fundRequestId,
     amount: 2000,
-    distributorName: "Demo Distributor",
+    approverName: "Demo Distributor",
   });
   await notifyRetailerFundRequestRejected({
     retailerId: retailer.id,
     fundRequestId: createId(),
     amount: 500,
-    distributorName: "Demo Distributor",
+    approverName: "Demo Distributor",
   });
   await notifyRetailerWalletCredited({
     retailerId: retailer.id,

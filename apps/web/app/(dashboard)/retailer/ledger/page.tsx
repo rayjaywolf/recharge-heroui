@@ -1,5 +1,7 @@
 import { fetchRetailerLedger } from "@/lib/retailer-ledger-query";
+import { searchParamsToQueryString } from "@/lib/table-pagination";
 
+import { TablePagination } from "@/components/admin/table-pagination";
 import { TransactionsFilterBar } from "@/components/admin/transactions-filter-bar";
 import { TransactionsDownloadButton } from "@/components/admin/transactions-download-button";
 import { LedgerRefreshPendingButton } from "@/components/distributor/ledger-refresh-pending-button";
@@ -16,6 +18,7 @@ function pickSearchParams(
     dateTo: resolved.dateTo as string | undefined,
     type: resolved.type as string | undefined,
     sort: resolved.sort as string | undefined,
+    page: resolved.page as string | undefined,
   };
 }
 
@@ -26,7 +29,22 @@ export default async function RetailerLedgerPage({
 }) {
   const resolvedParams = await searchParams;
   const query = pickSearchParams(resolvedParams);
-  const { rows, type, status, sort } = await fetchRetailerLedger(query);
+  const [{ rows, type, status, sort, totalCount, page }, exportData] =
+    await Promise.all([
+      fetchRetailerLedger(query, { paginate: true }),
+      fetchRetailerLedger(query, { exportAll: true }),
+    ]);
+
+  const queryParams = searchParamsToQueryString({
+    status: status !== "ALL" ? status : undefined,
+    operator:
+      query.operator && query.operator !== "ALL" ? query.operator : undefined,
+    search: query.search?.trim() || undefined,
+    dateFrom: query.dateFrom || undefined,
+    dateTo: query.dateTo || undefined,
+    type: type !== "ALL" ? type : undefined,
+    sort: sort !== "date_desc" ? sort : undefined,
+  });
 
   return (
     <div className="min-w-0 max-w-full space-y-6">
@@ -42,7 +60,7 @@ export default async function RetailerLedgerPage({
         <div className="flex flex-wrap items-center gap-2">
           <LedgerRefreshPendingButton />
           <TransactionsDownloadButton
-            data={rows}
+            data={exportData.rows}
             fileName="retailer-ledger"
             variant="retailer"
           />
@@ -62,7 +80,15 @@ export default async function RetailerLedgerPage({
         initialType={type}
       />
 
-      <RetailerLedgerTable transactions={rows} />
+      <div>
+        <RetailerLedgerTable transactions={rows} />
+        <TablePagination
+          basePath="/retailer/ledger"
+          page={page}
+          queryParams={queryParams}
+          totalCount={totalCount}
+        />
+      </div>
     </div>
   );
 }

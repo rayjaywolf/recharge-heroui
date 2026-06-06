@@ -1,6 +1,7 @@
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   gte,
@@ -22,6 +23,12 @@ import {
 } from "@/lib/transaction-filters";
 
 import type { AdminTransactionRow } from "@/components/admin/transactions-table";
+import {
+  clampPage,
+  EXPORT_MAX_ROWS,
+  parsePageParam,
+  TABLE_PAGE_SIZE,
+} from "@/lib/table-pagination";
 
 export type AdminTransactionsSearchParams = {
   status?: string;
@@ -31,6 +38,7 @@ export type AdminTransactionsSearchParams = {
   dateTo?: string;
   type?: string;
   sort?: string;
+  page?: string;
 };
 
 export type TransactionsSort =
@@ -51,6 +59,8 @@ export type FetchAdminTransactionsOptions = {
   userId?: string;
   /** Distributor's own transactions plus all retailers under this distributor. */
   networkDistributorId?: string;
+  paginate?: boolean;
+  exportAll?: boolean;
 };
 
 export function resolveTransactionTypeFilter(
@@ -212,14 +222,35 @@ export async function fetchAdminTransactions(
   type: AdminTransactionTypeFilter;
   status: string;
   sort: TransactionsSort;
+  totalCount: number;
+  page: number;
+  pageSize: number;
 }> {
   const type = resolveTransactionTypeFilter(params.type, options);
   const status =
     options?.lockedStatus ?? (params.status && params.status !== "ALL" ? params.status : "ALL");
   const sort = resolveTransactionsSort(params.sort);
   const whereClause = buildTransactionWhereClause(params, options);
+  const paginate = options?.paginate ?? false;
+  const exportAll = options?.exportAll ?? false;
+  const pageSize = TABLE_PAGE_SIZE;
+  const requestedPage = parsePageParam(params.page);
 
-  const transactions = await db
+  const [{ value: totalCount }] = await db
+    .select({ value: count() })
+    .from(transaction)
+    .innerJoin(user, eq(transaction.userId, user.id))
+    .where(whereClause);
+
+  const page = paginate ? clampPage(requestedPage, totalCount, pageSize) : 1;
+  const rowLimit = exportAll
+    ? EXPORT_MAX_ROWS
+    : paginate
+      ? pageSize
+      : 150;
+  const rowOffset = paginate && !exportAll ? (page - 1) * pageSize : 0;
+
+  const baseQuery = db
     .select({
       id: transaction.id,
       userId: transaction.userId,
@@ -252,7 +283,10 @@ export async function fetchAdminTransactions(
         scopedUser: Boolean(options?.userId),
       }),
     )
-    .limit(150);
+    .limit(rowLimit);
+
+  const transactions =
+    rowOffset > 0 ? await baseQuery.offset(rowOffset) : await baseQuery;
 
   const rows: AdminTransactionRow[] = transactions.map((tx) => ({
     id: tx.id,
@@ -281,5 +315,5 @@ export async function fetchAdminTransactions(
     rechargerDistributorId: tx.rechargerDistributorId,
   }));
 
-  return { rows, type, status, sort };
+  return { rows, type, status, sort, totalCount, page, pageSize };
 }

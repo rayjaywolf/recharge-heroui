@@ -1,12 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Form, Input, Label, Spinner, TextField, toast } from "@heroui/react";
 
 import { apiFetch } from "@/lib/api-client";
 
-export function RetailerFundRequestForm() {
+function isBenignNavigationError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+  if (error instanceof Error) {
+    return (
+      error.name === "AbortError" ||
+      error.message.includes("ViewTransition")
+    );
+  }
+  return false;
+}
+
+export function RetailerFundRequestForm({
+  routedToAdmin = false,
+}: {
+  routedToAdmin?: boolean;
+}) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -23,6 +40,7 @@ export function RetailerFundRequestForm() {
       return;
     }
 
+    const form = event.currentTarget;
     setLoading(true);
     try {
       const res = await apiFetch("/api/retailer/fund-request", {
@@ -37,9 +55,12 @@ export function RetailerFundRequestForm() {
         throw new Error(data?.error || "Failed to create fund request.");
       }
       toast(data?.message || "Fund request submitted.", { variant: "success" });
-      event.currentTarget.reset();
-      router.refresh();
+      form.reset();
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (error) {
+      if (isBenignNavigationError(error)) return;
       toast(error instanceof Error ? error.message : "Failed to create request.", {
         variant: "danger",
       });
@@ -53,7 +74,9 @@ export function RetailerFundRequestForm() {
       <Card.Header>
         <Card.Title>Request funds</Card.Title>
         <Card.Description>
-          Ask your distributor to add balance to your wallet.
+          {routedToAdmin
+            ? "Request wallet balance directly from the administrator."
+            : "Ask your distributor to add balance to your wallet."}
         </Card.Description>
       </Card.Header>
       <Form onSubmit={handleSubmit}>
@@ -68,9 +91,13 @@ export function RetailerFundRequestForm() {
           </TextField>
         </Card.Content>
         <Card.Footer className="mt-4">
-          <Button isDisabled={loading} type="submit" variant="primary">
-            {loading ? <Spinner size="sm" /> : null}
-            Submit request
+          <Button isPending={loading} type="submit" variant="primary">
+            {({ isPending }) => (
+              <>
+                {isPending ? <Spinner color="current" size="sm" /> : null}
+                {isPending ? "Submitting…" : "Submit request"}
+              </>
+            )}
           </Button>
         </Card.Footer>
       </Form>

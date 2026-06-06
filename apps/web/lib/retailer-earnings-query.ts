@@ -1,6 +1,7 @@
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   gt,
@@ -15,12 +16,22 @@ import {
 } from "drizzle-orm";
 import { db, transaction } from "@repo/db";
 
-import { resolveEarningsSort, type AdminEarningsSearchParams } from "@/lib/admin-earnings-query";
+import {
+  resolveEarningsSort,
+  type AdminEarningsSearchParams,
+  type EarningsSort,
+} from "@/lib/admin-earnings-query";
 import { transactionAmountSearchCondition } from "@/lib/admin-transactions-query";
-import { resolveCarrierFilterOperators } from "@/lib/transaction-filters";
-import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
 import { buildRetailerRechargeVolumeFilter } from "@/lib/retailer-recharge-volume";
 import { requireRetailer } from "@/lib/retailer-auth";
+import { computePercentChange, getDayBounds } from "@/lib/stat-trend";
+import {
+  clampPage,
+  EXPORT_MAX_ROWS,
+  parsePageParam,
+  TABLE_PAGE_SIZE,
+} from "@/lib/table-pagination";
+import { resolveCarrierFilterOperators } from "@/lib/transaction-filters";
 
 type RetailerEarningRow = {
   id: string;
@@ -33,18 +44,19 @@ type RetailerEarningRow = {
   user: { name: string; email: string };
 };
 
-export async function fetchRetailerEarnings(params: AdminEarningsSearchParams) {
-  const retailer = await requireRetailer();
-  const sort = resolveEarningsSort(params.sort);
-  const status =
-    params.status && params.status !== "ALL" ? params.status : "ALL";
-
+function buildRetailerEarningsConditions(
+  retailerId: string,
+  params: AdminEarningsSearchParams,
+  status: string,
+): SQL[] {
   const conditions: SQL[] = [
-    eq(transaction.userId, retailer.id),
+    eq(transaction.userId, retailerId),
     gt(transaction.retailerCommission, 0),
   ];
   if (status !== "ALL") {
-    conditions.push(eq(transaction.status, status as "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED"));
+    conditions.push(
+      eq(transaction.status, status as "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED"),
+    );
   }
   const carrierOperators = resolveCarrierFilterOperators(params.operator ?? "");
   if (carrierOperators.length === 1) {
@@ -73,22 +85,57 @@ export async function fetchRetailerEarnings(params: AdminEarningsSearchParams) {
     conditions.push(lte(transaction.createdAt, endsAt));
   }
 
-  const sortOrder =
-    sort === "date_asc"
-      ? asc(transaction.createdAt)
-      : sort === "amount_desc"
-        ? desc(transaction.amount)
-        : sort === "amount_asc"
-          ? asc(transaction.amount)
-          : sort === "commission_desc"
-            ? desc(transaction.retailerCommission)
-            : sort === "commission_asc"
-              ? asc(transaction.retailerCommission)
-              : sort === "operator_asc"
-                ? asc(transaction.operator)
-                : desc(transaction.createdAt);
+  return conditions;
+}
 
-  const rowsDb = await db
+function retailerEarningsOrderBy(sort: EarningsSort) {
+  return sort === "date_asc"
+    ? asc(transaction.createdAt)
+    : sort === "amount_desc"
+      ? desc(transaction.amount)
+      : sort === "amount_asc"
+        ? asc(transaction.amount)
+        : sort === "commission_desc"
+          ? desc(transaction.retailerCommission)
+          : sort === "commission_asc"
+            ? asc(transaction.retailerCommission)
+            : sort === "operator_asc"
+              ? asc(transaction.operator)
+              : desc(transaction.createdAt);
+}
+
+export async function fetchRetailerEarnings(
+  params: AdminEarningsSearchParams,
+  options?: { paginate?: boolean; exportAll?: boolean },
+) {
+  const retailer = await requireRetailer();
+  const sort = resolveEarningsSort(params.sort);
+  const status =
+    params.status && params.status !== "ALL" ? params.status : "ALL";
+  const paginate = options?.paginate ?? false;
+  const exportAll = options?.exportAll ?? false;
+  const pageSize = TABLE_PAGE_SIZE;
+  const requestedPage = parsePageParam(params.page);
+  const whereClause = and(
+    ...buildRetailerEarningsConditions(retailer.id, params, status),
+  );
+
+  const [{ value: totalCount }] = await db
+    .select({ value: count() })
+    .from(transaction)
+    .where(whereClause);
+
+  const page = paginate ? clampPage(requestedPage, totalCount, pageSize) : 1;
+  const rowLimit = exportAll
+    ? EXPORT_MAX_ROWS
+    : paginate
+      ? pageSize
+      : 150;
+  const rowOffset = paginate && !exportAll ? (page - 1) * pageSize : 0;
+
+  const sortOrder = retailerEarningsOrderBy(sort);
+
+  const baseQuery = db
     .select({
       id: transaction.id,
       createdAt: transaction.createdAt,
@@ -99,9 +146,12 @@ export async function fetchRetailerEarnings(params: AdminEarningsSearchParams) {
       commission: transaction.retailerCommission,
     })
     .from(transaction)
-    .where(and(...conditions))
+    .where(whereClause)
     .orderBy(sortOrder)
-    .limit(150);
+    .limit(rowLimit);
+
+  const rowsDb =
+    rowOffset > 0 ? await baseQuery.offset(rowOffset) : await baseQuery;
 
   const rows: RetailerEarningRow[] = rowsDb.map((tx) => ({
       ...tx,
@@ -175,6 +225,9 @@ export async function fetchRetailerEarnings(params: AdminEarningsSearchParams) {
     rows,
     status,
     sort,
+    totalCount,
+    page,
+    pageSize,
     stats: {
       totalEarnings,
       todaysEarnings,

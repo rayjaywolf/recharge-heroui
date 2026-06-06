@@ -410,7 +410,7 @@ describe.runIf(hasDatabase)("retailer notifications", () => {
         retailerId,
         fundRequestId,
         amount: 1200,
-        distributorName: "Test Distributor",
+        approverName: "Test Distributor",
       });
 
       const [row] = await db

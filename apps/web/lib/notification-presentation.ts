@@ -94,7 +94,7 @@ export function getNotificationPresentation(
         iconClassName: "text-warning",
         Icon: Wallet,
         categoryLabel: "Fund request",
-        actionLabel: "Go to funds",
+        actionLabel: "Review request",
       };
     case "WALLET_CREDITED":
       return {

@@ -143,7 +143,11 @@ export function DistributorSupportForm({
             />
           </TextField>
 
-          <Autocomplete value={selectedTx} onChange={(value) => setSelectedTx(value != null ? String(value) : null)}>
+          <Autocomplete
+            value={selectedTx}
+            variant="secondary"
+            onChange={(value) => setSelectedTx(value != null ? String(value) : null)}
+          >
             <Label>Transaction</Label>
             <Autocomplete.Trigger>
               <Autocomplete.Value />
@@ -152,7 +156,7 @@ export function DistributorSupportForm({
             </Autocomplete.Trigger>
             <Autocomplete.Popover>
               <div className="border-b border-separator px-3 py-2">
-                <SearchField className="w-full !px-0">
+                <SearchField className="w-full !px-0" variant="secondary">
                   <SearchField.Group className="w-full">
                     <SearchField.SearchIcon />
                     <SearchField.Input

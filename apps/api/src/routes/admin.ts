@@ -5,6 +5,7 @@ import {
   createId,
   db,
   dispute,
+  fundRequest,
   operatorProviderConfig,
   transaction,
   user,
@@ -32,6 +33,8 @@ import {
   notifyRetailerAccountRestored,
   notifyRetailerAccountSuspended,
   notifyRetailerDisputeResolved,
+  notifyRetailerFundRequestApproved,
+  notifyRetailerFundRequestRejected,
   notifyRetailerWalletCredited,
   notifyRetailerWalletDebited,
   resolveRechargeSettlementOutcome,
@@ -546,6 +549,164 @@ adminRoutes.post("/api/admin/fund", requireAdmin, async (c) => {
     return c.json({ error: "Internal server error" }, 500);
   }
 });
+
+adminRoutes.post(
+  "/api/admin/fund-requests/:id/approve",
+  requireAdmin,
+  async (c) => {
+    try {
+      const adminUser = c.get("dbUser");
+      const requestId = c.req.param("id");
+
+      const [request] = await db
+        .select({
+          id: fundRequest.id,
+          retailerId: fundRequest.retailerId,
+          distributorId: fundRequest.distributorId,
+          amount: fundRequest.amount,
+          status: fundRequest.status,
+          remarks: fundRequest.remarks,
+        })
+        .from(fundRequest)
+        .where(eq(fundRequest.id, requestId))
+        .limit(1);
+
+      if (!request || request.distributorId !== null) {
+        return c.json({ error: "Fund request not found." }, 404);
+      }
+
+      if (request.status !== "PENDING") {
+        return c.json({ error: "Fund request is no longer pending." }, 409);
+      }
+
+      const [retailer] = await db
+        .select({ name: user.name })
+        .from(user)
+        .where(eq(user.id, request.retailerId))
+        .limit(1);
+
+      if (!retailer) {
+        return c.json({ error: "Retailer not found." }, 404);
+      }
+
+      const result = await db.transaction(async (tx) => {
+        const [updatedRetailer] = await tx
+          .update(user)
+          .set(incrementBalance(request.amount))
+          .where(eq(user.id, request.retailerId))
+          .returning();
+
+        const retTxId = createId();
+        const message = request.remarks
+          ? `[CREDIT] Approved fund request: ${request.remarks}`
+          : `Fund request approved by ${adminUser.name}`;
+
+        await tx.insert(transaction).values({
+          id: retTxId,
+          userId: request.retailerId,
+          targetPhone: "WALLET",
+          operator: "MANUAL_CREDIT",
+          amount: request.amount,
+          status: "SUCCESS",
+          apiMessage: message,
+        });
+
+        const [updatedRequest] = await tx
+          .update(fundRequest)
+          .set({ status: "APPROVED" })
+          .where(eq(fundRequest.id, requestId))
+          .returning();
+
+        return { updatedRetailer, updatedRequest, retTxId };
+      });
+
+      await markNotificationsReadForEntity({
+        type: "FUND_REQUEST_PENDING",
+        entityId: requestId,
+      });
+
+      await notifyRetailerFundRequestApproved({
+        retailerId: request.retailerId,
+        fundRequestId: requestId,
+        amount: request.amount,
+        approverName: adminUser.name,
+      });
+
+      return c.json({
+        success: true,
+        message: `Approved fund request and credited ₹${request.amount} to ${retailer.name}.`,
+        request: {
+          id: result.updatedRequest?.id,
+          status: result.updatedRequest?.status,
+        },
+      });
+    } catch (error) {
+      console.error("Approve admin fund request error:", error);
+      return c.json({ error: "Internal server error" }, 500);
+    }
+  },
+);
+
+adminRoutes.post(
+  "/api/admin/fund-requests/:id/reject",
+  requireAdmin,
+  async (c) => {
+    try {
+      const adminUser = c.get("dbUser");
+      const requestId = c.req.param("id");
+
+      const [request] = await db
+        .select({
+          id: fundRequest.id,
+          retailerId: fundRequest.retailerId,
+          distributorId: fundRequest.distributorId,
+          amount: fundRequest.amount,
+          status: fundRequest.status,
+        })
+        .from(fundRequest)
+        .where(eq(fundRequest.id, requestId))
+        .limit(1);
+
+      if (!request || request.distributorId !== null) {
+        return c.json({ error: "Fund request not found." }, 404);
+      }
+
+      if (request.status !== "PENDING") {
+        return c.json({ error: "Fund request is no longer pending." }, 409);
+      }
+
+      const [updated] = await db
+        .update(fundRequest)
+        .set({ status: "REJECTED" })
+        .where(eq(fundRequest.id, requestId))
+        .returning();
+
+      await markNotificationsReadForEntity({
+        type: "FUND_REQUEST_PENDING",
+        entityId: requestId,
+      });
+
+      await notifyRetailerFundRequestRejected({
+        retailerId: request.retailerId,
+        fundRequestId: requestId,
+        amount: request.amount,
+        approverName: adminUser.name,
+      });
+
+      return c.json({
+        success: true,
+        message: "Fund request rejected.",
+        request: {
+          id: updated.id,
+          status: updated.status,
+        },
+      });
+    } catch (error) {
+      console.error("Reject admin fund request error:", error);
+      return c.json({ error: "Internal server error" }, 500);
+    }
+  },
+);
 
 adminRoutes.post("/api/admin/retailer/toggle-status", requireAdmin, async (c) => {
   try {

@@ -33,7 +33,7 @@ export function resolveNotificationHref(
     return "/admin/approvals";
   }
   if (type === "FUND_REQUEST_PENDING") {
-    return "/distributor/funds";
+    return href;
   }
   if (type === "FUND_REQUEST_APPROVED" || type === "FUND_REQUEST_REJECTED") {
     return "/retailer/funds";

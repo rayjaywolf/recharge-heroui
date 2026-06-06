@@ -440,7 +440,7 @@ distributorRoutes.post(
         retailerId: request.retailerId,
         fundRequestId: requestId,
         amount: request.amount,
-        distributorName: distributorUser.name,
+        approverName: distributorUser.name,
       });
 
       return c.json({
@@ -506,7 +506,7 @@ distributorRoutes.post(
         retailerId: request.retailerId,
         fundRequestId: requestId,
         amount: request.amount,
-        distributorName: distributorUser.name,
+        approverName: distributorUser.name,
       });
 
       return c.json({

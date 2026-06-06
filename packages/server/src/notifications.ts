@@ -200,6 +200,20 @@ export async function notifyDistributorFundRequestPending(params: {
   });
 }
 
+export async function notifyAdminsFundRequestPending(params: {
+  fundRequestId: string;
+  retailerName: string;
+  amount: number;
+}): Promise<void> {
+  await notifyAllAdmins({
+    type: "FUND_REQUEST_PENDING",
+    title: "New fund request",
+    body: `${params.retailerName} requested ₹${params.amount}.`,
+    href: "/admin/funding",
+    entityId: params.fundRequestId,
+  });
+}
+
 export async function notifyDistributorWalletCredited(params: {
   distributorId: string;
   amount: number;
@@ -401,12 +415,12 @@ export async function notifyRetailerFundRequestApproved(params: {
   retailerId: string;
   fundRequestId: string;
   amount: number;
-  distributorName: string;
+  approverName: string;
 }): Promise<void> {
   await notifyRetailer(params.retailerId, {
     type: "FUND_REQUEST_APPROVED",
     title: "Fund request approved",
-    body: `${params.distributorName} approved your ₹${params.amount} fund request.`,
+    body: `${params.approverName} approved your ₹${params.amount} fund request.`,
     href: "/retailer/funds",
     entityId: params.fundRequestId,
   });
@@ -416,12 +430,12 @@ export async function notifyRetailerFundRequestRejected(params: {
   retailerId: string;
   fundRequestId: string;
   amount: number;
-  distributorName: string;
+  approverName: string;
 }): Promise<void> {
   await notifyRetailer(params.retailerId, {
     type: "FUND_REQUEST_REJECTED",
     title: "Fund request rejected",
-    body: `${params.distributorName} rejected your ₹${params.amount} fund request.`,
+    body: `${params.approverName} rejected your ₹${params.amount} fund request.`,
     href: "/retailer/funds",
     entityId: params.fundRequestId,
   });

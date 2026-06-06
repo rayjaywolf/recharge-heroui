@@ -36,7 +36,7 @@ import {
   buildDistributorRechargeVolumeFilter,
 } from "@/lib/distributor-recharge-volume";
 import { LEDGER_EXCLUDED_OPERATORS } from "@/lib/transaction-filters";
-import { operatorLabel } from "@/lib/transaction-label";
+import { operatorLabel, targetPhoneLabel } from "@/lib/transaction-label";
 import { distributorLedgerActorLabel } from "@/lib/distributor-self-recharge";
 import { formatTableDateTime } from "@/lib/utils";
 
@@ -339,7 +339,7 @@ export default async function DistributorOverviewPage() {
                         {operatorLabel(tx.operator)}
                       </Table.Cell>
                       <Table.Cell className="font-mono text-sm text-muted">
-                        {tx.targetPhone || "—"}
+                        {targetPhoneLabel(tx.targetPhone)}
                       </Table.Cell>
                       <Table.Cell className="font-semibold">
                         <Money amount={tx.amount} />

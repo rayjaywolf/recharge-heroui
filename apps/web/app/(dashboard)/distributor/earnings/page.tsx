@@ -11,8 +11,14 @@ import { StatCard } from "@/components/admin/stat-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 import { fetchDistributorEarnings } from "@/lib/distributor-earnings-query";
 import { formatInr } from "@/lib/format-money";
+import {
+  getPageItemRange,
+  searchParamsToQueryString,
+} from "@/lib/table-pagination";
 import { operatorLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
+
+import { TablePagination } from "@/components/admin/table-pagination";
 
 function pickSearchParams(
   resolved: { [key: string]: string | string[] | undefined },
@@ -24,6 +30,7 @@ function pickSearchParams(
     dateFrom: resolved.dateFrom as string | undefined,
     dateTo: resolved.dateTo as string | undefined,
     sort: resolved.sort as string | undefined,
+    page: resolved.page as string | undefined,
   };
 }
 
@@ -34,7 +41,22 @@ export default async function DistributorEarningsPage({
 }) {
   const resolvedParams = await searchParams;
   const query = pickSearchParams(resolvedParams);
-  const { rows, status, sort, stats } = await fetchDistributorEarnings(query);
+  const [{ rows, status, sort, stats, totalCount, page, pageSize }, exportData] =
+    await Promise.all([
+      fetchDistributorEarnings(query, { paginate: true }),
+      fetchDistributorEarnings(query, { exportAll: true }),
+    ]);
+
+  const queryParams = searchParamsToQueryString({
+    status: status !== "ALL" ? status : undefined,
+    operator:
+      query.operator && query.operator !== "ALL" ? query.operator : undefined,
+    search: query.search?.trim() || undefined,
+    dateFrom: query.dateFrom || undefined,
+    dateTo: query.dateTo || undefined,
+    sort: sort !== "date_desc" ? sort : undefined,
+  });
+  const { start, end } = getPageItemRange(page, totalCount, pageSize);
 
   return (
     <div className="space-y-6">
@@ -83,13 +105,13 @@ export default async function DistributorEarningsPage({
 
       <AdminTableCard
         description={
-          rows.length > 0
-            ? `Showing up to ${rows.length} matching earning transactions.`
+          totalCount > 0
+            ? `Showing ${start}–${end} of ${totalCount} matching transactions.`
             : "Adjust filters to find earning transactions."
         }
         headerAction={
           <EarningsDownloadButton
-            data={rows}
+            data={exportData.rows}
             fileName="distributor-earnings"
             variant="distributor"
           />
@@ -147,6 +169,12 @@ export default async function DistributorEarningsPage({
             </Table.ScrollContainer>
           </Table>
         )}
+        <TablePagination
+          basePath="/distributor/earnings"
+          page={page}
+          queryParams={queryParams}
+          totalCount={totalCount}
+        />
       </AdminTableCard>
     </div>
   );

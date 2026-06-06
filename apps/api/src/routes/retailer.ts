@@ -13,6 +13,7 @@ import { resolveDateRange } from "@repo/server/date-range";
 import { ensureUserAvatar } from "@repo/server/user-avatar";
 import {
   notifyAdminsDisputePending,
+  notifyAdminsFundRequestPending,
   notifyDistributorDisputePending,
   notifyDistributorFundRequestPending,
 } from "@repo/server/notifications";
@@ -376,15 +377,7 @@ retailerRoutes.post("/api/retailer/fund-request", requireRetailer, async (c) => 
       return c.json({ error: "Amount must be a whole number." }, 400);
     }
 
-    if (!retailer.distributorId) {
-      return c.json(
-        {
-          error:
-            "No distributor is assigned to your account. Contact the administrator to add wallet balance.",
-        },
-        400,
-      );
-    }
+    const routedToAdmin = !retailer.distributorId;
 
     const [existingPending] = await db
       .select({ id: fundRequest.id })
@@ -400,8 +393,9 @@ retailerRoutes.post("/api/retailer/fund-request", requireRetailer, async (c) => 
     if (existingPending) {
       return c.json(
         {
-          error:
-            "You already have a pending fund request. Wait for your distributor to respond.",
+          error: routedToAdmin
+            ? "You already have a pending fund request. Wait for an administrator to respond."
+            : "You already have a pending fund request. Wait for your distributor to respond.",
         },
         409,
       );
@@ -416,6 +410,26 @@ retailerRoutes.post("/api/retailer/fund-request", requireRetailer, async (c) => 
       remarks: remarks?.trim() || null,
     });
 
+    if (routedToAdmin) {
+      await notifyAdminsFundRequestPending({
+        fundRequestId: requestId,
+        retailerName: retailer.name,
+        amount,
+      });
+
+      return c.json({
+        success: true,
+        message: `Fund request of ₹${amount} sent to the administrator.`,
+        request: {
+          id: requestId,
+          amount,
+          remarks: remarks?.trim() || null,
+          status: "PENDING",
+          createdAt: new Date().toISOString(),
+        },
+      });
+    }
+
     const created = await db.query.fundRequest.findFirst({
       where: eq(fundRequest.id, requestId),
       with: {
@@ -428,7 +442,7 @@ retailerRoutes.post("/api/retailer/fund-request", requireRetailer, async (c) => 
     }
 
     await notifyDistributorFundRequestPending({
-      distributorId: retailer.distributorId,
+      distributorId: retailer.distributorId!,
       fundRequestId: requestId,
       retailerName: retailer.name,
       amount,
@@ -480,6 +494,7 @@ retailerRoutes.get("/api/retailer/funding/history", requireRetailer, async (c) =
           amount: fundRequest.amount,
           remarks: fundRequest.remarks,
           status: fundRequest.status,
+          distributorId: fundRequest.distributorId,
           createdAt: fundRequest.createdAt,
         })
         .from(fundRequest)
@@ -499,16 +514,25 @@ retailerRoutes.get("/api/retailer/funding/history", requireRetailer, async (c) =
       direction: tx.operator === "MANUAL_DEBIT" ? "debit" : "credit",
     }));
 
-    const requestItems = requests.map((req) => ({
-      kind: "request" as const,
-      id: req.id,
-      amount: req.amount,
-      status: req.status,
-      title: "Fund request to distributor",
-      subtitle: req.remarks || "Awaiting distributor approval",
-      createdAt: req.createdAt.toISOString(),
-      direction: "credit" as const,
-    }));
+    const requestItems = requests.map((req) => {
+      const routedToAdmin = req.distributorId == null;
+      return {
+        kind: "request" as const,
+        id: req.id,
+        amount: req.amount,
+        status: req.status,
+        title: routedToAdmin
+          ? "Fund request to administrator"
+          : "Fund request to distributor",
+        subtitle:
+          req.remarks ||
+          (routedToAdmin
+            ? "Awaiting administrator approval"
+            : "Awaiting distributor approval"),
+        createdAt: req.createdAt.toISOString(),
+        direction: "credit" as const,
+      };
+    });
 
     const items = [...txItems, ...requestItems].sort(
       (a, b) =>

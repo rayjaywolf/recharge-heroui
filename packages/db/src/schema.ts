@@ -363,9 +363,9 @@ export const fundRequest = pgTable(
     retailerId: text("retailerId")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    distributorId: text("distributorId")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    distributorId: text("distributorId").references(() => user.id, {
+      onDelete: "cascade",
+    }),
     amount: integer("amount").notNull(),
     remarks: text("remarks"),
     status: fundRequestStatusEnum("status").notNull().default("PENDING"),

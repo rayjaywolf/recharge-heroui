@@ -28,7 +28,8 @@ export default async function AdminNotificationsPage() {
           Notifications
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Retailer applications and support disputes that need your attention.
+          Retailer applications, direct fund requests, and support disputes that
+          need your attention.
         </p>
       </div>
       <AdminNotificationsList initialItems={initialItems} />

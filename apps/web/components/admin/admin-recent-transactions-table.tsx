@@ -6,7 +6,7 @@ import { Table } from "@heroui/react";
 import { AdminTableEmpty } from "@/components/admin/admin-table-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
 import { Money } from "@/components/money";
-import { operatorLabel } from "@/lib/transaction-label";
+import { operatorLabel, targetPhoneLabel } from "@/lib/transaction-label";
 import { formatTableDateTime } from "@/lib/utils";
 
 export type AdminRecentTransactionRow = {
@@ -58,7 +58,7 @@ export function AdminRecentTransactionsTable({
                 <Table.Cell className="font-medium">{tx.userName}</Table.Cell>
                 <Table.Cell>{operatorLabel(tx.operator)}</Table.Cell>
                 <Table.Cell className="font-mono text-sm text-muted">
-                  {tx.targetPhone}
+                  {targetPhoneLabel(tx.targetPhone)}
                 </Table.Cell>
                 <Table.Cell className="font-semibold">
                   <Money amount={tx.amount} />

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, isNull } from "drizzle-orm";
 import { db, dispute, fundRequest, transaction, user } from "@repo/db";
 import { auth } from "@repo/server/auth";
 import {
@@ -267,7 +267,19 @@ authRoutes.get("/api/dashboard/bootstrap", requireSession, async (c) => {
                 ),
               )
           )[0]?.total ?? 0
-        : 0;
+        : found.role === "ADMIN"
+          ? (
+              await db
+                .select({ total: count() })
+                .from(fundRequest)
+                .where(
+                  and(
+                    isNull(fundRequest.distributorId),
+                    eq(fundRequest.status, "PENDING"),
+                  ),
+                )
+            )[0]?.total ?? 0
+          : 0;
 
     let pendingSupportCount = 0;
     if (found.role === "ADMIN") {

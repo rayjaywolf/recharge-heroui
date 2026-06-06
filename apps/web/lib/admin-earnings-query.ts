@@ -1,6 +1,7 @@
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   gt,
@@ -15,6 +16,12 @@ import { db, transaction, user, type TxStatus } from "@repo/db";
 
 import type { EarningRow } from "@/components/admin/earnings-download-button";
 import { transactionAmountSearchCondition } from "@/lib/admin-transactions-query";
+import {
+  clampPage,
+  EXPORT_MAX_ROWS,
+  parsePageParam,
+  TABLE_PAGE_SIZE,
+} from "@/lib/table-pagination";
 import { resolveCarrierFilterOperators } from "@/lib/transaction-filters";
 
 export type AdminEarningsSearchParams = {
@@ -24,6 +31,7 @@ export type AdminEarningsSearchParams = {
   dateFrom?: string;
   dateTo?: string;
   sort?: string;
+  page?: string;
 };
 
 export type EarningsSort =
@@ -59,6 +67,8 @@ export type EarningsScope = "admin" | "distributor";
 
 export type FetchEarningsOptions = {
   distributorId?: string;
+  paginate?: boolean;
+  exportAll?: boolean;
 };
 
 function earningsOrderBy(sort: EarningsSort, scope: EarningsScope) {
@@ -162,14 +172,35 @@ export async function fetchEarnings(
   status: string;
   sort: EarningsSort;
   scope: EarningsScope;
+  totalCount: number;
+  page: number;
+  pageSize: number;
 }> {
   const scope: EarningsScope = options?.distributorId ? "distributor" : "admin";
   const status =
     params.status && params.status !== "ALL" ? params.status : "ALL";
   const sort = resolveEarningsSort(params.sort);
   const whereClause = buildEarningsWhereClause(params, options);
+  const paginate = options?.paginate ?? false;
+  const exportAll = options?.exportAll ?? false;
+  const pageSize = TABLE_PAGE_SIZE;
+  const requestedPage = parsePageParam(params.page);
 
-  const transactions = await db
+  const [{ value: totalCount }] = await db
+    .select({ value: count() })
+    .from(transaction)
+    .innerJoin(user, eq(transaction.userId, user.id))
+    .where(whereClause);
+
+  const page = paginate ? clampPage(requestedPage, totalCount, pageSize) : 1;
+  const rowLimit = exportAll
+    ? EXPORT_MAX_ROWS
+    : paginate
+      ? pageSize
+      : 150;
+  const rowOffset = paginate && !exportAll ? (page - 1) * pageSize : 0;
+
+  const baseQuery = db
     .select({
       id: transaction.id,
       userId: transaction.userId,
@@ -187,7 +218,10 @@ export async function fetchEarnings(
     .innerJoin(user, eq(transaction.userId, user.id))
     .where(whereClause)
     .orderBy(earningsOrderBy(sort, scope))
-    .limit(150);
+    .limit(rowLimit);
+
+  const transactions =
+    rowOffset > 0 ? await baseQuery.offset(rowOffset) : await baseQuery;
 
   const distributorId = options?.distributorId;
 
@@ -215,14 +249,20 @@ export async function fetchEarnings(
     };
   });
 
-  return { rows, status, sort, scope };
+  return { rows, status, sort, scope, totalCount, page, pageSize };
 }
 
-export async function fetchAdminEarnings(params: AdminEarningsSearchParams) {
-  const result = await fetchEarnings(params);
+export async function fetchAdminEarnings(
+  params: AdminEarningsSearchParams,
+  options?: Pick<FetchEarningsOptions, "paginate" | "exportAll">,
+) {
+  const result = await fetchEarnings(params, options);
   return {
     rows: result.rows,
     status: result.status,
     sort: result.sort,
+    totalCount: result.totalCount,
+    page: result.page,
+    pageSize: result.pageSize,
   };
 }
