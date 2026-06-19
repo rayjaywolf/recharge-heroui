@@ -109,7 +109,7 @@ export function transactionsOrderBy(
     case "retailer_asc":
       return options?.scopedUser
         ? asc(transaction.operator)
-        : asc(user.name);
+        : asc(sql`COALESCE(${user.storeName}, ${user.name})`);
     case "operator_asc":
       return asc(transaction.operator);
     case "date_desc":
@@ -196,6 +196,7 @@ export function buildTransactionWhereClause(
             ilike(transaction.apiMessage, pattern),
             transactionAmountSearchCondition(search),
             ilike(user.name, pattern),
+            ilike(user.storeName, pattern),
             ilike(user.email, pattern),
           )!,
     );
@@ -269,6 +270,7 @@ export async function fetchAdminTransactions(
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
       userName: user.name,
+      userStoreName: user.storeName,
       userEmail: user.email,
       userPhoneNumber: user.phoneNumber,
       userWhatsappNumber: user.whatsappNumber,
@@ -306,7 +308,7 @@ export async function fetchAdminTransactions(
     createdAt: tx.createdAt.toISOString(),
     updatedAt: tx.updatedAt.toISOString(),
     user: {
-      name: tx.userName,
+      name: tx.userStoreName || tx.userName,
       email: tx.userEmail,
       phoneNumber: tx.userPhoneNumber,
       whatsappNumber: tx.userWhatsappNumber,

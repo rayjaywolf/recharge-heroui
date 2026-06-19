@@ -23,6 +23,7 @@ export default async function DistributorRechargeConfirmationPage({
   const params = await searchParams;
   const isSuccess = params.status === "success";
   const isPending = params.status === "pending";
+  const isFailed = params.status === "failed";
   const amount = params.amount ? Number(params.amount) : NaN;
   const receipt =
     isSuccess &&
@@ -112,6 +113,11 @@ export default async function DistributorRechargeConfirmationPage({
             ledgerHref="/distributor/ledger"
             receipt={receipt}
             rechargeHref="/distributor/recharge"
+            disputeHref={
+              params.transactionId && (isPending || isFailed)
+                ? `/distributor/support?transactionId=${encodeURIComponent(params.transactionId)}`
+                : null
+            }
           />
         </Card.Content>
       </Card>

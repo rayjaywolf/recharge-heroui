@@ -9,10 +9,20 @@ import {
 describe("parseRetailerRegistrationInput", () => {
   const baseBody = {
     name: "Test Retailer",
+    storeName: "Test Store",
     phoneNumber: "9876543210",
     password: "secret123",
     email: "retailer@example.com",
   };
+
+  it("requires store name", () => {
+    expect(() =>
+      parseRetailerRegistrationInput({
+        ...baseBody,
+        storeName: "  ",
+      }),
+    ).toThrow(RegistrationConflictError);
+  });
 
   it("requires email", () => {
     expect(() =>

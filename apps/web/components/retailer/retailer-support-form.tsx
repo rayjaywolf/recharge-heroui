@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Autocomplete,
@@ -38,17 +38,29 @@ export type RetailerSupportTransactionOption = {
 export function RetailerSupportForm({
   transactions,
   onSubmitted,
+  initialTransactionId,
 }: {
   transactions: RetailerSupportTransactionOption[];
   onSubmitted?: () => void;
+  initialTransactionId?: string | null;
 }) {
   const router = useRouter();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-  const [selectedTx, setSelectedTx] = useState<string | null>(null);
+  const [selectedTx, setSelectedTx] = useState<string | null>(
+    initialTransactionId ?? null,
+  );
   const [search, setSearch] = useState("");
   const [showAllRecharges, setShowAllRecharges] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!initialTransactionId) return;
+    const match = transactions.find((tx) => tx.id === initialTransactionId);
+    if (match) {
+      setSelectedTx(initialTransactionId);
+    }
+  }, [initialTransactionId, transactions]);
 
   const baseOptions = useMemo(
     () =>

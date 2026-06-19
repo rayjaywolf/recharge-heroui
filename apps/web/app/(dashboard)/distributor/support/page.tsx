@@ -18,8 +18,13 @@ const NON_RECHARGE_OPERATORS = [
   "FUNDS_RECEIVED",
 ];
 
-export default async function DistributorSupportPage() {
+export default async function DistributorSupportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ transactionId?: string }>;
+}) {
   const distributor = await requireDistributor();
+  const { transactionId } = await searchParams;
 
   const [txRows, disputeRows] = await Promise.all([
     db
@@ -92,7 +97,10 @@ export default async function DistributorSupportPage() {
         </p>
       </div>
 
-      <DistributorSupportForm transactions={txOptions} />
+      <DistributorSupportForm
+        transactions={txOptions}
+        initialTransactionId={transactionId ?? null}
+      />
       <DistributorDisputesTable
         rows={pendingDisputes}
         title={`Pending disputes (${pendingDisputes.length})`}

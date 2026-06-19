@@ -6,6 +6,7 @@ import {
   db,
   dispute,
   fundRequest,
+  retailerCommissionOverride,
   transaction,
   user,
 } from "@repo/db";
@@ -84,6 +85,7 @@ retailerRoutes.get("/api/retailer/profile", requireRetailer, async (c) => {
     return c.json({
       id: found.id,
       name: found.name,
+      storeName: found.storeName ?? null,
       image,
       email: found.email ?? null,
       phoneNumber: found.phoneNumber,
@@ -113,21 +115,42 @@ retailerRoutes.get("/api/retailer/profile", requireRetailer, async (c) => {
 
 retailerRoutes.get("/api/retailer/commissions", requireRetailer, async (c) => {
   try {
-    const rules = await db
-      .select({
-        id: commissionRule.id,
-        operator: commissionRule.operator,
-        retailerMargin: commissionRule.retailerMargin,
-        updatedAt: commissionRule.updatedAt,
-      })
-      .from(commissionRule)
-      .orderBy(asc(commissionRule.operator));
+    const session = c.get("session");
+    const [rules, overrides] = await Promise.all([
+      db
+        .select({
+          id: commissionRule.id,
+          operator: commissionRule.operator,
+          retailerMargin: commissionRule.retailerMargin,
+          updatedAt: commissionRule.updatedAt,
+        })
+        .from(commissionRule)
+        .orderBy(asc(commissionRule.operator)),
+      db
+        .select({
+          operator: retailerCommissionOverride.operator,
+          retailerMargin: retailerCommissionOverride.retailerMargin,
+          updatedAt: retailerCommissionOverride.updatedAt,
+        })
+        .from(retailerCommissionOverride)
+        .where(eq(retailerCommissionOverride.userId, session.user.id)),
+    ]);
+
+    const overrideByOperator = new Map(
+      overrides.map((row) => [row.operator, row]),
+    );
 
     return c.json({
-      rules: rules.map((rule) => ({
-        ...rule,
-        updatedAt: rule.updatedAt.toISOString(),
-      })),
+      rules: rules.map((rule) => {
+        const override = overrideByOperator.get(rule.operator);
+        return {
+          id: rule.id,
+          operator: rule.operator,
+          retailerMargin: override?.retailerMargin ?? rule.retailerMargin,
+          isCustom: Boolean(override),
+          updatedAt: (override?.updatedAt ?? rule.updatedAt).toISOString(),
+        };
+      }),
     });
   } catch (error) {
     console.error("Retailer commissions error:", error);

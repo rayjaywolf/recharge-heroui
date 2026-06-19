@@ -42,6 +42,7 @@ export default function RegisterPage() {
 
     const formData = new FormData(e.currentTarget);
     const name = String(formData.get("name") ?? "").trim();
+    const storeName = String(formData.get("storeName") ?? "").trim();
     const phoneNumber = String(formData.get("phoneNumber") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
@@ -67,6 +68,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!storeName) {
+      setError("Store name is required.");
+      return;
+    }
+
     if (!email) {
       setError("Email is required.");
       return;
@@ -84,6 +90,7 @@ export default function RegisterPage() {
         method: "POST",
         body: JSON.stringify({
           name,
+          storeName,
           phoneNumber: normalizedPhone,
           email: normalizeEmail(email),
           password,
@@ -172,6 +179,17 @@ export default function RegisterPage() {
                       id="register-full-name"
                       name="name"
                       placeholder="John Doe"
+                      type="text"
+                      variant="secondary"
+                    />
+                  </TextField>
+                  <TextField isRequired name="storeName">
+                    <Label htmlFor="register-store-name">Store name</Label>
+                    <Input
+                      autoComplete="organization"
+                      id="register-store-name"
+                      name="storeName"
+                      placeholder="Your shop / store name"
                       type="text"
                       variant="secondary"
                     />

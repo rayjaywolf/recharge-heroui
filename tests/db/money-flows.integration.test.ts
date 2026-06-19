@@ -5,6 +5,7 @@ import {
   commissionRule,
   createId,
   db,
+  retailerCommissionOverride,
   transaction,
   user,
 } from "@repo/db";
@@ -66,6 +67,9 @@ async function createRetailerFixture() {
 
   const cleanup = async () => {
     await db.delete(transaction).where(eq(transaction.id, txId));
+    await db
+      .delete(retailerCommissionOverride)
+      .where(eq(retailerCommissionOverride.userId, retailerId));
     await db.delete(commissionRule).where(eq(commissionRule.operator, operator));
     await db.delete(user).where(eq(user.id, retailerId));
   };
@@ -124,6 +128,41 @@ describe.runIf(hasDatabase)("money flow safety", () => {
       expect(second).toBe("unchanged");
       expect(retailer?.earnings).toBeCloseTo(2, 2);
       expect(retailer?.balance).toBe(1000);
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("settlePendingTransaction uses retailer commission override when configured", async () => {
+    const fixture = await createRetailerFixture();
+
+    await db.insert(retailerCommissionOverride).values({
+      id: createId(),
+      userId: fixture.retailerId,
+      operator: fixture.tx.operator,
+      providerMargin: 5,
+      adminMargin: 1,
+      distributorMargin: 1,
+      retailerMargin: 3,
+    });
+
+    const success: Parsed = {
+      finalStatus: "SUCCESS",
+      apiMessage: "Provider success",
+      apiReferenceId: "override-ref",
+      shouldRefund: false,
+    };
+
+    try {
+      await settlePendingTransaction(fixture.tx, success);
+
+      const [retailer] = await db
+        .select({ earnings: user.earnings })
+        .from(user)
+        .where(eq(user.id, fixture.retailerId))
+        .limit(1);
+
+      expect(retailer?.earnings).toBeCloseTo(3, 2);
     } finally {
       await fixture.cleanup();
     }

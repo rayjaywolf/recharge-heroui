@@ -17,10 +17,11 @@ import { getDisplayPhone } from "@/lib/phone";
 import { formatTableDateTime } from "@/lib/utils";
 
 export default async function AdminFundingPage() {
-  const usersList = await db
+  const usersListRaw = await db
     .select({
       id: user.id,
       name: user.name,
+      storeName: user.storeName,
       email: user.email,
       phoneNumber: user.phoneNumber,
       whatsappNumber: user.whatsappNumber,
@@ -28,8 +29,14 @@ export default async function AdminFundingPage() {
       role: user.role,
     })
     .from(user)
-    .where(inArray(user.role, ["RETAILER", "DISTRIBUTOR"]))
-    .orderBy(asc(user.name));
+    .where(inArray(user.role, ["RETAILER", "DISTRIBUTOR"]));
+
+  const usersList = usersListRaw
+    .map((u) => ({
+      ...u,
+      name: u.storeName || u.name,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const bankLedger = await db
     .select({
@@ -39,6 +46,7 @@ export default async function AdminFundingPage() {
       operator: transaction.operator,
       apiMessage: transaction.apiMessage,
       userName: user.name,
+      userStoreName: user.storeName,
       userEmail: user.email,
       userPhoneNumber: user.phoneNumber,
       userWhatsappNumber: user.whatsappNumber,
@@ -55,6 +63,7 @@ export default async function AdminFundingPage() {
       remarks: fundRequest.remarks,
       createdAt: fundRequest.createdAt,
       retailerName: user.name,
+      retailerStoreName: user.storeName,
     })
     .from(fundRequest)
     .innerJoin(user, eq(fundRequest.retailerId, user.id))
@@ -73,7 +82,7 @@ export default async function AdminFundingPage() {
     operator: tx.operator,
     apiMessage: tx.apiMessage,
     user: {
-      name: tx.userName,
+      name: tx.userStoreName || tx.userName,
       email: tx.userEmail,
       phoneNumber: tx.userPhoneNumber,
       whatsappNumber: tx.userWhatsappNumber,
@@ -94,7 +103,7 @@ export default async function AdminFundingPage() {
       <AdminFundRequestsTable
         requests={pendingDirectRequests.map((request) => ({
           id: request.id,
-          retailerName: request.retailerName,
+          retailerName: request.retailerStoreName || request.retailerName,
           amount: request.amount,
           remarks: request.remarks,
           createdAt: request.createdAt.toISOString(),

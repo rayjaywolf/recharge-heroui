@@ -5,6 +5,7 @@ export type DashboardBootstrap = {
     id: string;
     role: string;
     name: string;
+    storeName: string | null;
     balance: number;
     accountStatus: string;
     image: string;

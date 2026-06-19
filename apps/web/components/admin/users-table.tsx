@@ -23,12 +23,15 @@ import {
   AdminTableEmpty,
 } from "@/components/admin/admin-table-card";
 import { Money } from "@/components/money";
+import { UserAvatar } from "@/components/user-avatar";
 import { apiFetch } from "@/lib/api-client";
 import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
 
 export type AdminUserRow = {
   id: string;
   name: string;
+  fullName: string;
+  image: string | null;
   email: string;
   phoneNumber: string | null;
   whatsappNumber: string | null;
@@ -89,6 +92,7 @@ export function UsersTable({
       const email = getDisplayEmail(user.email);
       return (
         user.name.toLowerCase().includes(q) ||
+        user.fullName.toLowerCase().includes(q) ||
         (email?.toLowerCase().includes(q) ?? false) ||
         (phone?.includes(q) ?? false)
       );
@@ -228,6 +232,7 @@ export function UsersTable({
             >
               <Table.Header>
                 <Table.Column isRowHeader>Name</Table.Column>
+                <Table.Column>Store</Table.Column>
                 <Table.Column>Phone</Table.Column>
                 {!hideDistributorCol ? (
                   <Table.Column>Distributor</Table.Column>
@@ -248,6 +253,18 @@ export function UsersTable({
                       className={`cursor-pointer ${user.accountStatus === "SUSPENDED" ? "opacity-70" : ""}`}
                       onAction={() => router.push(`/admin/users/${user.id}`)}
                     >
+                      <Table.Cell className="text-sm font-medium text-foreground">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <div className="flex size-7 shrink-0 overflow-hidden rounded-full">
+                            <UserAvatar
+                              alt={user.fullName}
+                              image={user.image}
+                              size={28}
+                            />
+                          </div>
+                          <span className="truncate">{user.fullName}</span>
+                        </div>
+                      </Table.Cell>
                       <Table.Cell className="font-semibold text-foreground">
                         {user.name}
                       </Table.Cell>

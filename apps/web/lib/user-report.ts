@@ -117,6 +117,7 @@ export async function fetchUserReportRows(
     columns: {
       id: true,
       name: true,
+      storeName: true,
       email: true,
       phoneNumber: true,
       role: true,
@@ -125,7 +126,7 @@ export async function fetchUserReportRows(
       createdAt: true,
     },
     with: {
-      distributor: { columns: { name: true } },
+      distributor: { columns: { name: true, storeName: true } },
       retailers: { columns: { id: true } },
     },
     orderBy: (users, { asc }) => [asc(users.name)],
@@ -133,16 +134,18 @@ export async function fetchUserReportRows(
 
   const mapped = users.map((u) => ({
     id: u.id,
-    name: u.name,
+    name: u.storeName || u.name,
     email: u.email,
     phoneNumber: u.phoneNumber,
     role: u.role,
     balance: u.balance,
     accountStatus: u.accountStatus,
     createdAt: u.createdAt,
-    distributorName: u.distributor?.name ?? null,
+    distributorName: u.distributor
+      ? (u.distributor.storeName || u.distributor.name)
+      : null,
     retailerCount: u.retailers.length,
-  }));
+  })).sort((a, b) => a.name.localeCompare(b.name));
 
   return attachRechargeStats(mapped);
 }

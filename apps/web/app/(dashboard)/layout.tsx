@@ -42,6 +42,7 @@ export default async function DashboardLayout({
       unreadNotificationCount={ui.unreadNotificationCount}
       mpinMustReset={ui.mpinMustReset}
       userName={user.name}
+      userStoreName={user.storeName}
       userImage={user.image}
       userRole={user.role}
     >

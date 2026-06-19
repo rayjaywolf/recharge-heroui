@@ -12,6 +12,7 @@ import { normalizePhoneNumber, validatePhoneNumber } from "@repo/shared/phone";
 
 export type RetailerRegistrationInput = {
   name: string;
+  storeName: string;
   phoneNumber: string;
   /** Contact email (required at sign-up). */
   email: string;
@@ -69,9 +70,12 @@ export function parseRetailerRegistrationInput(
     ? normalizePhoneNumber(String(rawPhone))
     : "";
 
-  if (!body.name || !body.password || !normalizedPhone) {
+  const storeName =
+    body.storeName != null ? String(body.storeName).trim() : "";
+
+  if (!body.name || !storeName || !body.password || !normalizedPhone) {
     throw new RegistrationConflictError(
-      "Name, phone number, and password are required.",
+      "Name, store name, phone number, and password are required.",
       400,
     );
   }
@@ -98,6 +102,7 @@ export function parseRetailerRegistrationInput(
     accountEmail,
     input: {
       name: String(body.name),
+      storeName,
       phoneNumber: normalizedPhone,
       email: accountEmail,
       password: String(body.password),

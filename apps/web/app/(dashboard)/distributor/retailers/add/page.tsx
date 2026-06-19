@@ -40,6 +40,7 @@ export default function AddDistributorRetailerPage() {
 
     const formData = new FormData(e.currentTarget);
     const name = String(formData.get("name") ?? "").trim();
+    const storeName = String(formData.get("storeName") ?? "").trim();
     const phoneNumber = String(formData.get("phoneNumber") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
@@ -69,6 +70,11 @@ export default function AddDistributorRetailerPage() {
       return;
     }
 
+    if (!storeName) {
+      setError("Store name is required.");
+      return;
+    }
+
     if (!email) {
       setError("Email is required.");
       return;
@@ -86,6 +92,7 @@ export default function AddDistributorRetailerPage() {
         method: "POST",
         body: JSON.stringify({
           name,
+          storeName,
           phoneNumber: normalizedPhone,
           email: normalizeEmail(email),
           password,
@@ -174,6 +181,19 @@ export default function AddDistributorRetailerPage() {
                       id="distributor-retailer-full-name"
                       name="name"
                       placeholder="John Doe"
+                      type="text"
+                      variant="secondary"
+                    />
+                  </TextField>
+                  <TextField isRequired name="storeName">
+                    <Label htmlFor="distributor-retailer-store-name">
+                      Store name
+                    </Label>
+                    <Input
+                      autoComplete="organization"
+                      id="distributor-retailer-store-name"
+                      name="storeName"
+                      placeholder="Shop / store name"
                       type="text"
                       variant="secondary"
                     />

@@ -10,6 +10,7 @@ import {
   inArray,
   lte,
   or,
+  sql,
   type SQL,
 } from "drizzle-orm";
 import { db, transaction, user, type TxStatus } from "@repo/db";
@@ -89,7 +90,7 @@ function earningsOrderBy(sort: EarningsSort, scope: EarningsScope) {
     case "amount_asc":
       return asc(transaction.amount);
     case "retailer_asc":
-      return asc(user.name);
+      return asc(sql`COALESCE(${user.storeName}, ${user.name})`);
     case "operator_asc":
       return asc(transaction.operator);
     case "date_desc":
@@ -146,6 +147,7 @@ export function buildEarningsWhereClause(
         ilike(transaction.operator, pattern),
         transactionAmountSearchCondition(search),
         ilike(user.name, pattern),
+        ilike(user.storeName, pattern),
         ilike(user.email, pattern),
       )!,
     );
@@ -212,6 +214,7 @@ export async function fetchEarnings(
       distributorCommission: transaction.distributorCommission,
       retailerCommission: transaction.retailerCommission,
       userName: user.name,
+      userStoreName: user.storeName,
       userEmail: user.email,
     })
     .from(transaction)
@@ -243,7 +246,7 @@ export async function fetchEarnings(
           ? tx.distributorCommission
           : tx.adminCommission,
       user: {
-        name: isOwnRecharge ? "You" : tx.userName,
+        name: isOwnRecharge ? "You" : (tx.userStoreName || tx.userName),
         email: tx.userEmail,
       },
     };

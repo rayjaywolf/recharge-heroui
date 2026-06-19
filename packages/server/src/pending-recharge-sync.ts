@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
-import { commissionRule, db, transaction, user } from "@repo/db";
+import { db, transaction, user } from "@repo/db";
 
+import { resolveCommissionAmountsForUser } from "./commission-margins";
 import { incrementBalance } from "./db-utils";
 import { creditAdminCommission } from "./user-earnings";
 import { validateProviderCredentials } from "./env-validation";
@@ -71,31 +72,17 @@ export async function settlePendingTransaction(
     .where(eq(user.id, tx.userId))
     .limit(1);
 
-  const [rule] = await db
-    .select()
-    .from(commissionRule)
-    .where(eq(commissionRule.operator, tx.operator))
-    .limit(1);
-
-  const amount = tx.amount;
-  const rCommission = (amount * (rule?.retailerMargin ?? 0)) / 100;
-  const dCommission = (amount * (rule?.distributorMargin ?? 0)) / 100;
-  const aCommission = (amount * (rule?.adminMargin ?? 0)) / 100;
-
-  const isDistributorSelfRecharge =
-    txUser?.role === "DISTRIBUTOR" && !txUser?.distributorId;
-
-  let adminCommission: number;
-  let distributorCommission: number;
-
-  if (isDistributorSelfRecharge) {
-    adminCommission = aCommission + dCommission;
-    distributorCommission = 0;
-  } else {
-    const hasDistributor = !!txUser?.distributorId;
-    adminCommission = aCommission + (hasDistributor ? 0 : dCommission);
-    distributorCommission = hasDistributor ? dCommission : 0;
-  }
+  const {
+    retailerCommission: rCommission,
+    adminCommission,
+    distributorCommission,
+  } = await resolveCommissionAmountsForUser(db, {
+    userId: tx.userId,
+    operator: tx.operator,
+    amount: tx.amount,
+    userRole: txUser?.role ?? "RETAILER",
+    distributorId: txUser?.distributorId ?? null,
+  });
 
   const settled = await db.transaction(async (dbTx) => {
     const [settled] = await dbTx
@@ -122,7 +109,7 @@ export async function settlePendingTransaction(
     if (parsed.shouldRefund && parsed.finalStatus === "FAILED") {
       await dbTx
         .update(user)
-        .set(incrementBalance(amount))
+        .set(incrementBalance(tx.amount))
         .where(eq(user.id, tx.userId));
     }
 

@@ -1,4 +1,4 @@
-import { and, count, eq, notInArray, sum } from "drizzle-orm";
+import { and, asc, count, eq, notInArray, sum } from "drizzle-orm";
 import {
   ArrowLeft,
   ArrowRightLeft,
@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Card, Chip, Link as HeroLink, Table } from "@heroui/react";
-import { db, transaction, user } from "@repo/db";
+import { commissionRule, db, retailerCommissionOverride, transaction, user } from "@repo/db";
 import { getUserEarnings } from "@repo/server/user-earnings";
 import { RECHARGE_EXCLUDED_OPERATORS } from "@/lib/transaction-filters";
 
@@ -16,6 +16,10 @@ import {
   AdminTableCard,
   AdminTableEmpty,
 } from "@/components/admin/admin-table-card";
+import {
+  RetailerCommissionOverridesTable,
+  type RetailerCommissionRuleRow,
+} from "@/components/admin/retailer-commission-overrides-table";
 import { Money } from "@/components/money";
 import { StatCard } from "@/components/admin/stat-card";
 import { TransactionStatusChip } from "@/components/admin/transaction-status-chip";
@@ -88,6 +92,61 @@ export default async function AdminUserDetailPage({
   const memberSince = found.createdAt.toLocaleDateString("en-IN", {
     dateStyle: "medium",
   });
+
+  let commissionOverrideRows: RetailerCommissionRuleRow[] = [];
+  if (found.role === "RETAILER") {
+    const [globalRules, overrides] = await Promise.all([
+      db.select().from(commissionRule).orderBy(asc(commissionRule.operator)),
+      db
+        .select()
+        .from(retailerCommissionOverride)
+        .where(eq(retailerCommissionOverride.userId, id)),
+    ]);
+
+    const overrideByOperator = new Map(
+      overrides.map((row) => [row.operator, row]),
+    );
+
+    commissionOverrideRows = globalRules.map((rule) => {
+      const override = overrideByOperator.get(rule.operator);
+      const effective = override
+        ? {
+            providerMargin: override.providerMargin,
+            adminMargin: override.adminMargin,
+            distributorMargin: override.distributorMargin,
+            retailerMargin: override.retailerMargin,
+          }
+        : {
+            providerMargin: rule.providerMargin,
+            adminMargin: rule.adminMargin,
+            distributorMargin: rule.distributorMargin,
+            retailerMargin: rule.retailerMargin,
+          };
+
+      return {
+        operator: rule.operator,
+        defaultRuleId: rule.id,
+        default: {
+          providerMargin: rule.providerMargin,
+          adminMargin: rule.adminMargin,
+          distributorMargin: rule.distributorMargin,
+          retailerMargin: rule.retailerMargin,
+        },
+        override: override
+          ? {
+              id: override.id,
+              providerMargin: override.providerMargin,
+              adminMargin: override.adminMargin,
+              distributorMargin: override.distributorMargin,
+              retailerMargin: override.retailerMargin,
+              updatedAt: override.updatedAt.toISOString(),
+            }
+          : null,
+        effective,
+        isOverridden: Boolean(override),
+      };
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -213,6 +272,12 @@ export default async function AdminUserDetailPage({
                 </p>
               </div>
             ) : null}
+            {found.storeName ? (
+              <div>
+                <p className="text-xs font-medium text-muted">Store name</p>
+                <p className="font-medium text-foreground">{found.storeName}</p>
+              </div>
+            ) : null}
             {found.businessType ? (
               <div>
                 <p className="text-xs font-medium text-muted">Business type</p>
@@ -243,6 +308,14 @@ export default async function AdminUserDetailPage({
           </Card.Content>
         </Card>
       </div>
+
+      {found.role === "RETAILER" ? (
+        <RetailerCommissionOverridesTable
+          initialRules={commissionOverrideRows}
+          retailerId={found.id}
+          retailerName={found.storeName || found.name}
+        />
+      ) : null}
 
       <AdminTableCard
         description="Latest wallet and recharge activity for this user."

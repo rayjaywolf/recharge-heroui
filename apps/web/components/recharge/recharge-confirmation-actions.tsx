@@ -13,10 +13,12 @@ export function RechargeConfirmationActions({
   rechargeHref,
   ledgerHref,
   receipt,
+  disputeHref,
 }: {
   rechargeHref: string;
   ledgerHref: string;
   receipt?: RechargeReceiptInput | null;
+  disputeHref?: string | null;
 }) {
   const router = useRouter();
 
@@ -28,6 +30,11 @@ export function RechargeConfirmationActions({
       <Button variant="secondary" onPress={() => router.push(ledgerHref)}>
         View ledger
       </Button>
+      {disputeHref ? (
+        <Button variant="secondary" onPress={() => router.push(disputeHref)}>
+          Raise dispute
+        </Button>
+      ) : null}
       {receipt ? (
         <Button
           className="gap-1.5"

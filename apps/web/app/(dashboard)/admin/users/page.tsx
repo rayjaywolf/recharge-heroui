@@ -12,6 +12,8 @@ export default async function AdminUsersPage() {
     columns: {
       id: true,
       name: true,
+      storeName: true,
+      image: true,
       email: true,
       phoneNumber: true,
       whatsappNumber: true,
@@ -22,20 +24,26 @@ export default async function AdminUsersPage() {
       distributorId: true,
     },
     with: {
-      distributor: { columns: { name: true } },
+      distributor: { columns: { name: true, storeName: true } },
       transactions: { columns: { id: true } },
     },
     orderBy: desc(user.createdAt),
   });
 
-  const distributors = await db
-    .select({ id: user.id, name: user.name })
+  const distributors = (await db
+    .select({ id: user.id, name: user.name, storeName: user.storeName })
     .from(user)
-    .where(eq(user.role, "DISTRIBUTOR"));
+    .where(eq(user.role, "DISTRIBUTOR")))
+    .map((d) => ({
+      id: d.id,
+      name: d.storeName || d.name,
+    }));
 
   const toRow = (u: (typeof users)[number]): AdminUserRow => ({
     id: u.id,
-    name: u.name,
+    name: u.storeName || u.name,
+    fullName: u.name,
+    image: u.image,
     email: u.email,
     phoneNumber: u.phoneNumber,
     whatsappNumber: u.whatsappNumber,
@@ -44,7 +52,9 @@ export default async function AdminUsersPage() {
     accountStatus: u.accountStatus,
     createdAt: u.createdAt.toISOString(),
     distributorId: u.distributorId,
-    distributor: u.distributor,
+    distributor: u.distributor
+      ? { name: u.distributor.storeName || u.distributor.name }
+      : null,
     _count: { transactions: u.transactions.length },
   });
 
@@ -73,6 +83,7 @@ export default async function AdminUsersPage() {
         />
         <UsersTable
           distributors={distributors}
+          hideDistributorCol
           initialData={retailersData}
           title="Retailers"
         />

@@ -16,6 +16,7 @@ import {
 import { validateMpin } from "@repo/shared/mpin";
 import { decrementBalance, incrementBalance } from "@repo/server/db-utils";
 import { creditAdminCommission } from "@repo/server/user-earnings";
+import { resolveCommissionAmountsForUser } from "@repo/server/commission-margins";
 import { resolveDateRange } from "@repo/server/date-range";
 import {
   getAvailableProviders,
@@ -552,34 +553,17 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
       };
     });
 
-    const [rule] = await db
-      .select()
-      .from(commissionRule)
-      .where(eq(commissionRule.operator, operator))
-      .limit(1);
-
-    const rMargin = rule?.retailerMargin ?? 0;
-    const dMargin = rule?.distributorMargin ?? 0;
-    const aMargin = rule?.adminMargin ?? 0;
-
-    const rCommission = (amount * rMargin) / 100;
-    const dCommission = (amount * dMargin) / 100;
-    const aCommission = (amount * aMargin) / 100;
-
-    const isDistributorSelfRecharge =
-      result.userRole === "DISTRIBUTOR" && !result.distributorId;
-
-    let adminCommission: number;
-    let distributorCommission: number;
-
-    if (isDistributorSelfRecharge) {
-      adminCommission = aCommission + dCommission;
-      distributorCommission = 0;
-    } else {
-      const hasDistributor = !!result.distributorId;
-      adminCommission = aCommission + (hasDistributor ? 0 : dCommission);
-      distributorCommission = hasDistributor ? dCommission : 0;
-    }
+    const {
+      retailerCommission: rCommission,
+      adminCommission,
+      distributorCommission,
+    } = await resolveCommissionAmountsForUser(db, {
+      userId: session.user.id,
+      operator,
+      amount,
+      userRole: result.userRole,
+      distributorId: result.distributorId,
+    });
 
     let usedProvider: RechargeProviderId = primaryProvider;
     let parsed: ParsedRechargeResponse = {

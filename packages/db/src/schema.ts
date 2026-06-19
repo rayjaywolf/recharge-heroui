@@ -125,6 +125,7 @@ export const user = pgTable(
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
+    storeName: text("storeName"),
     email: text("email"),
     emailVerified: boolean("emailVerified").notNull().default(false),
     phoneNumber: text("phoneNumber"),
@@ -335,6 +336,55 @@ export const commissionRule = pgTable(
   (table) => [uniqueIndex("commission_rule_operator_key").on(table.operator)],
 );
 
+export const retailerCommissionOverride = pgTable(
+  "retailer_commission_override",
+  {
+    id: text("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    operator: text("operator").notNull(),
+    providerMargin: numeric("providerMargin", {
+      precision: 10,
+      scale: 2,
+      mode: "number",
+    })
+      .notNull()
+      .default("0"),
+    adminMargin: numeric("adminMargin", { precision: 10, scale: 2, mode: "number" })
+      .notNull()
+      .default("0"),
+    distributorMargin: numeric("distributorMargin", {
+      precision: 10,
+      scale: 2,
+      mode: "number",
+    })
+      .notNull()
+      .default("0"),
+    retailerMargin: numeric("retailerMargin", {
+      precision: 10,
+      scale: 2,
+      mode: "number",
+    })
+      .notNull()
+      .default("0"),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("retailer_commission_override_user_operator_key").on(
+      table.userId,
+      table.operator,
+    ),
+    index("retailer_commission_override_userId_idx").on(table.userId),
+  ],
+);
+
 export const operatorProviderConfig = pgTable(
   "operator_provider_config",
   {
@@ -465,7 +515,18 @@ export const userRelations = relations(user, ({ many, one }) => ({
   retailers: many(user, { relationName: "distributorToRetailer" }),
   disputes: many(dispute, { relationName: "distributorDisputes" }),
   resolvedDisputes: many(dispute, { relationName: "disputeResolvedByAdmin" }),
+  commissionOverrides: many(retailerCommissionOverride),
 }));
+
+export const retailerCommissionOverrideRelations = relations(
+  retailerCommissionOverride,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [retailerCommissionOverride.userId],
+      references: [user.id],
+    }),
+  }),
+);
 
 export const transactionRelations = relations(transaction, ({ many, one }) => ({
   user: one(user, { fields: [transaction.userId], references: [user.id] }),

@@ -15,6 +15,7 @@ import { getDisplayEmail, getDisplayPhone } from "@/lib/phone";
 export type PendingUser = {
   id: string;
   name: string;
+  storeName: string | null;
   email: string;
   phoneNumber: string | null;
   role: string;
@@ -121,7 +122,9 @@ export function ApprovalsTable({ initialData }: { initialData: PendingUser[] }) 
 
               return (
                 <Table.Row key={user.id}>
-                  <Table.Cell className="font-semibold">{user.name}</Table.Cell>
+                  <Table.Cell>
+                    <div className="font-semibold">{user.storeName || user.name}</div>
+                  </Table.Cell>
                   <Table.Cell className="text-sm text-muted">
                     {phone ?? "—"}
                   </Table.Cell>

@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Form, Input, Label, Spinner, TextField, toast } from "@heroui/react";
 
@@ -10,12 +10,27 @@ import { apiFetch } from "@/lib/api-client";
 
 type ProfileSettingsFormProps = {
   currentName: string;
+  currentStoreName: string | null;
+  userRole: string;
 };
 
-export function ProfileSettingsForm({ currentName }: ProfileSettingsFormProps) {
+export function ProfileSettingsForm({
+  currentName,
+  currentStoreName,
+  userRole,
+}: ProfileSettingsFormProps) {
   const router = useRouter();
   const [name, setName] = useState(currentName);
+  const [storeName, setStoreName] = useState(currentStoreName || "");
   const [nameLoading, setNameLoading] = useState(false);
+
+  useEffect(() => {
+    setName(currentName);
+  }, [currentName]);
+
+  useEffect(() => {
+    setStoreName(currentStoreName || "");
+  }, [currentStoreName]);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -32,21 +47,35 @@ export function ProfileSettingsForm({ currentName }: ProfileSettingsFormProps) {
       return;
     }
 
+    const trimmedStore = storeName.trim();
+    if (userRole !== "ADMIN") {
+      if (trimmedStore.length < 2 || trimmedStore.length > 100) {
+        toast("Store name must be between 2 and 100 characters.", { variant: "danger" });
+        return;
+      }
+    }
+
     setNameLoading(true);
     try {
       const res = await apiFetch("/api/profile/change-name", {
         method: "POST",
-        body: JSON.stringify({ name: trimmed }),
+        body: JSON.stringify({
+          name: trimmed,
+          storeName: userRole !== "ADMIN" ? trimmedStore : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.error || "Failed to update name.");
+        throw new Error(data?.error || "Failed to update profile settings.");
       }
       setName(trimmed);
-      toast("Name updated.", { variant: "success" });
+      if (userRole !== "ADMIN") {
+        setStoreName(data.storeName || "");
+      }
+      toast("Profile updated successfully.", { variant: "success" });
       router.refresh();
     } catch (error) {
-      toast(error instanceof Error ? error.message : "Failed to update name.", {
+      toast(error instanceof Error ? error.message : "Failed to update profile settings.", {
         variant: "danger",
       });
     } finally {
@@ -121,6 +150,23 @@ export function ProfileSettingsForm({ currentName }: ProfileSettingsFormProps) {
                 onChange={(e) => setName(e.target.value)}
               />
             </TextField>
+
+            {userRole !== "ADMIN" ? (
+              <TextField isRequired name="storeName">
+                <Label htmlFor="profile-store-name">Store name</Label>
+                <Input
+                  id="profile-store-name"
+                  maxLength={100}
+                  minLength={2}
+                  name="storeName"
+                  placeholder="Enter store name"
+                  type="text"
+                  value={storeName}
+                  variant="secondary"
+                  onChange={(e) => setStoreName(e.target.value)}
+                />
+              </TextField>
+            ) : null}
           </Card.Content>
           <Card.Footer className="mt-4">
             <Button isDisabled={nameLoading} type="submit" variant="primary">

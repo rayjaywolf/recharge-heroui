@@ -23,6 +23,7 @@ export default async function RetailerRechargeConfirmationPage({
   const params = await searchParams;
   const isSuccess = params.status === "success";
   const isPending = params.status === "pending";
+  const isFailed = params.status === "failed";
   const amount = params.amount ? Number(params.amount) : NaN;
   const receipt =
     isSuccess &&
@@ -110,6 +111,11 @@ export default async function RetailerRechargeConfirmationPage({
             ledgerHref="/retailer/ledger"
             receipt={receipt}
             rechargeHref="/retailer/recharge"
+            disputeHref={
+              params.transactionId && (isPending || isFailed)
+                ? `/retailer/support?transactionId=${encodeURIComponent(params.transactionId)}`
+                : null
+            }
           />
         </Card.Content>
       </Card>

@@ -12,6 +12,7 @@ export default async function AdminApprovalsPage() {
     .select({
       id: user.id,
       name: user.name,
+      storeName: user.storeName,
       email: user.email,
       phoneNumber: user.phoneNumber,
       role: user.role,

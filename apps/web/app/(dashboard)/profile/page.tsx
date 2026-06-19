@@ -217,6 +217,12 @@ export default async function ProfilePage() {
                 </p>
               </div>
             ) : null}
+            {found.storeName ? (
+              <div>
+                <p className="text-xs font-medium text-muted">Store name</p>
+                <p className="font-medium text-foreground">{found.storeName}</p>
+              </div>
+            ) : null}
             {found.businessType ? (
               <div>
                 <p className="text-xs font-medium text-muted">Business type</p>
@@ -234,7 +240,11 @@ export default async function ProfilePage() {
         </Card>
       </div>
 
-      <ProfileSettingsForm currentName={found.name} />
+      <ProfileSettingsForm
+        currentName={found.name}
+        currentStoreName={found.storeName}
+        userRole={found.role}
+      />
 
       {found.role !== "ADMIN" ? (
         <Card variant="default">

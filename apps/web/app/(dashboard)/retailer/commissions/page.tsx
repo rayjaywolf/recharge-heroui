@@ -1,6 +1,6 @@
-import { asc } from "drizzle-orm";
-import { Table } from "@heroui/react";
-import { commissionRule, db } from "@repo/db";
+import { asc, eq } from "drizzle-orm";
+import { Chip, Table } from "@heroui/react";
+import { commissionRule, db, retailerCommissionOverride } from "@repo/db";
 
 import {
   AdminTableCard,
@@ -13,16 +13,38 @@ function formatPercent(value: number) {
 }
 
 export default async function RetailerCommissionsPage() {
-  await requireRetailer();
+  const retailer = await requireRetailer();
 
-  const rules = await db
-    .select({
-      id: commissionRule.id,
-      operator: commissionRule.operator,
-      retailerMargin: commissionRule.retailerMargin,
-    })
-    .from(commissionRule)
-    .orderBy(asc(commissionRule.operator));
+  const [rules, overrides] = await Promise.all([
+    db
+      .select({
+        id: commissionRule.id,
+        operator: commissionRule.operator,
+        retailerMargin: commissionRule.retailerMargin,
+      })
+      .from(commissionRule)
+      .orderBy(asc(commissionRule.operator)),
+    db
+      .select({
+        operator: retailerCommissionOverride.operator,
+        retailerMargin: retailerCommissionOverride.retailerMargin,
+      })
+      .from(retailerCommissionOverride)
+      .where(eq(retailerCommissionOverride.userId, retailer.id)),
+  ]);
+
+  const overrideByOperator = new Map(
+    overrides.map((row) => [row.operator, row.retailerMargin]),
+  );
+
+  const rows = rules.map((rule) => {
+    const customMargin = overrideByOperator.get(rule.operator);
+    return {
+      ...rule,
+      retailerMargin: customMargin ?? rule.retailerMargin,
+      isCustom: customMargin != null,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -36,10 +58,10 @@ export default async function RetailerCommissionsPage() {
       </div>
 
       <AdminTableCard
-        description="System-wide margins defined by the platform administrator."
+        description="Default platform rates apply unless your account has custom rates set by an administrator."
         title="Commission structures"
       >
-        {rules.length === 0 ? (
+        {rows.length === 0 ? (
           <AdminTableEmpty message="No commission rules configured yet." />
         ) : (
           <Table>
@@ -50,9 +72,18 @@ export default async function RetailerCommissionsPage() {
                   <Table.Column className="text-right">Your margin</Table.Column>
                 </Table.Header>
                 <Table.Body>
-                  {rules.map((rule) => (
+                  {rows.map((rule) => (
                     <Table.Row key={rule.id} className="whitespace-nowrap">
-                      <Table.Cell className="font-semibold">{rule.operator}</Table.Cell>
+                      <Table.Cell className="font-semibold">
+                        <div className="flex items-center gap-2">
+                          {rule.operator}
+                          {rule.isCustom ? (
+                            <Chip color="accent" size="sm" variant="soft">
+                              Custom
+                            </Chip>
+                          ) : null}
+                        </div>
+                      </Table.Cell>
                       <Table.Cell className="text-right font-semibold">
                         <span className="text-success">
                           {formatPercent(rule.retailerMargin)}

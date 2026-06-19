@@ -174,7 +174,7 @@ export default async function AdminOverviewPage() {
     yesterdaySuccessRate,
   );
 
-  const recentLedger = await db
+  const recentLedgerRaw = await db
     .select({
       id: transaction.id,
       createdAt: transaction.createdAt,
@@ -183,12 +183,18 @@ export default async function AdminOverviewPage() {
       amount: transaction.amount,
       status: transaction.status,
       userName: user.name,
+      userStoreName: user.storeName,
     })
     .from(transaction)
     .innerJoin(user, eq(transaction.userId, user.id))
     .where(notInArray(transaction.operator, ["MANUAL_CREDIT", "MANUAL_DEBIT"]))
     .orderBy(desc(transaction.createdAt))
     .limit(20);
+
+  const recentLedger = recentLedgerRaw.map((tx) => ({
+    ...tx,
+    userName: tx.userStoreName || tx.userName,
+  }));
 
   return (
     <div className="space-y-8">

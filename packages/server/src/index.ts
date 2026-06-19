@@ -30,3 +30,10 @@ export {
   verifyMpinHash,
   verifyUserMpin,
 } from "./mpin";
+export {
+  computeCommissionAmounts,
+  getEffectiveCommissionMargins,
+  resolveCommissionAmountsForUser,
+  type CommissionMargins,
+  type EffectiveCommissionMargins,
+} from "./commission-margins";

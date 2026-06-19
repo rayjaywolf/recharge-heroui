@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   commissionRule,
@@ -7,6 +7,7 @@ import {
   dispute,
   fundRequest,
   operatorProviderConfig,
+  retailerCommissionOverride,
   transaction,
   user,
   type Provider,
@@ -18,6 +19,7 @@ import {
   creditAdminCommission,
   debitAdminCommission,
 } from "@repo/server/user-earnings";
+import { resolveCommissionAmountsForUser } from "@repo/server/commission-margins";
 import {
   markNotificationsReadForEntity,
   notifyDistributorDisputeResolved,
@@ -239,33 +241,19 @@ adminRoutes.patch("/api/admin/transactions/:id/manual-status", requireAdmin, asy
       return c.json({ error: "Transaction owner not found." }, 404);
     }
 
-    const [rule] = await db
-      .select()
-      .from(commissionRule)
-      .where(eq(commissionRule.operator, found.operator))
-      .limit(1);
+    const {
+      retailerCommission: nextRetailerCommission,
+      adminCommission: nextAdminCommission,
+      distributorCommission: nextDistributorCommission,
+    } = await resolveCommissionAmountsForUser(db, {
+      userId: found.userId,
+      operator: found.operator,
+      amount: found.amount,
+      userRole: txUser.role,
+      distributorId: txUser.distributorId,
+    });
 
     const amount = found.amount;
-    const rCommission = (amount * (rule?.retailerMargin ?? 0)) / 100;
-    const dCommission = (amount * (rule?.distributorMargin ?? 0)) / 100;
-    const aCommission = (amount * (rule?.adminMargin ?? 0)) / 100;
-
-    const isDistributorSelfRecharge =
-      txUser.role === "DISTRIBUTOR" && !txUser.distributorId;
-
-    let nextAdminCommission: number;
-    let nextDistributorCommission: number;
-
-    if (isDistributorSelfRecharge) {
-      nextAdminCommission = aCommission + dCommission;
-      nextDistributorCommission = 0;
-    } else {
-      const hasDistributor = !!txUser.distributorId;
-      nextAdminCommission = aCommission + (hasDistributor ? 0 : dCommission);
-      nextDistributorCommission = hasDistributor ? dCommission : 0;
-    }
-
-    const nextRetailerCommission = rCommission;
 
     const from = found.status;
     const to = status;
@@ -1233,3 +1221,240 @@ adminRoutes.delete("/api/admin/commissions/:id", requireAdmin, async (c) => {
     return c.json({ error: "Internal server error" }, 500);
   }
 });
+
+type CommissionMarginPayload = {
+  providerMargin?: number;
+  adminMargin?: number;
+  distributorMargin?: number;
+  retailerMargin?: number;
+};
+
+function parseCommissionMarginPayload(data: CommissionMarginPayload) {
+  return {
+    providerMargin: Number(data.providerMargin ?? 0),
+    adminMargin: Number(data.adminMargin ?? 0),
+    distributorMargin: Number(data.distributorMargin ?? 0),
+    retailerMargin: Number(data.retailerMargin ?? 0),
+  };
+}
+
+async function requireRetailerUser(userId: string) {
+  const [found] = await db
+    .select({ id: user.id, role: user.role })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+
+  if (!found) return { error: "User not found.", status: 404 as const };
+  if (found.role !== "RETAILER") {
+    return { error: "Commission overrides apply to retailers only.", status: 400 as const };
+  }
+  return { user: found };
+}
+
+adminRoutes.get(
+  "/api/admin/users/:userId/commission-overrides",
+  requireAdmin,
+  async (c) => {
+    try {
+      const userId = c.req.param("userId");
+      const retailerCheck = await requireRetailerUser(userId);
+      if ("error" in retailerCheck) {
+        return c.json({ error: retailerCheck.error }, retailerCheck.status);
+      }
+
+      const [globalRules, overrides] = await Promise.all([
+        db.select().from(commissionRule).orderBy(asc(commissionRule.operator)),
+        db
+          .select()
+          .from(retailerCommissionOverride)
+          .where(eq(retailerCommissionOverride.userId, userId)),
+      ]);
+
+      const overrideByOperator = new Map(
+        overrides.map((row) => [row.operator, row]),
+      );
+
+      return c.json({
+        rules: globalRules.map((rule) => {
+          const override = overrideByOperator.get(rule.operator);
+          const effective = override
+            ? {
+                providerMargin: override.providerMargin,
+                adminMargin: override.adminMargin,
+                distributorMargin: override.distributorMargin,
+                retailerMargin: override.retailerMargin,
+              }
+            : {
+                providerMargin: rule.providerMargin,
+                adminMargin: rule.adminMargin,
+                distributorMargin: rule.distributorMargin,
+                retailerMargin: rule.retailerMargin,
+              };
+
+          return {
+            operator: rule.operator,
+            defaultRuleId: rule.id,
+            default: {
+              providerMargin: rule.providerMargin,
+              adminMargin: rule.adminMargin,
+              distributorMargin: rule.distributorMargin,
+              retailerMargin: rule.retailerMargin,
+            },
+            override: override
+              ? {
+                  id: override.id,
+                  providerMargin: override.providerMargin,
+                  adminMargin: override.adminMargin,
+                  distributorMargin: override.distributorMargin,
+                  retailerMargin: override.retailerMargin,
+                  updatedAt: override.updatedAt.toISOString(),
+                }
+              : null,
+            effective,
+            isOverridden: Boolean(override),
+          };
+        }),
+      });
+    } catch (error) {
+      console.error("List retailer commission overrides error:", error);
+      return c.json({ error: "Internal server error" }, 500);
+    }
+  },
+);
+
+adminRoutes.post(
+  "/api/admin/users/:userId/commission-overrides",
+  requireAdmin,
+  async (c) => {
+    try {
+      const userId = c.req.param("userId");
+      const retailerCheck = await requireRetailerUser(userId);
+      if ("error" in retailerCheck) {
+        return c.json({ error: retailerCheck.error }, retailerCheck.status);
+      }
+
+      const data = await c.req.json();
+      const operator = String(data.operator ?? "").trim();
+      if (!operator) {
+        return c.json({ error: "Operator is required." }, 400);
+      }
+
+      const [globalRule] = await db
+        .select({ id: commissionRule.id })
+        .from(commissionRule)
+        .where(eq(commissionRule.operator, operator))
+        .limit(1);
+
+      if (!globalRule) {
+        return c.json(
+          { error: "No default commission rule exists for this operator." },
+          400,
+        );
+      }
+
+      const margins = parseCommissionMarginPayload(data);
+      const [created] = await db
+        .insert(retailerCommissionOverride)
+        .values({
+          id: createId(),
+          userId,
+          operator,
+          ...margins,
+        })
+        .returning();
+
+      return c.json({
+        success: true,
+        override: {
+          ...created,
+          updatedAt: created.updatedAt.toISOString(),
+        },
+      });
+    } catch (error) {
+      console.error("Create retailer commission override error:", error);
+      return c.json(
+        { error: "Could not create override. It may already exist for this operator." },
+        500,
+      );
+    }
+  },
+);
+
+adminRoutes.patch(
+  "/api/admin/users/:userId/commission-overrides/:id",
+  requireAdmin,
+  async (c) => {
+    try {
+      const userId = c.req.param("userId");
+      const id = c.req.param("id");
+      const retailerCheck = await requireRetailerUser(userId);
+      if ("error" in retailerCheck) {
+        return c.json({ error: retailerCheck.error }, retailerCheck.status);
+      }
+
+      const data = await c.req.json();
+      const margins = parseCommissionMarginPayload(data);
+
+      const [updated] = await db
+        .update(retailerCommissionOverride)
+        .set(margins)
+        .where(
+          and(
+            eq(retailerCommissionOverride.id, id),
+            eq(retailerCommissionOverride.userId, userId),
+          ),
+        )
+        .returning();
+
+      if (!updated) {
+        return c.json({ error: "Override not found." }, 404);
+      }
+
+      return c.json({
+        success: true,
+        override: {
+          ...updated,
+          updatedAt: updated.updatedAt.toISOString(),
+        },
+      });
+    } catch (error) {
+      console.error("Update retailer commission override error:", error);
+      return c.json({ error: "Internal server error" }, 500);
+    }
+  },
+);
+
+adminRoutes.delete(
+  "/api/admin/users/:userId/commission-overrides/:id",
+  requireAdmin,
+  async (c) => {
+    try {
+      const userId = c.req.param("userId");
+      const id = c.req.param("id");
+      const retailerCheck = await requireRetailerUser(userId);
+      if ("error" in retailerCheck) {
+        return c.json({ error: retailerCheck.error }, retailerCheck.status);
+      }
+
+      const [deleted] = await db
+        .delete(retailerCommissionOverride)
+        .where(
+          and(
+            eq(retailerCommissionOverride.id, id),
+            eq(retailerCommissionOverride.userId, userId),
+          ),
+        )
+        .returning({ id: retailerCommissionOverride.id });
+
+      if (!deleted) {
+        return c.json({ error: "Override not found." }, 404);
+      }
+
+      return c.json({ success: true });
+    } catch (error) {
+      console.error("Delete retailer commission override error:", error);
+      return c.json({ error: "Internal server error" }, 500);
+    }
+  },
+);

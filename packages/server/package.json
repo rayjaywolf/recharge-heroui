@@ -24,7 +24,8 @@
     "./operator-lookup-cache": "./src/operator-lookup-cache.ts",
     "./retailer-top-amounts-cache": "./src/retailer-top-amounts-cache.ts",
     "./user-avatar": "./src/user-avatar.ts",
-    "./user-earnings": "./src/user-earnings.ts"
+    "./user-earnings": "./src/user-earnings.ts",
+    "./commission-margins": "./src/commission-margins.ts"
   },
   "dependencies": {
     "@repo/db": "workspace:*",

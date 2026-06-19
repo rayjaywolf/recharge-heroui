@@ -34,6 +34,7 @@ authRoutes.post("/api/auth/register-retailer", async (c) => {
         email: accountEmail,
         password: input.password,
         name: input.name,
+        storeName: input.storeName,
         role: "RETAILER",
         whatsappNumber: normalizedPhone,
         address: input.address,
@@ -214,15 +215,48 @@ authRoutes.post("/api/profile/change-name", requireSession, async (c) => {
       return c.json({ error: "Name must be between 2 and 80 characters." }, 400);
     }
 
+    const updateData: Record<string, any> = { name };
+
+    if (session.user.role !== "ADMIN" && typeof body?.storeName === "string") {
+      const storeName = body.storeName.trim();
+      if (storeName.length < 2 || storeName.length > 100) {
+        return c.json({ error: "Store name must be between 2 and 100 characters." }, 400);
+      }
+      updateData.storeName = storeName;
+    }
+
     await db
       .update(user)
-      .set({ name })
+      .set(updateData)
       .where(eq(user.id, session.user.id));
 
-    return c.json({ success: true, name });
+    return c.json({ success: true, name, storeName: updateData.storeName });
   } catch (error) {
     console.error("Change name error:", error);
-    return c.json({ error: "Failed to update name." }, 500);
+    return c.json({ error: "Failed to update profile settings." }, 500);
+  }
+});
+
+authRoutes.post("/api/profile/set-store-name", requireSession, async (c) => {
+  try {
+    const session = c.get("session");
+    const body = await c.req.json();
+    const rawStoreName = typeof body?.storeName === "string" ? body.storeName : "";
+    const storeName = rawStoreName.trim();
+
+    if (storeName.length < 2 || storeName.length > 100) {
+      return c.json({ error: "Store name must be between 2 and 100 characters." }, 400);
+    }
+
+    await db
+      .update(user)
+      .set({ storeName })
+      .where(eq(user.id, session.user.id));
+
+    return c.json({ success: true, storeName });
+  } catch (error) {
+    console.error("Set store name error:", error);
+    return c.json({ error: "Failed to update store name." }, 500);
   }
 });
 
@@ -335,6 +369,7 @@ authRoutes.get("/api/dashboard/bootstrap", requireSession, async (c) => {
         id: found.id,
         role: found.role,
         name: found.name,
+        storeName: found.storeName,
         balance: found.balance,
         accountStatus: found.accountStatus,
         image: userImage,

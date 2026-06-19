@@ -113,6 +113,7 @@ export const auth = betterAuth({
         defaultValue: "PENDING",
         input: false,
       },
+      storeName: { type: "string", required: false },
       whatsappNumber: { type: "string", required: false },
       address: { type: "string", required: false },
       pincode: { type: "string", required: false },

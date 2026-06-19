@@ -152,6 +152,7 @@ distributorRoutes.post("/api/distributor/retailer", requireDistributor, async (c
         email: accountEmail,
         password: input.password,
         name: input.name,
+        storeName: input.storeName,
         role: "RETAILER",
         distributorId: session.user.id,
         whatsappNumber: normalizedPhone,

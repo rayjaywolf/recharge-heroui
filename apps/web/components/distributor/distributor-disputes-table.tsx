@@ -67,7 +67,9 @@ export function DistributorDisputesTable({
                       {formatTableDateTime(row.createdAt)}
                     </Table.Cell>
                     <Table.Cell className="max-w-[220px] text-sm font-medium text-foreground">
-                      {row.subject}
+                      <span className="block truncate" title={row.subject}>
+                        {row.subject}
+                      </span>
                     </Table.Cell>
                     <Table.Cell className="max-w-[220px] text-sm text-muted">
                       {operatorLabel(row.operator)}, {row.targetPhone}
