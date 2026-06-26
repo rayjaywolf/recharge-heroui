@@ -60,3 +60,7 @@ docs
 
 # Flutter retailer app (local-only; nested git repo)
 /retailer_recharge_app/
+
+# turbo cache
+.turbo/
+

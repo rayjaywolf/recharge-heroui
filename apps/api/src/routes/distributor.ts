@@ -39,14 +39,30 @@ distributorRoutes.post("/api/distributor/fund", requireDistributor, async (c) =>
 
     if (idempotencyKey) {
       const [existing] = await db
-        .select({ id: transaction.id })
+        .select()
         .from(transaction)
         .where(eq(transaction.idempotencyKey, idempotencyKey))
         .limit(1);
       if (existing) {
+        if (existing.status === "PENDING") {
+          return c.json(
+            { error: "Duplicate action detected. Request is already processing." },
+            409,
+          );
+        }
+        if (existing.status === "SUCCESS") {
+          return c.json({
+            success: true,
+            message: "Fund request processed successfully (idempotent)",
+            transaction: existing,
+          });
+        }
         return c.json(
-          { error: "Duplicate action detected. Request is already processing." },
-          409,
+          {
+            error: existing.apiMessage || "Fund request failed (idempotent)",
+            transaction: existing,
+          },
+          400,
         );
       }
     }

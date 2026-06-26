@@ -99,28 +99,56 @@ export async function performMRoboticsRecharge(
   operatorName: string,
   amount: number,
   circleCode?: string,
-  transactionId?: string
+  transactionId?: string,
+  isStv?: boolean
 ): Promise<MRoboticsRechargeResponse> {
   validateProviderCredentials('MROBOTICS');
   const apiToken = process.env.MROBOTICS_API_TOKEN!;
 
-  const baseUrl = 'https://mrobotics.in/api/recharge';
   const companyId = getMRoboticsCompanyId(operatorName);
   const stateCode = circleCode ? getMRoboticsStateCode(circleCode) : undefined;
   const orderId = transactionId || `TX_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
+  // Route to the correct endpoint according to documented specs
+  let baseUrl = 'https://mrobotics.in/api/recharge';
+  const isDth = companyId >= 5 && companyId <= 9;
+  const isUtility = companyId >= 10 && companyId <= 14;
+  
+  if (isDth) {
+    baseUrl = 'https://mrobotics.in/api/dth_statewise';
+  } else if (isUtility) {
+    baseUrl = 'https://mrobotics.in/api/multirecharge';
+  } else if (stateCode) {
+    baseUrl = 'https://mrobotics.in/api/recharge_statewise';
+  }
+
+  // Auto-detect is_stv if not explicitly passed
+  const isStvVal = isStv ?? (
+    operatorName.toLowerCase().includes('stv') || 
+    operatorName.toLowerCase().includes('special') || 
+    operatorName.toLowerCase().includes('prime')
+  );
+
   const formData = new URLSearchParams();
   formData.append('api_token', apiToken);
   formData.append('mobile_no', phoneNumber);
   formData.append('amount', amount.toString());
   formData.append('company_id', companyId.toString());
   formData.append('order_id', orderId);
-  formData.append('is_stv', 'false');
+  formData.append('is_stv', isStvVal ? 'true' : 'false');
   
-  if (stateCode) {
+  if (isUtility) {
+    formData.append('subcompany_id', '1'); // Default subcompany_id
+  }
+  
+  if (!isDth && !isUtility && stateCode) {
     formData.append('state_code', stateCode);
   }
   
+  if (isDth) {
+    formData.append('bypass_state_check', 'true');
+  }
+
   const response = await fetch(baseUrl, {
     method: 'POST',
     headers: {
@@ -144,21 +172,23 @@ export async function performMRoboticsRecharge(
   }
 }
 
+
 export async function checkMRoboticsStatus(orderId: string): Promise<MRoboticsStatusResponse> {
   validateProviderCredentials('MROBOTICS');
   const apiToken = process.env.MROBOTICS_API_TOKEN!;
 
   const baseUrl = 'https://mrobotics.in/api/order_id_status';
-  const url = new URL(baseUrl);
   
-  url.searchParams.append('api_token', apiToken);
-  url.searchParams.append('order_id', orderId);
+  const formData = new URLSearchParams();
+  formData.append('api_token', apiToken);
+  formData.append('order_id', orderId);
   
-  const response = await fetch(url.toString(), {
-    method: 'GET',
+  const response = await fetch(baseUrl, {
+    method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
+    body: formData.toString(),
     signal: AbortSignal.timeout(30000) // 30 second timeout
   });
   
@@ -181,15 +211,16 @@ export async function getMRoboticsBalance(): Promise<MRoboticsBalanceResponse> {
   const apiToken = process.env.MROBOTICS_API_TOKEN!;
 
   const baseUrl = 'https://mrobotics.in/api/operator_balance';
-  const url = new URL(baseUrl);
   
-  url.searchParams.append('api_token', apiToken);
+  const formData = new URLSearchParams();
+  formData.append('api_token', apiToken);
   
-  const response = await fetch(url.toString(), {
-    method: 'GET',
+  const response = await fetch(baseUrl, {
+    method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
+    body: formData.toString(),
     signal: AbortSignal.timeout(30000) // 30 second timeout
   });
   
@@ -206,3 +237,4 @@ export async function getMRoboticsBalance(): Promise<MRoboticsBalanceResponse> {
     throw new Error(`Invalid JSON response from MRobotics balance: ${textResponse}`);
   }
 }
+
