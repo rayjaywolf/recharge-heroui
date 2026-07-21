@@ -98,6 +98,11 @@ export async function settlePendingTransaction(
               adminCommission,
             }
           : {}),
+        ...(parsed.finalStatus === "FAILED" && parsed.shouldRefund
+          ? {
+              closingBalance: tx.openingBalance,
+            }
+          : {}),
       })
       .where(and(eq(transaction.id, tx.id), eq(transaction.status, "PENDING")))
       .returning({ id: transaction.id });

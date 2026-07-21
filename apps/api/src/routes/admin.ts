@@ -488,6 +488,8 @@ adminRoutes.post("/api/admin/fund", requireAdmin, async (c) => {
         amount,
         status: "SUCCESS",
         apiMessage: messageContent,
+        openingBalance: actionType === "credit" ? updatedUser.balance - amount : updatedUser.balance + amount,
+        closingBalance: updatedUser.balance,
       });
 
       return { updatedUser, txId };
@@ -597,6 +599,8 @@ adminRoutes.post(
           amount: request.amount,
           status: "SUCCESS",
           apiMessage: message,
+          openingBalance: updatedRetailer.balance - request.amount,
+          closingBalance: updatedRetailer.balance,
         });
 
         const [updatedRequest] = await tx

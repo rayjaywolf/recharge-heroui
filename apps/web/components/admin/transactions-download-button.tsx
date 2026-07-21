@@ -34,6 +34,8 @@ export function TransactionsDownloadButton({
       retailerCommission: tx.retailerCommission,
       distributorCommission: tx.distributorCommission,
       adminCommission: tx.adminCommission,
+      openingBalance: tx.openingBalance,
+      closingBalance: tx.closingBalance,
       user: {
         name: tx.user.name,
         email: tx.user.email,

@@ -69,7 +69,9 @@ export function RetailerLedgerTable({
               <Table.Column isRowHeader>Date & time</Table.Column>
               <Table.Column>Type</Table.Column>
               <Table.Column>Phone</Table.Column>
+              <Table.Column>Opening</Table.Column>
               <Table.Column>Amount</Table.Column>
+              <Table.Column>Closing</Table.Column>
               <Table.Column>Status</Table.Column>
               <Table.Column className="min-w-[280px]">Ref ID</Table.Column>
               <Table.Column className="w-[72px]">PDF</Table.Column>
@@ -90,8 +92,14 @@ export function RetailerLedgerTable({
                   <Table.Cell className="font-mono text-xs text-muted">
                     {tx.targetPhone || "—"}
                   </Table.Cell>
+                  <Table.Cell className="font-semibold text-muted-foreground">
+                    <Money amount={tx.openingBalance} />
+                  </Table.Cell>
                   <Table.Cell className="font-semibold">
                     <Money amount={tx.amount} />
+                  </Table.Cell>
+                  <Table.Cell className="font-semibold text-muted-foreground">
+                    <Money amount={tx.closingBalance} />
                   </Table.Cell>
                   <Table.Cell>
                     <TransactionStatusChip status={tx.status} />
@@ -159,6 +167,14 @@ export function RetailerLedgerTable({
                         value={selected.targetPhone}
                       />
                       <DetailItem label="Circle code" value={selected.circleCode} />
+                      <DetailItem
+                        label="Opening balance"
+                        value={<Money amount={selected.openingBalance} />}
+                      />
+                      <DetailItem
+                        label="Closing balance"
+                        value={<Money amount={selected.closingBalance} />}
+                      />
                       <DetailItem
                         label="Reference ID"
                         mono

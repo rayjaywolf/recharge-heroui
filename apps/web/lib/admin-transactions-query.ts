@@ -267,6 +267,8 @@ export async function fetchAdminTransactions(
       retailerCommission: transaction.retailerCommission,
       distributorCommission: transaction.distributorCommission,
       adminCommission: transaction.adminCommission,
+      openingBalance: transaction.openingBalance,
+      closingBalance: transaction.closingBalance,
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
       userName: user.name,
@@ -305,6 +307,8 @@ export async function fetchAdminTransactions(
     retailerCommission: tx.retailerCommission,
     distributorCommission: tx.distributorCommission,
     adminCommission: tx.adminCommission,
+    openingBalance: tx.openingBalance,
+    closingBalance: tx.closingBalance,
     createdAt: tx.createdAt.toISOString(),
     updatedAt: tx.updatedAt.toISOString(),
     user: {

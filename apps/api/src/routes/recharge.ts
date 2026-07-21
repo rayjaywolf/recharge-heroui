@@ -559,6 +559,8 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
           provider: primaryProvider,
           status: "PENDING",
           idempotencyKey: idempotencyKey || null,
+          openingBalance: currentUser.balance,
+          closingBalance: updated.balance,
         })
         .returning();
 

@@ -687,6 +687,7 @@ export function RechargeForm({
         isDisabled={fieldsLockedForLookup}
         placeholder="Select operator"
         value={operator}
+        variant="secondary"
         onChange={(value) => {
           lastLookupPhoneRef.current = null;
           plansScopeRef.current = null;
@@ -720,6 +721,7 @@ export function RechargeForm({
           isDisabled={fieldsLockedForLookup}
           placeholder={circleRequired ? "Select circle" : "Circle (optional)"}
           value={circleCode}
+          variant="secondary"
           onChange={(value) => {
             lastLookupPhoneRef.current = null;
             plansScopeRef.current = null;

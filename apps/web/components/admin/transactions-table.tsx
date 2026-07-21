@@ -28,6 +28,8 @@ export type AdminTransactionRow = {
   retailerCommission: number;
   distributorCommission: number;
   adminCommission: number;
+  openingBalance: number;
+  closingBalance: number;
   createdAt: string;
   updatedAt: string;
   /** Recharger (transaction owner) role — for distributor self-recharge UI. */
@@ -68,7 +70,9 @@ export function TransactionsTable({
                 <Table.Column>Retailer</Table.Column>
                 <Table.Column>Carrier</Table.Column>
                 <Table.Column>Phone</Table.Column>
+                <Table.Column>Opening</Table.Column>
                 <Table.Column>Amount</Table.Column>
+                <Table.Column>Closing</Table.Column>
                 <Table.Column>API</Table.Column>
                 <Table.Column>Status</Table.Column>
                 <Table.Column className="min-w-[280px]">Ref ID</Table.Column>
@@ -95,8 +99,14 @@ export function TransactionsTable({
                     <Table.Cell className="font-mono text-xs text-muted">
                       {tx.targetPhone}
                     </Table.Cell>
+                    <Table.Cell className="font-semibold text-muted-foreground">
+                      <Money amount={tx.openingBalance} />
+                    </Table.Cell>
                     <Table.Cell className="font-semibold">
                       <Money amount={tx.amount} />
+                    </Table.Cell>
+                    <Table.Cell className="font-semibold text-muted-foreground">
+                      <Money amount={tx.closingBalance} />
                     </Table.Cell>
                     <Table.Cell>
                       {formatRechargeProvider(tx.provider)}

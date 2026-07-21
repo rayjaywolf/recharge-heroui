@@ -116,6 +116,8 @@ distributorRoutes.post("/api/distributor/fund", requireDistributor, async (c) =>
           ? `[FUNDS_SENT] ${remarks}`
           : `Transferred ${amount} to retailer ${updatedRetailer.name}`,
         idempotencyKey: idempotencyKey || null,
+        openingBalance: distributorUser.balance,
+        closingBalance: updatedDistributor.balance,
       });
 
       await tx.insert(transaction).values({
@@ -128,6 +130,8 @@ distributorRoutes.post("/api/distributor/fund", requireDistributor, async (c) =>
         apiMessage: remarks
           ? `[FUNDS_RECEIVED] ${remarks}`
           : `Received ${amount} from distributor ${distributorUser.name}`,
+        openingBalance: updatedRetailer.balance - amount,
+        closingBalance: updatedRetailer.balance,
       });
 
       return { updatedDistributor, updatedRetailer, retTxId };
@@ -425,6 +429,8 @@ distributorRoutes.post(
           amount: request.amount,
           status: "SUCCESS",
           apiMessage: transferMessage,
+          openingBalance: distributorUser.balance,
+          closingBalance: updatedDistributor.balance,
         });
 
         await tx.insert(transaction).values({
@@ -437,6 +443,8 @@ distributorRoutes.post(
           apiMessage: request.remarks
             ? `[FUNDS_RECEIVED] ${request.remarks}`
             : `Fund request approved by ${distributorUser.name}`,
+          openingBalance: updatedRetailer.balance - request.amount,
+          closingBalance: updatedRetailer.balance,
         });
 
         const [updatedRequest] = await tx

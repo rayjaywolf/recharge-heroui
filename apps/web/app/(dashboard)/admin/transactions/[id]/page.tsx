@@ -57,6 +57,8 @@ export default async function AdminTransactionDetailPage({
       retailerCommission: transaction.retailerCommission,
       distributorCommission: transaction.distributorCommission,
       adminCommission: transaction.adminCommission,
+      openingBalance: transaction.openingBalance,
+      closingBalance: transaction.closingBalance,
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
       userName: user.name,
@@ -113,6 +115,8 @@ export default async function AdminTransactionDetailPage({
             <DetailItem label="Target phone" mono value={detail.targetPhone} />
             <DetailItem label="Circle code" value={detail.circleCode} />
             <DetailItem label="Reference ID" mono value={detail.apiReferenceId} />
+            <DetailItem label="Opening balance" value={`₹${detail.openingBalance.toLocaleString("en-IN")}`} />
+            <DetailItem label="Closing balance" value={`₹${detail.closingBalance.toLocaleString("en-IN")}`} />
             <DetailItem
               label="Idempotency key"
               mono

@@ -59,4 +59,16 @@ describe("retailer earnings excel export", () => {
 
     expect(rows[1][5]).toBe("₹2.5");
   });
+
+  it("formats Opening Balance and Closing Balance", () => {
+    const headers = ["Opening Balance", "Closing Balance"] as const;
+    const rows = buildWorksheetRows(
+      [...headers],
+      [sampleRow({ openingBalance: 1200, closingBalance: 1100 })],
+    );
+
+    expect(rows[0]).toEqual([...headers]);
+    expect(rows[1][0]).toBe("₹1,200");
+    expect(rows[1][1]).toBe("₹1,100");
+  });
 });

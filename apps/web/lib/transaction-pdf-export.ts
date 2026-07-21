@@ -73,6 +73,8 @@ export function downloadTransactionPdf(
   y = addField(doc, y, "Transaction ID", tx.id);
   y = addField(doc, y, "Status", tx.status);
   y = addField(doc, y, "Amount", formatInr(tx.amount));
+  y = addField(doc, y, "Opening balance", formatInr(tx.openingBalance ?? 0));
+  y = addField(doc, y, "Closing balance", formatInr(tx.closingBalance ?? 0));
   y = addField(doc, y, "Date & time", formatDateTime(tx.createdAt));
   y = addField(doc, y, "Carrier", tx.operator);
   y = addField(doc, y, "Recharge phone", tx.targetPhone);

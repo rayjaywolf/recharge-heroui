@@ -16,6 +16,8 @@ export interface BaseTransactionData {
   distributorCommission?: number
   adminCommission?: number
   commission?: number
+  openingBalance?: number
+  closingBalance?: number
   user?: {
     name: string
     email: string
@@ -69,6 +71,12 @@ export function mapExportCell(
   }
   if (header === 'Amount' || header === 'Recharge Amount') {
     return typedItem.amount ? `₹${typedItem.amount.toLocaleString('en-IN')}` : ''
+  }
+  if (header === 'Opening Balance') {
+    return typedItem.openingBalance != null ? `₹${typedItem.openingBalance.toLocaleString('en-IN')}` : '₹0'
+  }
+  if (header === 'Closing Balance') {
+    return typedItem.closingBalance != null ? `₹${typedItem.closingBalance.toLocaleString('en-IN')}` : '₹0'
   }
   if (header === 'Status') {
     return typedItem.status || ''
@@ -188,7 +196,7 @@ export function exportTransactions(transactions: BaseTransactionData[], fileName
     fileName: fileName || `transactions-${new Date().toISOString().split('T')[0]}`,
     sheetName: 'Transactions',
     data: transactions,
-    headers: ['Date', 'Time', 'Retailer', 'Email', 'Carrier', 'Phone', 'Amount', 'API', 'Status', 'Reference ID']
+    headers: ['Date', 'Time', 'Retailer', 'Email', 'Carrier', 'Phone', 'Opening Balance', 'Amount', 'Closing Balance', 'API', 'Status', 'Reference ID']
   })
 }
 
@@ -206,7 +214,9 @@ export function exportDistributorLedgerTransactions(
       'Time',
       'Carrier',
       'Phone',
+      'Opening Balance',
       'Amount',
+      'Closing Balance',
       'Status',
       'Your margin %',
       'Your earnings (₹)',

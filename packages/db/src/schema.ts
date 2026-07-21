@@ -183,6 +183,8 @@ export const transaction = pgTable(
     apiReferenceId: text("apiReferenceId"),
     apiMessage: text("apiMessage"),
     idempotencyKey: text("idempotencyKey"),
+    openingBalance: integer("openingBalance").notNull().default(0),
+    closingBalance: integer("closingBalance").notNull().default(0),
     retailerCommission: numeric("retailerCommission", {
       precision: 10,
       scale: 2,
