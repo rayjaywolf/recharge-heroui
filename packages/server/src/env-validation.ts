@@ -32,6 +32,8 @@ const ENV_VARS: EnvVarConfig[] = [
   { name: 'MROBOTICS_API_TOKEN', required: false, description: 'MRobotics API token' },
   { name: 'PLANAPI_USER_ID', required: false, description: 'planapi.in ApiUserID (operator/circle lookup)' },
   { name: 'PLANAPI_API_PASSWORD', required: false, description: 'planapi.in ApiPassword (operator/circle lookup)' },
+  { name: 'PLANAPI_TOKEN_ID', required: false, description: 'planapi.in TokenID (ekyc/aadhaar verification)' },
+  { name: 'PLANAPI_API_MODE', required: false, description: 'planapi.in ApiMode (0 = test, 1 = live)' },
   
   // Application
   { name: 'NODE_ENV', required: false, description: 'Node environment (development/production)' },

@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import {
   mapPlanapiCircleCode,
   mapPlanapiOperatorKey,
@@ -238,3 +239,172 @@ export async function fetchPlanapiMobilePlans(params: {
     rdata: data.RDATA ?? {},
   };
 }
+
+export type PlanapiAadhaarResponse = {
+  Errorcode: number;
+  status: string;
+  msg: string;
+  response: {
+    ref_id: string | null;
+    message: string | null;
+  };
+};
+
+export async function verifyAadhaarNumber(
+  aadhaarId: string,
+): Promise<{ success: boolean; message: string; refId?: string | null }> {
+  const userId = process.env.PLANAPI_USER_ID?.trim();
+  const password = process.env.PLANAPI_API_PASSWORD?.trim();
+  const tokenId = process.env.PLANAPI_TOKEN_ID?.trim();
+  const apiMode = process.env.PLANAPI_API_MODE?.trim() || "0";
+
+  if (!userId || !password || !tokenId) {
+    throw new Error(
+      "Planapi credentials (user ID, password, or token ID) are not configured.",
+    );
+  }
+
+  const cleanAadhaar = aadhaarId.replace(/\s+/g, "");
+  if (!/^\d{12}$/.test(cleanAadhaar)) {
+    return {
+      success: false,
+      message: "Aadhaar number must be exactly 12 numeric digits.",
+    };
+  }
+
+  const bodyParams = new URLSearchParams();
+  bodyParams.set("Aadhaarid", cleanAadhaar);
+  bodyParams.set("ApiMode", apiMode);
+
+  const response = await fetch("https://planapi.in/Api/Ekyc/AdharVerification", {
+    method: "POST",
+    headers: {
+      TokenID: tokenId,
+      ApiUserID: userId,
+      ApiPassword: password,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: bodyParams.toString(),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Planapi Aadhaar request failed (${response.status}).`);
+  }
+
+  const data = (await response.json()) as PlanapiAadhaarResponse;
+  const errorCode = Number(data.Errorcode);
+
+  if (errorCode === 100 || errorCode === 200) {
+    return {
+      success: true,
+      message:
+        data.response?.message || "Aadhaar verification successful (OTP generated).",
+      refId: data.response?.ref_id,
+    };
+  }
+
+  if (errorCode === 211) {
+    return {
+      success: false,
+      message:
+        data.msg ||
+        "Invalid Aadhaar number! Please retry with a valid Aadhaar number.",
+    };
+  }
+
+  return {
+    success: false,
+    message: data.msg || "Aadhaar verification failed.",
+  };
+}
+
+export async function submitAadhaarOtp(params: {
+  aadhaarId: string;
+  otp: string;
+  refId: string;
+}): Promise<{ success: boolean; message: string }> {
+  const userId = process.env.PLANAPI_USER_ID?.trim();
+  const password = process.env.PLANAPI_API_PASSWORD?.trim();
+  const tokenId = process.env.PLANAPI_TOKEN_ID?.trim();
+  const apiMode = process.env.PLANAPI_API_MODE?.trim() || "0";
+
+  if (!userId || !password || !tokenId) {
+    throw new Error(
+      "Planapi credentials (user ID, password, or token ID) are not configured.",
+    );
+  }
+
+  const cleanAadhaar = params.aadhaarId.replace(/\s+/g, "");
+  const cleanOtp = params.otp.replace(/\s+/g, "");
+
+  const bodyParams = new URLSearchParams();
+  bodyParams.set("Aadhaarid", cleanAadhaar);
+  bodyParams.set("OTP", cleanOtp);
+  bodyParams.set("ReqId", params.refId);
+  bodyParams.set("ApiMode", apiMode);
+
+  const response = await fetch(
+    "https://planapi.in/Api/Ekyc/AdharVerificationSubmitOtp",
+    {
+      method: "POST",
+      headers: {
+        TokenID: tokenId,
+        ApiUserID: userId,
+        ApiPassword: password,
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body: bodyParams.toString(),
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Planapi OTP verification failed (${response.status}).`);
+  }
+
+  const data = (await response.json()) as PlanapiAadhaarResponse;
+  const errorCode = Number(data.Errorcode);
+
+  if (errorCode === 100 || errorCode === 200) {
+    return {
+      success: true,
+      message: data.response?.message || "OTP verified successfully.",
+    };
+  }
+
+  return {
+    success: false,
+    message: data.msg || "OTP verification failed.",
+  };
+}
+
+export function generateAadhaarVerificationToken(aadhaarNumber: string): string {
+  const secret = process.env.BETTER_AUTH_SECRET || "default_secret";
+  const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes validity
+  const data = `${aadhaarNumber}:${expiresAt}`;
+  const signature = createHmac("sha256", secret).update(data).digest("hex");
+  return `${aadhaarNumber}:${expiresAt}:${signature}`;
+}
+
+export function verifyAadhaarVerificationToken(
+  token: string,
+  aadhaarNumber: string,
+): boolean {
+  try {
+    const [num, expiresAtStr, signature] = token.split(":");
+    if (num !== aadhaarNumber) return false;
+    const expiresAt = Number(expiresAtStr);
+    if (Date.now() > expiresAt) return false;
+    const secret = process.env.BETTER_AUTH_SECRET || "default_secret";
+    const data = `${aadhaarNumber}:${expiresAt}`;
+    const expectedSignature = createHmac("sha256", secret).update(data).digest("hex");
+    return expectedSignature === signature;
+  } catch {
+    return false;
+  }
+}
+
+

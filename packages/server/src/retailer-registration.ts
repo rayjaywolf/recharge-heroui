@@ -97,6 +97,19 @@ export function parseRetailerRegistrationInput(
     throw new RegistrationConflictError("Enter a valid email address.", 400);
   }
 
+  const aadharNumber = body.aadharNumber
+    ? String(body.aadharNumber).replace(/\s+/g, "")
+    : "";
+  if (!aadharNumber) {
+    throw new RegistrationConflictError("Aadhaar number is required.", 400);
+  }
+  if (!/^\d{12}$/.test(aadharNumber)) {
+    throw new RegistrationConflictError(
+      "Aadhaar number must be exactly 12 numeric digits.",
+      400,
+    );
+  }
+
   return {
     normalizedPhone,
     accountEmail,
@@ -109,7 +122,7 @@ export function parseRetailerRegistrationInput(
       address: body.address ? String(body.address) : undefined,
       pincode: body.pincode ? String(body.pincode) : undefined,
       state: body.state ? String(body.state) : undefined,
-      aadharNumber: body.aadharNumber ? String(body.aadharNumber) : undefined,
+      aadharNumber,
       panNumber: body.panNumber ? String(body.panNumber) : undefined,
       gstNumber: body.gstNumber ? String(body.gstNumber) : undefined,
       businessType: body.businessType ? String(body.businessType) : undefined,

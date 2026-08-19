@@ -14,6 +14,7 @@ import {
   Label,
   Link,
   ListBox,
+  Modal,
   Select,
   Spinner,
   TextArea,
@@ -30,11 +31,77 @@ import { normalizePhoneNumber, validatePhoneNumber } from "@/lib/phone";
 import { getRegisterErrorMessage } from "./register-error";
 
 export default function RegisterPage() {
+  const [aadharVerified, setAadharVerified] = useState(false);
+  const [verifyingAadhar, setVerifyingAadhar] = useState(false);
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
+  const [otpValue, setOtpValue] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [refId, setRefId] = useState("");
+  const [aadhaarToken, setAadhaarToken] = useState("");
+  const [aadharInput, setAadharInput] = useState("");
+  const [otpError, setOtpError] = useState<string | null>(null);
   const [businessType, setBusinessType] = useState<string | null>(null);
   const [state, setState] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  const handleSendAadhaarOtp = async () => {
+    const cleanAadhar = aadharInput.replace(/\s+/g, "");
+    if (cleanAadhar.length !== 12) {
+      setError("Aadhaar number must be exactly 12 numeric digits.");
+      return;
+    }
+    setVerifyingAadhar(true);
+    setError(null);
+    try {
+      const res = await apiFetch("/api/auth/aadhaar/send-otp", {
+        method: "POST",
+        body: JSON.stringify({ aadharNumber: cleanAadhar }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send OTP.");
+      }
+      setRefId(data.refId);
+      setOtpModalOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to trigger Aadhaar verification.");
+    } finally {
+      setVerifyingAadhar(false);
+    }
+  };
+
+  const handleVerifyAadhaarOtp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!otpValue) {
+      setOtpError("OTP is required.");
+      return;
+    }
+    setOtpLoading(true);
+    setOtpError(null);
+    try {
+      const res = await apiFetch("/api/auth/aadhaar/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({
+          aadharNumber: aadharInput.replace(/\s+/g, ""),
+          otp: otpValue,
+          refId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to verify OTP.");
+      }
+      setAadhaarToken(data.aadhaarToken);
+      setAadharVerified(true);
+      setOtpModalOpen(false);
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : "Failed to verify Aadhaar OTP.");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -48,7 +115,6 @@ export default function RegisterPage() {
     const password = String(formData.get("password") ?? "");
     const address = String(formData.get("address") ?? "").trim();
     const pincode = String(formData.get("pincode") ?? "").trim();
-    const aadharNumber = String(formData.get("aadharNumber") ?? "").trim();
     const panNumber = String(formData.get("panNumber") ?? "").trim();
     const gstNumber = String(formData.get("gstNumber") ?? "").trim();
 
@@ -83,6 +149,20 @@ export default function RegisterPage() {
       return;
     }
 
+    const cleanAadhar = aadharInput.replace(/\s+/g, "");
+    if (!cleanAadhar) {
+      setError("Aadhaar number is required.");
+      return;
+    }
+    if (!/^\d{12}$/.test(cleanAadhar)) {
+      setError("Aadhaar number must be exactly 12 numeric digits.");
+      return;
+    }
+    if (!aadharVerified || !aadhaarToken) {
+      setError("Please verify your Aadhaar number with OTP before submitting the application.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -97,7 +177,8 @@ export default function RegisterPage() {
           address,
           pincode,
           state,
-          aadharNumber,
+          aadharNumber: cleanAadhar,
+          aadhaarToken,
           panNumber,
           gstNumber,
           businessType,
@@ -240,10 +321,30 @@ export default function RegisterPage() {
                 <Fieldset.Legend>KYC</Fieldset.Legend>
                 <Description>Identity and business classification.</Description>
                 <FieldGroup className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <TextField isRequired name="aadharNumber">
-                    <Label>Aadhar number</Label>
-                    <Input placeholder="12 digits" variant="secondary" />
-                  </TextField>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-sm font-medium">Aadhar number</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        name="aadharNumber"
+                        placeholder="12 digits"
+                        variant="secondary"
+                        value={aadharInput}
+                        onChange={(e) => setAadharInput(e.target.value.replace(/\D/g, "").slice(0, 12))}
+                        readOnly={aadharVerified}
+                        required
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant={aadharVerified ? "success" : "secondary"}
+                        isDisabled={aadharInput.length !== 12 || verifyingAadhar || aadharVerified}
+                        onClick={handleSendAadhaarOtp}
+                        className="shrink-0"
+                      >
+                        {verifyingAadhar ? <Spinner size="sm" /> : aadharVerified ? "Verified ✓" : "Verify"}
+                      </Button>
+                    </div>
+                  </div>
                   <TextField isRequired name="panNumber">
                     <Label>PAN</Label>
                     <Input
@@ -345,6 +446,68 @@ export default function RegisterPage() {
           </Card.Footer>
         </Form>
       </Card>
+
+      <Modal>
+        <Modal.Backdrop isOpen={otpModalOpen} isDismissable={false}>
+          <Modal.Container>
+            <Modal.Dialog className="sm:max-w-md">
+              <Modal.Header>
+                <Modal.Heading>Aadhaar OTP Verification</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body className="space-y-4">
+                {otpError ? (
+                  <Alert status="danger">
+                    <Alert.Indicator />
+                    <Alert.Content>
+                      <Alert.Description>{otpError}</Alert.Description>
+                    </Alert.Content>
+                  </Alert>
+                ) : null}
+                <p className="text-left text-sm text-muted">
+                  Please enter the 6-digit OTP sent to the mobile number registered with your Aadhaar card.
+                </p>
+                <Form onSubmit={handleVerifyAadhaarOtp}>
+                  <div className="space-y-4 w-full">
+                    <TextField isRequired name="otp">
+                      <Label>One-Time Password (OTP)</Label>
+                      <Input
+                        autoFocus
+                        placeholder="Enter 6-digit OTP"
+                        value={otpValue}
+                        variant="secondary"
+                        onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      />
+                    </TextField>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={() => {
+                          setOtpModalOpen(false);
+                          setOtpValue("");
+                          setOtpError(null);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        className="flex-1"
+                        isDisabled={otpValue.length < 4 || otpLoading}
+                      >
+                        {otpLoading ? <Spinner size="sm" /> : null}
+                        Verify OTP
+                      </Button>
+                    </div>
+                  </div>
+                </Form>
+              </Modal.Body>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
     </AuthLayout>
   );
 }

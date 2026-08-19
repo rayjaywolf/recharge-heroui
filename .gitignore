@@ -63,4 +63,5 @@ docs
 
 # turbo cache
 .turbo/
+.freebuff/
 

@@ -13,6 +13,7 @@ describe("parseRetailerRegistrationInput", () => {
     phoneNumber: "9876543210",
     password: "secret123",
     email: "retailer@example.com",
+    aadharNumber: "123456789012",
   };
 
   it("requires store name", () => {
@@ -30,6 +31,7 @@ describe("parseRetailerRegistrationInput", () => {
         name: baseBody.name,
         phoneNumber: baseBody.phoneNumber,
         password: baseBody.password,
+        aadharNumber: baseBody.aadharNumber,
       }),
     ).toThrow(RegistrationConflictError);
   });
@@ -54,6 +56,24 @@ describe("parseRetailerRegistrationInput", () => {
       parseRetailerRegistrationInput({
         ...baseBody,
         email: "9876543210@phone.rechargepro.local",
+      }),
+    ).toThrow(RegistrationConflictError);
+  });
+
+  it("requires Aadhaar number", () => {
+    expect(() =>
+      parseRetailerRegistrationInput({
+        ...baseBody,
+        aadharNumber: undefined,
+      }),
+    ).toThrow(RegistrationConflictError);
+  });
+
+  it("rejects non-12-digit Aadhaar number", () => {
+    expect(() =>
+      parseRetailerRegistrationInput({
+        ...baseBody,
+        aadharNumber: "12345",
       }),
     ).toThrow(RegistrationConflictError);
   });

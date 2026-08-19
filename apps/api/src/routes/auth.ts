@@ -13,12 +13,83 @@ import {
   parseRetailerRegistrationInput,
   RegistrationConflictError,
 } from "@repo/server/retailer-registration";
+import {
+  verifyAadhaarNumber,
+  submitAadhaarOtp,
+  generateAadhaarVerificationToken,
+  verifyAadhaarVerificationToken,
+} from "@repo/server/planapi";
 import { ensureUserAvatar } from "@repo/server/user-avatar";
 import { getAllProviderBalances } from "@repo/server/provider-balances";
 import { getUnreadNotificationCount } from "@repo/server/notifications";
 import { requireSession, type AppVariables } from "../middleware";
 
 export const authRoutes = new Hono<{ Variables: AppVariables }>();
+
+authRoutes.post("/api/auth/aadhaar/send-otp", async (c) => {
+  try {
+    const body = await c.req.json();
+    const aadharNumber = typeof body?.aadharNumber === "string" ? body.aadharNumber.replace(/\s+/g, "") : "";
+
+    if (!aadharNumber || !/^\d{12}$/.test(aadharNumber)) {
+      return c.json({ error: "Aadhaar number must be exactly 12 numeric digits." }, 400);
+    }
+
+    const result = await verifyAadhaarNumber(aadharNumber);
+    if (!result.success) {
+      return c.json({ error: result.message }, 400);
+    }
+
+    return c.json({
+      success: true,
+      message: result.message,
+      refId: result.refId,
+    });
+  } catch (error) {
+    console.error("Aadhaar send OTP error:", error);
+    return c.json({ error: error instanceof Error ? error.message : "Failed to send Aadhaar OTP." }, 500);
+  }
+});
+
+authRoutes.post("/api/auth/aadhaar/verify-otp", async (c) => {
+  try {
+    const body = await c.req.json();
+    const aadharNumber = typeof body?.aadharNumber === "string" ? body.aadharNumber.replace(/\s+/g, "") : "";
+    const otp = typeof body?.otp === "string" ? body.otp.trim() : "";
+    const refId = typeof body?.refId === "string" ? body.refId.trim() : "";
+
+    if (!aadharNumber || !/^\d{12}$/.test(aadharNumber)) {
+      return c.json({ error: "Aadhaar number must be exactly 12 numeric digits." }, 400);
+    }
+    if (!otp) {
+      return c.json({ error: "OTP is required." }, 400);
+    }
+    if (!refId) {
+      return c.json({ error: "Reference ID is required. Please request a new OTP." }, 400);
+    }
+
+    const result = await submitAadhaarOtp({
+      aadhaarId: aadharNumber,
+      otp,
+      refId,
+    });
+
+    if (!result.success) {
+      return c.json({ error: result.message }, 400);
+    }
+
+    const token = generateAadhaarVerificationToken(aadharNumber);
+
+    return c.json({
+      success: true,
+      message: result.message,
+      aadhaarToken: token,
+    });
+  } catch (error) {
+    console.error("Aadhaar verify OTP error:", error);
+    return c.json({ error: error instanceof Error ? error.message : "Failed to verify Aadhaar OTP." }, 500);
+  }
+});
 
 // Must be registered before the Better Auth `/api/auth/*` catch-all.
 authRoutes.post("/api/auth/register-retailer", async (c) => {
@@ -28,6 +99,16 @@ authRoutes.post("/api/auth/register-retailer", async (c) => {
       parseRetailerRegistrationInput(body);
 
     await assertCanRegisterRetailer(normalizedPhone, accountEmail);
+
+    if (input.aadharNumber) {
+      const aadhaarToken = typeof body?.aadhaarToken === "string" ? body.aadhaarToken.trim() : "";
+      if (!aadhaarToken || !verifyAadhaarVerificationToken(aadhaarToken, input.aadharNumber)) {
+        throw new RegistrationConflictError(
+          "Please verify your Aadhaar number with OTP before submitting the application.",
+          400,
+        );
+      }
+    }
 
     await auth.api.signUpEmail({
       body: {
