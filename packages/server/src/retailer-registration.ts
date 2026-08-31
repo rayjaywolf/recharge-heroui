@@ -110,6 +110,16 @@ export function parseRetailerRegistrationInput(
     );
   }
 
+  const panNumber = body.panNumber
+    ? String(body.panNumber).replace(/\s+/g, "").toUpperCase()
+    : "";
+  if (panNumber && !/^[A-Z]{5}\d{4}[A-Z]$/.test(panNumber)) {
+    throw new RegistrationConflictError(
+      "PAN number must be a valid 10-digit alphanumeric format.",
+      400,
+    );
+  }
+
   return {
     normalizedPhone,
     accountEmail,
@@ -123,7 +133,7 @@ export function parseRetailerRegistrationInput(
       pincode: body.pincode ? String(body.pincode) : undefined,
       state: body.state ? String(body.state) : undefined,
       aadharNumber,
-      panNumber: body.panNumber ? String(body.panNumber) : undefined,
+      panNumber: panNumber || undefined,
       gstNumber: body.gstNumber ? String(body.gstNumber) : undefined,
       businessType: body.businessType ? String(body.businessType) : undefined,
       distributorId: body.distributorId ? String(body.distributorId) : undefined,

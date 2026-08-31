@@ -40,6 +40,11 @@ export default function RegisterPage() {
   const [aadhaarToken, setAadhaarToken] = useState("");
   const [aadharInput, setAadharInput] = useState("");
   const [otpError, setOtpError] = useState<string | null>(null);
+  const [panVerified, setPanVerified] = useState(false);
+  const [verifyingPan, setVerifyingPan] = useState(false);
+  const [panToken, setPanToken] = useState("");
+  const [panInput, setPanInput] = useState("");
+  const [panRegisteredName, setPanRegisteredName] = useState<string | null>(null);
   const [businessType, setBusinessType] = useState<string | null>(null);
   const [state, setState] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -103,6 +108,33 @@ export default function RegisterPage() {
     }
   };
 
+  const handleVerifyPan = async () => {
+    const cleanPan = panInput.replace(/\s+/g, "").toUpperCase();
+    if (cleanPan.length !== 10 || !/^[A-Z]{5}\d{4}[A-Z]$/.test(cleanPan)) {
+      setError("PAN number must be a valid 10-digit format (e.g. ABCDE1234F).");
+      return;
+    }
+    setVerifyingPan(true);
+    setError(null);
+    try {
+      const res = await apiFetch("/api/auth/pan/verify", {
+        method: "POST",
+        body: JSON.stringify({ panNumber: cleanPan }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to verify PAN.");
+      }
+      setPanToken(data.panToken);
+      setPanRegisteredName(data.registeredName || "Verified");
+      setPanVerified(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to verify PAN.");
+    } finally {
+      setVerifyingPan(false);
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -163,6 +195,20 @@ export default function RegisterPage() {
       return;
     }
 
+    const cleanPan = panInput.replace(/\s+/g, "").toUpperCase();
+    if (!cleanPan) {
+      setError("PAN number is required.");
+      return;
+    }
+    if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(cleanPan)) {
+      setError("PAN number must be a valid 10-digit format (e.g. ABCDE1234F).");
+      return;
+    }
+    if (!panVerified || !panToken) {
+      setError("Please verify your PAN number before submitting the application.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -179,7 +225,8 @@ export default function RegisterPage() {
           state,
           aadharNumber: cleanAadhar,
           aadhaarToken,
-          panNumber,
+          panNumber: cleanPan,
+          panToken,
           gstNumber,
           businessType,
         }),
@@ -345,14 +392,35 @@ export default function RegisterPage() {
                       </Button>
                     </div>
                   </div>
-                  <TextField isRequired name="panNumber">
-                    <Label>PAN</Label>
-                    <Input
-                      className="uppercase"
-                      placeholder="ABCDE1234F"
-                      variant="secondary"
-                    />
-                  </TextField>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-sm font-medium">PAN number</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        name="panNumber"
+                        placeholder="10 characters"
+                        variant="secondary"
+                        value={panInput}
+                        onChange={(e) => setPanInput(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 10).toUpperCase())}
+                        readOnly={panVerified}
+                        required
+                        className="flex-1 uppercase"
+                      />
+                      <Button
+                        type="button"
+                        variant={panVerified ? "success" : "secondary"}
+                        isDisabled={panInput.length !== 10 || verifyingPan || panVerified}
+                        onClick={handleVerifyPan}
+                        className="shrink-0"
+                      >
+                        {verifyingPan ? <Spinner size="sm" /> : panVerified ? "Verified ✓" : "Verify"}
+                      </Button>
+                    </div>
+                    {panRegisteredName && (
+                      <span className="text-xs text-success mt-1">
+                        Registered Name: {panRegisteredName}
+                      </span>
+                    )}
+                  </div>
                   <TextField name="gstNumber">
                     <Label>GST (optional)</Label>
                     <Input

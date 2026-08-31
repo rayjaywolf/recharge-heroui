@@ -407,4 +407,104 @@ export function verifyAadhaarVerificationToken(
   }
 }
 
+export type PlanapiPanResponse = {
+  status: string;
+  Errorcode: number;
+  pan_no: string | null;
+  response?: {
+    registered_name?: string | null;
+  };
+  pan_type?: string | null;
+  msg?: string | null;
+};
+
+export async function verifyPanNumber(
+  panId: string,
+): Promise<{ success: boolean; message: string; registeredName?: string | null }> {
+  const userId = process.env.PLANAPI_USER_ID?.trim();
+  const password = process.env.PLANAPI_API_PASSWORD?.trim();
+  const tokenId = process.env.PLANAPI_TOKEN_ID?.trim();
+  const apiMode = process.env.PLANAPI_API_MODE?.trim() || "0";
+
+  if (!userId || !password || !tokenId) {
+    throw new Error(
+      "Planapi credentials (user ID, password, or token ID) are not configured.",
+    );
+  }
+
+  const cleanPan = panId.replace(/\s+/g, "").toUpperCase();
+  if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(cleanPan)) {
+    return {
+      success: false,
+      message: "PAN number must be a valid 10-digit format (e.g. ABCDE1234F).",
+    };
+  }
+
+  const bodyParams = new URLSearchParams();
+  bodyParams.set("Panid", cleanPan);
+  bodyParams.set("ApiMode", apiMode);
+
+  const response = await fetch("https://planapi.in/Api/Ekyc/PanVerification", {
+    method: "POST",
+    headers: {
+      TokenID: tokenId,
+      ApiUserID: userId,
+      ApiPassword: password,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: bodyParams.toString(),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Planapi PAN request failed (${response.status}).`);
+  }
+
+  const data = (await response.json()) as PlanapiPanResponse;
+  const errorCode = Number(data.Errorcode);
+
+  if (errorCode === 200 || data.status?.toLowerCase() === "success") {
+    return {
+      success: true,
+      message: "PAN verification successful.",
+      registeredName: data.response?.registered_name || null,
+    };
+  }
+
+  return {
+    success: false,
+    message: data.msg || "PAN verification failed.",
+  };
+}
+
+export function generatePanVerificationToken(panNumber: string): string {
+  const secret = process.env.BETTER_AUTH_SECRET || "default_secret";
+  const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes validity
+  const cleanPan = panNumber.replace(/\s+/g, "").toUpperCase();
+  const data = `${cleanPan}:${expiresAt}`;
+  const signature = createHmac("sha256", secret).update(data).digest("hex");
+  return `${cleanPan}:${expiresAt}:${signature}`;
+}
+
+export function verifyPanVerificationToken(
+  token: string,
+  panNumber: string,
+): boolean {
+  try {
+    const [num, expiresAtStr, signature] = token.split(":");
+    const cleanPan = panNumber.replace(/\s+/g, "").toUpperCase();
+    if (num !== cleanPan) return false;
+    const expiresAt = Number(expiresAtStr);
+    if (Date.now() > expiresAt) return false;
+    const secret = process.env.BETTER_AUTH_SECRET || "default_secret";
+    const data = `${cleanPan}:${expiresAt}`;
+    const expectedSignature = createHmac("sha256", secret).update(data).digest("hex");
+    return expectedSignature === signature;
+  } catch {
+    return false;
+  }
+}
+
+
 

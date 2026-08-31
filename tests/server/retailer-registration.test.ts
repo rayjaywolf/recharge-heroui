@@ -77,6 +77,23 @@ describe("parseRetailerRegistrationInput", () => {
       }),
     ).toThrow(RegistrationConflictError);
   });
+
+  it("rejects invalid PAN number format", () => {
+    expect(() =>
+      parseRetailerRegistrationInput({
+        ...baseBody,
+        panNumber: "invalidpan",
+      }),
+    ).toThrow(RegistrationConflictError);
+  });
+
+  it("accepts valid PAN number format and normalizes to uppercase", () => {
+    const { input } = parseRetailerRegistrationInput({
+      ...baseBody,
+      panNumber: "  abcde1234f  ",
+    });
+    expect(input.panNumber).toBe("ABCDE1234F");
+  });
 });
 
 describe("buildRegistrationConflictMessage", () => {

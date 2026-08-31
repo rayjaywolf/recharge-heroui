@@ -18,6 +18,9 @@ import {
   submitAadhaarOtp,
   generateAadhaarVerificationToken,
   verifyAadhaarVerificationToken,
+  verifyPanNumber,
+  generatePanVerificationToken,
+  verifyPanVerificationToken,
 } from "@repo/server/planapi";
 import { ensureUserAvatar } from "@repo/server/user-avatar";
 import { getAllProviderBalances } from "@repo/server/provider-balances";
@@ -91,6 +94,34 @@ authRoutes.post("/api/auth/aadhaar/verify-otp", async (c) => {
   }
 });
 
+authRoutes.post("/api/auth/pan/verify", async (c) => {
+  try {
+    const body = await c.req.json();
+    const panNumber = typeof body?.panNumber === "string" ? body.panNumber.replace(/\s+/g, "").toUpperCase() : "";
+
+    if (!panNumber || !/^[A-Z]{5}\d{4}[A-Z]$/.test(panNumber)) {
+      return c.json({ error: "PAN number must be a valid 10-digit format (e.g. ABCDE1234F)." }, 400);
+    }
+
+    const result = await verifyPanNumber(panNumber);
+    if (!result.success) {
+      return c.json({ error: result.message }, 400);
+    }
+
+    const token = generatePanVerificationToken(panNumber);
+
+    return c.json({
+      success: true,
+      message: result.message,
+      registeredName: result.registeredName,
+      panToken: token,
+    });
+  } catch (error) {
+    console.error("PAN verification error:", error);
+    return c.json({ error: error instanceof Error ? error.message : "Failed to verify PAN." }, 500);
+  }
+});
+
 // Must be registered before the Better Auth `/api/auth/*` catch-all.
 authRoutes.post("/api/auth/register-retailer", async (c) => {
   try {
@@ -105,6 +136,16 @@ authRoutes.post("/api/auth/register-retailer", async (c) => {
       if (!aadhaarToken || !verifyAadhaarVerificationToken(aadhaarToken, input.aadharNumber)) {
         throw new RegistrationConflictError(
           "Please verify your Aadhaar number with OTP before submitting the application.",
+          400,
+        );
+      }
+    }
+
+    if (input.panNumber) {
+      const panToken = typeof body?.panToken === "string" ? body.panToken.trim() : "";
+      if (!panToken || !verifyPanVerificationToken(panToken, input.panNumber)) {
+        throw new RegistrationConflictError(
+          "Please verify your PAN number before submitting the application.",
           400,
         );
       }
