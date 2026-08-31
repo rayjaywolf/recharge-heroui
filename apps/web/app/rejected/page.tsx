@@ -1,7 +1,7 @@
 import { Alert } from "@heroui/react";
 
 import { AuthLayout } from "@/components/auth-layout";
-import { ButtonLink } from "@/components/button-link";
+import { BackToSignInButton } from "@/components/back-to-sign-in-button";
 
 export default function RejectedPage() {
   return (
@@ -17,9 +17,7 @@ export default function RejectedPage() {
         </Alert.Content>
       </Alert>
 
-      <ButtonLink className="mt-6" href="/login" variant="secondary">
-        Back to sign in
-      </ButtonLink>
+      <BackToSignInButton />
     </AuthLayout>
   );
 }

@@ -15,13 +15,15 @@ export default async function LoginPage() {
 
   if (session?.user) {
     const [found] = await db
-      .select({ role: user.role })
+      .select({ role: user.role, accountStatus: user.accountStatus })
       .from(user)
       .where(eq(user.id, session.user.id))
       .limit(1);
 
     if (found) {
-      redirect(getDashboardPath(found.role));
+      if (found.role === "ADMIN" || found.accountStatus === "APPROVED") {
+        redirect(getDashboardPath(found.role));
+      }
     }
   }
 
