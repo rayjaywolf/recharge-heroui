@@ -21,6 +21,7 @@ COPY packages packages
 WORKDIR /app/apps/api
 
 ENV NODE_ENV=production
+ENV PORT=8000
 
 # Koyeb sets PORT at runtime (defaults to 8000 on Koyeb)
 EXPOSE 8000

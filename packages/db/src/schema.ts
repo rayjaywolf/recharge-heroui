@@ -135,7 +135,7 @@ export const user = pgTable(
     balance: integer("balance").notNull().default(0),
     earnings: numeric("earnings", { precision: 10, scale: 2, mode: "number" })
       .notNull()
-      .default("0"),
+      .default(0),
     accountStatus: accountStatusEnum("accountStatus").notNull().default("PENDING"),
     whatsappNumber: text("whatsappNumber"),
     address: text("address"),
@@ -191,21 +191,21 @@ export const transaction = pgTable(
       mode: "number",
     })
       .notNull()
-      .default("0"),
+      .default(0),
     distributorCommission: numeric("distributorCommission", {
       precision: 10,
       scale: 2,
       mode: "number",
     })
       .notNull()
-      .default("0"),
+      .default(0),
     adminCommission: numeric("adminCommission", {
       precision: 10,
       scale: 2,
       mode: "number",
     })
       .notNull()
-      .default("0"),
+      .default(0),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
       .notNull()
       .defaultNow(),
@@ -309,24 +309,24 @@ export const commissionRule = pgTable(
       mode: "number",
     })
       .notNull()
-      .default("0"),
+      .default(0),
     adminMargin: numeric("adminMargin", { precision: 10, scale: 2, mode: "number" })
       .notNull()
-      .default("0"),
+      .default(0),
     distributorMargin: numeric("distributorMargin", {
       precision: 10,
       scale: 2,
       mode: "number",
     })
       .notNull()
-      .default("0"),
+      .default(0),
     retailerMargin: numeric("retailerMargin", {
       precision: 10,
       scale: 2,
       mode: "number",
     })
       .notNull()
-      .default("0"),
+      .default(0),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
       .notNull()
       .defaultNow(),
@@ -352,24 +352,24 @@ export const retailerCommissionOverride = pgTable(
       mode: "number",
     })
       .notNull()
-      .default("0"),
+      .default(0),
     adminMargin: numeric("adminMargin", { precision: 10, scale: 2, mode: "number" })
       .notNull()
-      .default("0"),
+      .default(0),
     distributorMargin: numeric("distributorMargin", {
       precision: 10,
       scale: 2,
       mode: "number",
     })
       .notNull()
-      .default("0"),
+      .default(0),
     retailerMargin: numeric("retailerMargin", {
       precision: 10,
       scale: 2,
       mode: "number",
     })
       .notNull()
-      .default("0"),
+      .default(0),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
       .notNull()
       .defaultNow(),
