@@ -85,7 +85,7 @@ export default async function RetailerCommissionsPage() {
                         </div>
                       </Table.Cell>
                       <Table.Cell className="text-right font-semibold">
-                        <span className="text-success">
+                        <span className="text-accent-emphasis">
                           {formatPercent(rule.retailerMargin)}
                         </span>
                       </Table.Cell>

@@ -62,7 +62,7 @@ export default async function DistributorCommissionsPage() {
                         {rule.operator}
                       </Table.Cell>
                       <Table.Cell className="text-right font-semibold">
-                        <span className="text-success">
+                        <span className="text-accent-emphasis">
                           {formatPercent(rule.distributorMargin)}
                         </span>
                       </Table.Cell>

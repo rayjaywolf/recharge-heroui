@@ -23,10 +23,10 @@ export function WalletBalanceMenu({
         className="inline-flex h-9 items-center gap-2.5 px-3 font-medium"
         variant="secondary"
       >
-        <Wallet className="size-4 shrink-0 text-success" strokeWidth={2} aria-hidden />
+        <Wallet className="size-4 shrink-0 text-accent-emphasis" strokeWidth={2} aria-hidden />
         <Money
           amount={balance}
-          className="leading-none text-success"
+          className="leading-none text-accent-emphasis"
           fractionDigits={2}
         />
       </Button>

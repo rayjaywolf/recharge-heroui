@@ -38,12 +38,12 @@ export function AppSidebar({
           <BrandMark />
         ) : (
           <Tooltip delay={0}>
-            <Tooltip.Trigger aria-label="RechargePro" className="cursor-default">
+            <Tooltip.Trigger aria-label="Neo Charge" className="cursor-default">
               <BrandMark collapsed />
             </Tooltip.Trigger>
             <Tooltip.Content placement="right" showArrow>
               <Tooltip.Arrow />
-              <p className="text-xs">RechargePro</p>
+              <p className="text-xs">Neo Charge</p>
             </Tooltip.Content>
           </Tooltip>
         )}

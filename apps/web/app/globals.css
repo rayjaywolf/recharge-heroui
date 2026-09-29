@@ -4,54 +4,66 @@
 @import "@heroui/styles";
 
 /*
+ * Darpan brand palette
+ *   Cyan  #8ae6ff  -> --accent (buttons, selected states, highlights)
+ *   Blue  #126df5  -> text emphasis, links, focus rings, headings
+ *   White #ffffff  -> surfaces, fields, overlays
+ *
+ * Note: #126df5 on #8ae6ff is only ~3.3:1 contrast, so text sitting ON the
+ * cyan accent uses a deep navy (--accent-foreground) to stay readable.
+ * Blue is used as text on white/light surfaces (~4.6:1).
+ *
  * HeroUI theme overrides — must live in @layer base (same layer as default variables)
  * @see https://heroui.com/docs/react/getting-started/theming
  */
 @layer base {
+
   :root,
   .light,
   .default,
   [data-theme="light"],
   [data-theme="default"] {
+    /* Brand constants */
+    --brand-cyan: #8ae6ff;
+    --brand-blue: #126df5;
+
     /* Theme Colors (Light Mode) */
-    --accent: oklch(82.00% 0.1200 155.00);
-    --accent-foreground: oklch(15% 0.0240 155.00);
-    --background: oklch(97.02% 0.0087 155.00);
-    --border: oklch(90.00% 0.0087 155.00);
-    --danger: oklch(65.32% 0.2369 13.88);
-    --danger-foreground: oklch(99.11% 0 0);
-    --default: oklch(94.00% 0.0087 155.00);
-    --default-foreground: oklch(21.03% 0.0059 155.00);
+    --accent: #8ae6ff;
+    --accent-foreground: oklch(26% 0.10 262);
+    --background: oklch(98.5% 0.008 225);
+    --border: oklch(90% 0.018 235);
+    --danger: oklch(62% 0.22 22);
+    --danger-foreground: oklch(99% 0 0);
+    --default: oklch(95% 0.014 235);
+    --default-foreground: oklch(24% 0.05 262);
     /* Make all fields pure white in light mode. */
-    --field-background: oklch(100% 0 0);
-    --field-hover: color-mix(
-      in oklab,
-      var(--field-background) 96%,
-      var(--field-foreground) 4%
-    );
+    --field-background: #ffffff;
+    --field-hover: color-mix(in oklab,
+        var(--field-background) 96%,
+        var(--field-foreground) 4%);
     --field-focus: var(--field-background);
-    --field-border: transparent;
-    --field-foreground: oklch(21.03% 0.0087 155.00);
-    --field-placeholder: oklch(55.17% 0.0174 155.00);
-    --focus: oklch(82.00% 0.1200 155.00);
-    --foreground: oklch(21.03% 0.0087 155.00);
-    --muted: oklch(55.17% 0.0174 155.00);
-    --overlay: oklch(100.00% 0.0026 155.00);
-    --overlay-foreground: oklch(21.03% 0.0087 155.00);
-    --scrollbar: oklch(87.10% 0.0087 155.00);
-    --segment: oklch(100.00% 0.0087 155.00);
-    --segment-foreground: oklch(21.03% 0.0087 155.00);
-    --separator: oklch(92.00% 0.0087 155.00);
-    --success: oklch(73.29% 0.1969 138.95);
-    --success-foreground: oklch(21.03% 0.0059 138.95);
-    --surface: oklch(100.00% 0.0043 155.00);
-    --surface-foreground: oklch(21.03% 0.0087 155.00);
-    --surface-secondary: oklch(95.24% 0.0070 155.00);
-    --surface-secondary-foreground: oklch(21.03% 0.0087 155.00);
-    --surface-tertiary: oklch(93.73% 0.0070 155.00);
-    --surface-tertiary-foreground: oklch(21.03% 0.0087 155.00);
-    --warning: oklch(78.19% 0.1613 60.47);
-    --warning-foreground: oklch(21.03% 0.0059 60.47);
+    --field-border: var(--border);
+    --field-foreground: oklch(24% 0.05 262);
+    --field-placeholder: oklch(58% 0.03 250);
+    --focus: #126df5;
+    --foreground: oklch(24% 0.05 262);
+    --muted: oklch(52% 0.04 255);
+    --overlay: #ffffff;
+    --overlay-foreground: oklch(24% 0.05 262);
+    --scrollbar: oklch(86% 0.02 235);
+    --segment: #ffffff;
+    --segment-foreground: oklch(24% 0.05 262);
+    --separator: oklch(92% 0.014 235);
+    --success: oklch(72% 0.18 152);
+    --success-foreground: oklch(20% 0.05 152);
+    --surface: #ffffff;
+    --surface-foreground: oklch(24% 0.05 262);
+    --surface-secondary: oklch(96.5% 0.015 225);
+    --surface-secondary-foreground: oklch(24% 0.05 262);
+    --surface-tertiary: oklch(94% 0.022 228);
+    --surface-tertiary-foreground: oklch(24% 0.05 262);
+    --warning: oklch(80% 0.16 75);
+    --warning-foreground: oklch(24% 0.05 75);
 
     /* Border Radius */
     --radius: 0.5rem;
@@ -62,32 +74,25 @@
       sans-serif;
 
     /* Darker tones for text/icons on light soft surfaces */
-    --accent-emphasis: oklch(42.00% 0.1150 155.00);
-    --success-emphasis: oklch(40.00% 0.1550 138.95);
-    --warning-emphasis: oklch(45.00% 0.1450 60.47);
+    --accent-emphasis: #126df5;
+    --success-emphasis: oklch(40% 0.14 152);
+    --warning-emphasis: oklch(46% 0.13 65);
 
     /* Recalculate derived tokens that reference accent/surface */
-    --accent-hover: color-mix(in oklab, var(--accent) 90%, var(--accent-foreground) 10%);
-    --accent-soft: color-mix(in oklab, var(--accent) 15%, transparent);
+    --accent-hover: color-mix(in oklab, var(--accent) 88%, var(--accent-foreground) 12%);
+    --accent-soft: color-mix(in oklab, var(--accent) 28%, transparent);
     --accent-soft-foreground: var(--accent-emphasis);
-    --accent-soft-hover: color-mix(in oklab, var(--accent) 20%, transparent);
-    --surface-hover: color-mix(
-      in oklab,
-      var(--surface) 92%,
-      var(--surface-foreground) 8%
-    );
-    --background-secondary: color-mix(
-      in oklab,
-      var(--background) 96%,
-      var(--foreground) 4%
-    );
-    --background-tertiary: color-mix(
-      in oklab,
-      var(--background) 92%,
-      var(--foreground) 8%
-    );
-    --link: var(--accent-emphasis);
-    --focus: var(--accent-emphasis);
+    --accent-soft-hover: color-mix(in oklab, var(--accent) 38%, transparent);
+    --surface-hover: color-mix(in oklab,
+        var(--surface) 92%,
+        var(--surface-foreground) 8%);
+    --background-secondary: color-mix(in oklab,
+        var(--background) 96%,
+        var(--foreground) 4%);
+    --background-tertiary: color-mix(in oklab,
+        var(--background) 92%,
+        var(--foreground) 8%);
+    --link: #126df5;
 
     --success-soft: color-mix(in oklab, var(--success) 15%, transparent);
     --success-soft-foreground: var(--success-emphasis);
@@ -101,85 +106,72 @@
   .dark,
   [data-theme="dark"] {
     color-scheme: dark;
-    /* Theme Colors (Dark Mode) */
-    --accent: oklch(82.00% 0.1200 155.00);
-    --accent-foreground: oklch(15% 0.0240 155.00);
-    --background: oklch(12.00% 0.0087 155.00);
-    --border: oklch(28.00% 0.0087 155.00);
-    --danger: oklch(59.40% 0.2001 12.77);
-    --danger-foreground: oklch(99.11% 0 0);
-    --default: oklch(27.40% 0.0087 155.00);
-    --default-foreground: oklch(99.11% 0 0);
-    --default-hover: color-mix(
-      in oklab,
-      var(--default) 96%,
-      var(--default-foreground) 4%
-    );
+    /* Theme Colors (Dark Mode) — deep navy base, cyan stays the hero accent */
+    --accent: #8ae6ff;
+    --accent-foreground: oklch(20% 0.08 262);
+    --background: oklch(15% 0.035 262);
+    --border: oklch(30% 0.045 260);
+    --danger: oklch(66% 0.20 20);
+    --danger-foreground: oklch(99% 0 0);
+    --default: oklch(28% 0.04 260);
+    --default-foreground: #ffffff;
+    --default-hover: color-mix(in oklab,
+        var(--default) 96%,
+        var(--default-foreground) 4%);
     /* Dark-mode equivalent of white light fields: use base dark surface. */
     --field-background: var(--surface);
-    --field-hover: color-mix(
-      in oklab,
-      var(--field-background) 90%,
-      var(--field-foreground) 2%
-    );
+    --field-hover: color-mix(in oklab,
+        var(--field-background) 90%,
+        var(--field-foreground) 2%);
     --field-focus: var(--field-background);
-    --field-border-hover: color-mix(
-      in oklab,
-      var(--field-border, var(--border)) 88%,
-      var(--field-foreground) 10%
-    );
-    --field-border-focus: color-mix(
-      in oklab,
-      var(--field-border, var(--border)) 74%,
-      var(--field-foreground) 22%
-    );
+    --field-border-hover: color-mix(in oklab,
+        var(--field-border, var(--border)) 88%,
+        var(--field-foreground) 10%);
+    --field-border-focus: color-mix(in oklab,
+        var(--field-border, var(--border)) 74%,
+        var(--field-foreground) 22%);
     --field-border: transparent;
-    --field-foreground: oklch(99.11% 0.0087 155.00);
-    --field-placeholder: oklch(70.50% 0.0174 155.00);
-    --focus: oklch(82.00% 0.1200 155.00);
-    --foreground: oklch(99.11% 0.0087 155.00);
-    --muted: oklch(70.50% 0.0174 155.00);
-    --overlay: oklch(21.03% 0.0174 155.00);
-    --overlay-foreground: oklch(99.11% 0.0087 155.00);
-    --scrollbar: oklch(70.50% 0.0087 155.00);
-    --segment: oklch(39.64% 0.0087 155.00);
-    --segment-foreground: oklch(99.11% 0.0087 155.00);
-    --separator: oklch(25.00% 0.0087 155.00);
-    --success: oklch(73.29% 0.1969 138.95);
-    --success-foreground: oklch(21.03% 0.0059 138.95);
-    --surface: oklch(21.03% 0.0174 155.00);
-    --surface-foreground: oklch(99.11% 0.0087 155.00);
-    --surface-secondary: oklch(25.70% 0.0130 155.00);
-    --surface-secondary-foreground: oklch(99.11% 0.0087 155.00);
-    --surface-tertiary: oklch(27.21% 0.0130 155.00);
-    --surface-tertiary-foreground: oklch(99.11% 0.0087 155.00);
-    --warning: oklch(82.03% 0.1412 64.48);
-    --warning-foreground: oklch(21.03% 0.0059 64.48);
+    --field-foreground: #ffffff;
+    --field-placeholder: oklch(70% 0.03 250);
+    --focus: #8ae6ff;
+    --foreground: oklch(98% 0.005 240);
+    --muted: oklch(72% 0.03 250);
+    --overlay: oklch(22% 0.045 262);
+    --overlay-foreground: oklch(98% 0.005 240);
+    --scrollbar: oklch(48% 0.04 255);
+    --segment: oklch(36% 0.05 260);
+    --segment-foreground: #ffffff;
+    --separator: oklch(26% 0.04 260);
+    --success: oklch(74% 0.18 152);
+    --success-foreground: oklch(20% 0.05 152);
+    --surface: oklch(21% 0.045 262);
+    --surface-foreground: oklch(98% 0.005 240);
+    --surface-secondary: oklch(25% 0.05 262);
+    --surface-secondary-foreground: oklch(98% 0.005 240);
+    --surface-tertiary: oklch(28.5% 0.055 262);
+    --surface-tertiary-foreground: oklch(98% 0.005 240);
+    --warning: oklch(82% 0.15 75);
+    --warning-foreground: oklch(22% 0.05 75);
 
-    --accent-emphasis: var(--accent);
+    /* #126df5 is too dark on navy, so emphasis text uses a lifted blue/cyan */
+    --accent-emphasis: #8ae6ff;
     --success-emphasis: var(--success);
     --warning-emphasis: var(--warning);
 
-    --accent-hover: color-mix(in oklab, var(--accent) 90%, var(--accent-foreground) 10%);
-    --accent-soft: color-mix(in oklab, var(--accent) 15%, transparent);
+    --accent-hover: color-mix(in oklab, var(--accent) 88%, var(--accent-foreground) 12%);
+    --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
     --accent-soft-foreground: var(--accent);
-    --accent-soft-hover: color-mix(in oklab, var(--accent) 20%, transparent);
-    --surface-hover: color-mix(
-      in oklab,
-      var(--surface) 92%,
-      var(--surface-foreground) 8%
-    );
-    --background-secondary: color-mix(
-      in oklab,
-      var(--background) 96%,
-      var(--foreground) 4%
-    );
-    --background-tertiary: color-mix(
-      in oklab,
-      var(--background) 92%,
-      var(--foreground) 8%
-    );
-    --link: var(--accent);
+    --accent-soft-hover: color-mix(in oklab, var(--accent) 24%, transparent);
+    --surface-hover: color-mix(in oklab,
+        var(--surface) 92%,
+        var(--surface-foreground) 8%);
+    --background-secondary: color-mix(in oklab,
+        var(--background) 96%,
+        var(--foreground) 4%);
+    --background-tertiary: color-mix(in oklab,
+        var(--background) 92%,
+        var(--foreground) 8%);
+    --link: oklch(76% 0.13 250);
   }
 
   html {
@@ -189,6 +181,26 @@
   body {
     @apply min-h-svh bg-background text-foreground antialiased;
   }
+
+  /* Headings carry the brand blue in light mode, cyan-tinted white in dark. */
+  h1,
+  h2,
+  h3 {
+    color: var(--heading, var(--foreground));
+  }
+
+  :root,
+  .light,
+  .default,
+  [data-theme="light"],
+  [data-theme="default"] {
+    --heading: #126df5;
+  }
+
+  .dark,
+  [data-theme="dark"] {
+    --heading: oklch(94% 0.05 215);
+  }
 }
 
 @theme inline {
@@ -197,10 +209,13 @@
   --color-accent-emphasis: var(--accent-emphasis);
   --color-success-emphasis: var(--success-emphasis);
   --color-warning-emphasis: var(--warning-emphasis);
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-blue: var(--brand-blue);
 }
 
 /* Match HeroUI Success soft chip text (`chip--success.chip--soft`). */
 @layer utilities {
+
   /*
    * Force all form controls (input/select/textarea/date triggers) to use the
    * same field background across the app.
@@ -217,7 +232,7 @@
   [data-theme="default"] [data-slot="input-wrapper"],
   [data-theme="default"] [data-slot="trigger"][aria-haspopup],
   [data-theme="default"] [data-slot="inner-wrapper"] {
-    background-color: oklch(100% 0 0) !important;
+    background-color: #ffffff !important;
   }
 
   .dark [data-slot="input-wrapper"],

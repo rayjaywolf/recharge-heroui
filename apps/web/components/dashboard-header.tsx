@@ -89,14 +89,14 @@ export function DashboardHeader({
                 variant="secondary"
               >
                 <Wallet
-                  className="size-4 shrink-0 text-success"
+                  className="size-4 shrink-0 text-accent-emphasis"
                   strokeWidth={2}
                   aria-hidden
                 />
                 {adminProviderBalance != null ? (
                   <Money
                     amount={adminProviderBalance}
-                    className="leading-none text-success"
+                    className="leading-none text-accent-emphasis"
                     fractionDigits={2}
                   />
                 ) : (
@@ -110,13 +110,13 @@ export function DashboardHeader({
                 variant="secondary"
               >
                 <Wallet
-                  className="size-4 shrink-0 text-success"
+                  className="size-4 shrink-0 text-accent-emphasis"
                   strokeWidth={2}
                   aria-hidden
                 />
                 <Money
                   amount={balance}
-                  className="leading-none text-success"
+                  className="leading-none text-accent-emphasis"
                   fractionDigits={2}
                 />
               </Chip>

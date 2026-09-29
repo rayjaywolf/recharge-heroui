@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RechargePro",
+  title: "Neo Charge",
   description: "Mobile recharge platform for retailers and distributors",
 };
 

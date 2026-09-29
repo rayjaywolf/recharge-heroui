@@ -18,6 +18,7 @@ export { checkA1TopupStatus, mapA1OperatorCode } from "./a1topup";
 export * from "./provider-balances";
 export { getMRoboticsBalance, performMRoboticsRecharge } from "./mrobotics";
 export {
+  generateNumericRequestId,
   getRealRoboBalance,
   performRealRoboRecharge,
   validateRealRoboCircle,

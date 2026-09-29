@@ -1,4 +1,4 @@
-import { Zap } from "lucide-react";
+import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 
@@ -16,15 +16,19 @@ export function BrandMark({ collapsed = false, className }: BrandMarkProps) {
         className
       )}
     >
-      <span
-        className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground"
-        aria-hidden
-      >
-        <Zap className="size-4 fill-current" />
-      </span>
+      <div className="relative size-8 shrink-0 overflow-hidden rounded-lg border border-separator/40 bg-surface shadow-xs">
+        <Image
+          src="/neo.jpg"
+          alt="Logo"
+          fill
+          sizes="32px"
+          className="object-cover"
+          priority
+        />
+      </div>
       {!collapsed ? (
         <span className="truncate text-base font-semibold tracking-tight text-foreground">
-          RechargePro
+          Neo Charge
         </span>
       ) : null}
     </div>

@@ -107,7 +107,10 @@ export async function performMRoboticsRecharge(
 
   const companyId = getMRoboticsCompanyId(operatorName);
   const stateCode = circleCode ? getMRoboticsStateCode(circleCode) : undefined;
-  const orderId = transactionId || `TX_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const orderId =
+    transactionId && /^\d+$/.test(transactionId)
+      ? transactionId
+      : `${Date.now()}${Math.floor(1000 + Math.random() * 9000)}`;
   
   // Route to the correct endpoint according to documented specs
   let baseUrl = 'https://mrobotics.in/api/recharge';

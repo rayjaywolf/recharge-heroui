@@ -151,7 +151,7 @@ export default async function RetailerEarningsPage({
                           : "—"}
                       </Table.Cell>
                       <Table.Cell className="text-right font-semibold">
-                        <Money amount={tx.commission} className="text-success" sign="+" />
+                        <Money amount={tx.commission} className="text-accent-emphasis" sign="+" />
                       </Table.Cell>
                     </Table.Row>
                   ))}

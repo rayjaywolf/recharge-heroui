@@ -13,6 +13,10 @@ export default defineConfig({
         import.meta.dirname,
         "packages/server/src/a1topup.ts",
       ),
+      "@repo/server/realrobo": path.resolve(
+        import.meta.dirname,
+        "packages/server/src/realrobo.ts",
+      ),
       "@repo/server/recharge-gateway": path.resolve(
         import.meta.dirname,
         "packages/server/src/recharge-gateway.ts",
@@ -20,6 +24,10 @@ export default defineConfig({
       "@repo/server/retailer-registration": path.resolve(
         import.meta.dirname,
         "packages/server/src/retailer-registration.ts",
+      ),
+      "@repo/server": path.resolve(
+        import.meta.dirname,
+        "packages/server/src/index.ts",
       ),
       "@repo/shared/email": path.resolve(
         import.meta.dirname,

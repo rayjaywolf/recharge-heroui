@@ -46,7 +46,7 @@ export function AdminEarningsTable({ rows }: { rows: EarningRow[] }) {
                 <Table.Cell className="text-right font-semibold">
                   <Money
                     amount={tx.commission}
-                    className="text-success"
+                    className="text-accent-emphasis"
                     sign="+"
                   />
                 </Table.Cell>

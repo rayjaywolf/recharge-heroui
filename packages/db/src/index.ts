@@ -1,3 +1,3 @@
 export { db, pool } from "./client";
 export * from "./schema";
-export { createId } from "./id";
+export { createId, createNumericId } from "./id";

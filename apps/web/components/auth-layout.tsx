@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 type AuthLayoutProps = {
@@ -11,9 +12,21 @@ export function AuthLayout({ children, footer, wide }: AuthLayoutProps) {
     <div className="grid min-h-svh lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
       <aside className="relative hidden bg-accent lg:flex lg:flex-col lg:justify-between lg:p-12">
         <div>
-          <p className="text-sm font-medium text-accent-foreground/80">
-            RechargePro
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div className="relative size-9 shrink-0 overflow-hidden rounded-lg border border-accent-foreground/20 shadow-xs">
+              <Image
+                src="/neo.jpg"
+                alt="Logo"
+                fill
+                sizes="36px"
+                className="object-cover"
+                priority
+              />
+            </div>
+            <p className="text-base font-semibold text-accent-foreground">
+              Neo Charge
+            </p>
+          </div>
           <h1 className="mt-6 max-w-sm text-3xl font-semibold leading-tight tracking-tight text-accent-foreground">
             Retail recharge, simplified.
           </h1>
@@ -23,7 +36,7 @@ export function AuthLayout({ children, footer, wide }: AuthLayoutProps) {
           </p>
         </div>
         <p className="text-xs text-accent-foreground/50">
-          © {new Date().getFullYear()} RechargePro
+          © {new Date().getFullYear()} Neo Charge
         </p>
       </aside>
 
@@ -31,9 +44,21 @@ export function AuthLayout({ children, footer, wide }: AuthLayoutProps) {
         <div
           className={`mx-auto w-full ${wide ? "max-w-2xl" : "max-w-md"}`}
         >
-          <p className="mb-8 text-sm font-medium text-accent lg:hidden">
-            RechargePro
-          </p>
+          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+            <div className="relative size-8 shrink-0 overflow-hidden rounded-lg border border-separator/40 shadow-xs">
+              <Image
+                src="/neo.jpg"
+                alt="Logo"
+                fill
+                sizes="32px"
+                className="object-cover"
+                priority
+              />
+            </div>
+            <span className="text-base font-semibold tracking-tight text-foreground">
+              Neo Charge
+            </span>
+          </div>
           {children}
           {footer ? <div className="mt-6 text-center">{footer}</div> : null}
         </div>

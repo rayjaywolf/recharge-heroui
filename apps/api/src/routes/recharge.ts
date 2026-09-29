@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import {
   commissionRule,
   createId,
+  createNumericId,
   db,
   operatorProviderConfig,
   transaction,
@@ -546,7 +547,7 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
 
       if (!updated) throw new Error("Insufficient balance");
 
-      const txId = createId();
+      const txId = createNumericId();
       const [createdTx] = await tx
         .insert(transaction)
         .values({

@@ -124,6 +124,10 @@ export function getRealRoboStateId(circleCode: string): number {
   return stateMap[normalized] || 0; // 0 for All States (Universal)
 }
 
+export function generateNumericRequestId(): string {
+  return `${Date.now()}${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
 export async function performRealRoboRecharge(
   phoneNumber: string,
   operatorName: string,
@@ -139,7 +143,10 @@ export async function performRealRoboRecharge(
   
   const operatorId = getRealRoboOperatorId(operatorName);
   const stateId = circleCode ? getRealRoboStateId(circleCode) : 0;
-  const requestId = transactionId || `TX_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const requestId =
+    transactionId && /^\d+$/.test(transactionId)
+      ? transactionId
+      : generateNumericRequestId();
   
   // Required parameters
   url.searchParams.append('api_token', apiToken);

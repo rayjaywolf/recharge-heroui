@@ -241,6 +241,10 @@ async function callRealRoboRechargeApi(params: {
   }
 }
 
+export function generateNumericRequestId(): string {
+  return `${Date.now()}${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
 export async function performRealRoboRecharge(
   phoneNumber: string,
   operatorName: string,
@@ -253,7 +257,9 @@ export async function performRealRoboRecharge(
 
   const stateId = validateRealRoboCircle(circleCode);
   const baseRequestId =
-    transactionId || `TX_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    transactionId && /^\d+$/.test(transactionId)
+      ? transactionId
+      : generateNumericRequestId();
 
   const lapuId = process.env.REALROBO_LAPU_ID?.trim() || undefined;
 
