@@ -1,9 +1,12 @@
 // RealRobo API integration functions
 import { validateProviderCredentials } from './env-validation';
 import {
-  REALROBO_AIRTEL_POSTPAID_SUB_OPERATOR_IDS,
+  REALROBO_AIRTEL_MONEY_OPERATOR_ID,
+  REALROBO_AMAZON_OPERATOR_ID,
+  REALROBO_WALLET_OPERATOR_IDS,
   REALROBO_WALLET_ROUTE_MOBILE_OPERATOR_IDS,
-  REALROBO_WALLET_SUB_OPERATOR_BY_OPERATOR_ID,
+  REALROBO_WALLET_SUB_OPERATORS,
+  type RealRoboWalletOperatorId,
 } from './realrobo-sub-operators';
 
 export interface RealRoboRechargeResponse {
@@ -60,19 +63,23 @@ export interface RealRoboStatusResponse {
 export function getRealRoboOperatorId(operatorName: string): number {
   const normalized = operatorName.toLowerCase();
   
-  // Mobile Operators
-  if (normalized.includes('airtel') && !normalized.includes('dth') && !normalized.includes('money') && !normalized.includes('thanks')) return 1;
-  if (normalized.includes('bsnl') && !normalized.includes('stv') && !normalized.includes('bill')) return 2;
-  if (normalized.includes('jio') || normalized.includes('reliance')) return 3;
-  if (normalized.includes('vodafone') || normalized.includes('vi') || normalized.includes('idea')) return 4;
-  if (normalized.includes('aerovoyce')) return 10;
-  
-  // DTH Operators
-  if (normalized.includes('airtel') && normalized.includes('dth')) return 5;
+  // DTH Operators (checked first: names like "Videocon" contain "vi")
+  const isAirtelDth =
+    normalized.includes('airtel') &&
+    (normalized.includes('dth') || normalized.includes('digital tv') || normalized.includes('xstream'));
+  if (isAirtelDth) return 5;
   if (normalized.includes('dish') || normalized.includes('dishtv')) return 6;
   if (normalized.includes('sun') && normalized.includes('direct')) return 7;
   if (normalized.includes('tata') || normalized.includes('tatasky') || normalized.includes('tata play')) return 8;
   if (normalized.includes('videocon') || normalized.includes('d2h')) return 9;
+
+  // Mobile Operators
+  if (normalized.includes('airtel') && !normalized.includes('money') && !normalized.includes('thanks') && !normalized.includes('mitra')) return 1;
+  if (normalized.includes('bsnl') && !normalized.includes('stv') && !normalized.includes('bill')) return 2;
+  if (normalized.includes('jio') || normalized.includes('reliance')) return 3;
+  if (normalized.includes('vodafone') || /\bvi\b/.test(normalized) || normalized.includes('idea')) return 4;
+  if (normalized.includes('aerovoyce')) return 10;
+
   if (normalized.includes('airtel') && normalized.includes('mitra')) return 14;
   if (normalized.includes('nxt') || normalized.includes('digital')) return 19;
   
@@ -150,7 +157,12 @@ export function validateRealRoboCircle(
   return stateId;
 }
 
-export const REALROBO_DEFAULT_WALLET_OPERATOR_ID = 11;
+/** Amazon (17) is the default wallet route; set REALROBO_WALLET_OPERATOR_ID=11 for Airtel Money. */
+export const REALROBO_DEFAULT_WALLET_OPERATOR_ID: RealRoboWalletOperatorId =
+  REALROBO_AMAZON_OPERATOR_ID;
+
+/** Default Amazon lapu (lapu no. 9993785234); override with REALROBO_AMAZON_LAPU_ID. */
+export const REALROBO_DEFAULT_AMAZON_LAPU_ID = "632505";
 
 function isMobileWalletRouteOperator(operatorName: string): boolean {
   try {
@@ -167,26 +179,89 @@ function isMobileWalletRouteOperator(operatorName: string): boolean {
  * RealRobo biller code for wallet-lapu route (operator 11 + sub_operator_id).
  * Env `REALROBO_AIRTEL_MONEY_SUB_OPERATOR_ID` overrides when set.
  */
+/**
+ * Wallet lapu used for sub-operator routing: 17 = Amazon (default), 11 = Airtel Money.
+ * Set REALROBO_WALLET_OPERATOR_ID to switch.
+ */
+export function getRealRoboWalletOperatorId(): RealRoboWalletOperatorId {
+  const raw = process.env.REALROBO_WALLET_OPERATOR_ID?.trim();
+  if (!raw) return REALROBO_DEFAULT_WALLET_OPERATOR_ID;
+  const parsed = Number(raw);
+  if (
+    !REALROBO_WALLET_OPERATOR_IDS.includes(parsed as RealRoboWalletOperatorId)
+  ) {
+    throw new Error(
+      `Invalid REALROBO_WALLET_OPERATOR_ID "${raw}". Supported values: ${REALROBO_WALLET_OPERATOR_IDS.join(", ")}`,
+    );
+  }
+  return parsed as RealRoboWalletOperatorId;
+}
+
+/** Lapu for the selected wallet: Amazon uses REALROBO_AMAZON_LAPU_ID, Airtel Money uses REALROBO_LAPU_ID. */
+export function getRealRoboLapuId(
+  walletOperatorId: RealRoboWalletOperatorId = getRealRoboWalletOperatorId(),
+): string | undefined {
+  if (walletOperatorId === REALROBO_AMAZON_OPERATOR_ID) {
+    return (
+      process.env.REALROBO_AMAZON_LAPU_ID?.trim() || REALROBO_DEFAULT_AMAZON_LAPU_ID
+    );
+  }
+  return process.env.REALROBO_LAPU_ID?.trim() || undefined;
+}
+
+function getPostpaidSubOperatorId(
+  normalized: string,
+  walletOperatorId: RealRoboWalletOperatorId,
+): string | null | undefined {
+  if (!normalized.includes("postpaid")) return undefined;
+  const postpaid = REALROBO_WALLET_SUB_OPERATORS[walletOperatorId].postpaid;
+
+  if (normalized.includes("airtel")) {
+    if (normalized.includes("fetch") && postpaid.airtelFetchAndPay) {
+      return postpaid.airtelFetchAndPay;
+    }
+    if (normalized.includes("airtel postpaid") || !postpaid.airtelDefault) {
+      return postpaid.airtel;
+    }
+    return postpaid.airtelDefault;
+  }
+
+  // Non-Airtel postpaid: only wallets that publish these billers handle them.
+  // Airtel Money keeps its previous behaviour (falls through to the prepaid map).
+  if (walletOperatorId === REALROBO_AIRTEL_MONEY_OPERATOR_ID) return undefined;
+  if (normalized.includes("bsnl")) return postpaid.bsnl ?? null;
+  if (normalized.includes("jio") || normalized.includes("reliance")) {
+    return postpaid.jio ?? null;
+  }
+  if (
+    normalized.includes("vodafone") ||
+    normalized.includes("idea") ||
+    /\bvi\b/.test(normalized)
+  ) {
+    return postpaid.vi ?? null;
+  }
+  return null;
+}
+
 export function getRealRoboWalletSubOperatorId(
   operatorName: string,
+  walletOperatorId: RealRoboWalletOperatorId = getRealRoboWalletOperatorId(),
 ): string | null {
-  const fromEnv = process.env.REALROBO_AIRTEL_MONEY_SUB_OPERATOR_ID?.trim();
-  if (fromEnv) return fromEnv;
+  if (walletOperatorId === REALROBO_AIRTEL_MONEY_OPERATOR_ID) {
+    const fromEnv = process.env.REALROBO_AIRTEL_MONEY_SUB_OPERATOR_ID?.trim();
+    if (fromEnv) return fromEnv;
+  }
 
   const normalized = operatorName.toLowerCase();
-  if (normalized.includes("postpaid") && normalized.includes("airtel")) {
-    if (normalized.includes("fetch")) {
-      return REALROBO_AIRTEL_POSTPAID_SUB_OPERATOR_IDS.fetchAndPay;
-    }
-    if (normalized.includes("airtel postpaid")) {
-      return REALROBO_AIRTEL_POSTPAID_SUB_OPERATOR_IDS.postpaid;
-    }
-    return REALROBO_AIRTEL_POSTPAID_SUB_OPERATOR_IDS.default;
-  }
+  const postpaid = getPostpaidSubOperatorId(normalized, walletOperatorId);
+  if (postpaid !== undefined) return postpaid;
 
   try {
     const operatorId = getRealRoboOperatorId(operatorName);
-    return REALROBO_WALLET_SUB_OPERATOR_BY_OPERATOR_ID[operatorId] ?? null;
+    return (
+      REALROBO_WALLET_SUB_OPERATORS[walletOperatorId].byOperatorId[operatorId] ??
+      null
+    );
   } catch {
     return null;
   }
@@ -261,7 +336,9 @@ export async function performRealRoboRecharge(
       ? transactionId
       : generateNumericRequestId();
 
-  const lapuId = process.env.REALROBO_LAPU_ID?.trim() || undefined;
+
+  const walletOperatorId = getRealRoboWalletOperatorId();
+  const lapuId = getRealRoboLapuId(walletOperatorId);
 
   const requestParams = {
     apiToken,
@@ -270,13 +347,15 @@ export async function performRealRoboRecharge(
     stateId,
     lapuId,
   };
-
-  const subOperatorId = getRealRoboWalletSubOperatorId(operatorName);
+  const subOperatorId = getRealRoboWalletSubOperatorId(
+    operatorName,
+    walletOperatorId,
+  );
 
   if (subOperatorId) {
     return callRealRoboRechargeApi({
       ...requestParams,
-      operatorId: REALROBO_DEFAULT_WALLET_OPERATOR_ID,
+      operatorId: walletOperatorId,
       requestId: baseRequestId,
       subOperatorId,
     });
@@ -284,7 +363,7 @@ export async function performRealRoboRecharge(
 
   if (isMobileWalletRouteOperator(operatorName)) {
     throw new Error(
-      `RealRobo recharge for ${operatorName} requires operator_id ${REALROBO_DEFAULT_WALLET_OPERATOR_ID} with a sub_operator_id biller code`,
+      `RealRobo recharge for ${operatorName} requires operator_id ${walletOperatorId} with a sub_operator_id biller code`,
     );
   }
 

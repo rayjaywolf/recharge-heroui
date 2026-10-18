@@ -19,6 +19,17 @@ const ENV_VARS: EnvVarConfig[] = [
   { name: 'A1TOPUP_PASSWORD', required: false, description: 'A1TopUp API password' },
   { name: 'REALROBO_API_TOKEN', required: false, description: 'RealRobo API token' },
   {
+    name: 'REALROBO_AMAZON_LAPU_ID',
+    required: false,
+    description: 'RealRobo lapu_id for the Amazon (17) route; defaults to 632505',
+  },
+  {
+    name: 'REALROBO_WALLET_OPERATOR_ID',
+    required: false,
+    description:
+      'RealRobo wallet lapu for sub-operator routing: 17 = Amazon (default), 11 = Airtel Money',
+  },
+  {
     name: 'REALROBO_AIRTEL_MONEY_SUB_OPERATOR_ID',
     required: false,
     description:
