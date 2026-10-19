@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, lte, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, lte, notInArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   commissionRule,
@@ -38,6 +38,12 @@ import {
   syncPendingRechargeTransactionsForUser,
 } from "@repo/server/pending-recharge-sync";
 import { validateRealRoboCircle } from "@repo/server/realrobo";
+import {
+  DUPLICATE_RECHARGE_BLOCKING_STATUSES,
+  DUPLICATE_RECHARGE_ERROR,
+  isDuplicateRechargeExempt,
+  istDayBounds,
+} from "@repo/server/duplicate-recharge";
 import { verifyUserMpin } from "@repo/server/mpin";
 import { CIRCLES_BY_PROVIDER, getClientProviders } from "@repo/shared/recharge-config";
 import { isPlanapiConfigured } from "@repo/server/planapi";
@@ -539,6 +545,29 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
       }
       if (currentUser.balance < amount) throw new Error("Insufficient balance");
 
+      if (!isDuplicateRechargeExempt(operator)) {
+        // Serialize concurrent recharges for this retailer + number so two quick
+        // taps can't both pass the check below.
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${`recharge:${currentUser.id}:${normalizedPhone}`}))`,
+        );
+        const { start, end } = istDayBounds();
+        const [dup] = await tx
+          .select({ id: transaction.id })
+          .from(transaction)
+          .where(
+            and(
+              eq(transaction.userId, currentUser.id),
+              eq(transaction.targetPhone, normalizedPhone),
+              inArray(transaction.status, [...DUPLICATE_RECHARGE_BLOCKING_STATUSES]),
+              gte(transaction.createdAt, start),
+              lt(transaction.createdAt, end),
+            ),
+          )
+          .limit(1);
+        if (dup) throw new Error("DUPLICATE_RECHARGE");
+      }
+
       const [updated] = await tx
         .update(user)
         .set(decrementBalance(amount))
@@ -760,6 +789,9 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "";
+    if (message === "DUPLICATE_RECHARGE") {
+      return c.json({ error: DUPLICATE_RECHARGE_ERROR, code: "DUPLICATE_RECHARGE" }, 409);
+    }
     if (message === "ACCOUNT_NOT_APPROVED") {
       return c.json(
         {

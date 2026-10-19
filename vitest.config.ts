@@ -13,6 +13,10 @@ export default defineConfig({
         import.meta.dirname,
         "packages/server/src/a1topup.ts",
       ),
+      "@repo/server/duplicate-recharge": path.resolve(
+        import.meta.dirname,
+        "packages/server/src/duplicate-recharge.ts",
+      ),
       "@repo/server/realrobo": path.resolve(
         import.meta.dirname,
         "packages/server/src/realrobo.ts",

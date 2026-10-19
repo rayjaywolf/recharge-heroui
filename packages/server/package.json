@@ -9,6 +9,7 @@
     "./env-validation": "./src/env-validation.ts",
     "./db-utils": "./src/db-utils.ts",
     "./date-range": "./src/date-range.ts",
+    "./duplicate-recharge": "./src/duplicate-recharge.ts",
     "./retailer-registration": "./src/retailer-registration.ts",
     "./operator-provider": "./src/operator-provider.ts",
     "./a1topup": "./src/a1topup.ts",
