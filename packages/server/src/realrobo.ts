@@ -320,6 +320,102 @@ export function generateNumericRequestId(): string {
   return `${Date.now()}${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
+
+// ---------------------------------------------------------------------------
+// Amazon lapu balance guard: fall back to Airtel Money when Amazon runs low.
+// ---------------------------------------------------------------------------
+
+export const REALROBO_DEFAULT_AMAZON_MIN_LAPU_BALANCE = 200;
+
+export function getRealRoboAmazonMinLapuBalance(): number {
+  const text = process.env.REALROBO_AMAZON_MIN_LAPU_BALANCE?.trim();
+  const raw = text ? Number(text) : NaN;
+  return Number.isFinite(raw) && raw >= 0
+    ? raw
+    : REALROBO_DEFAULT_AMAZON_MIN_LAPU_BALANCE;
+}
+
+/** Last known Amazon lapu balance (null = not checked yet / check failed). */
+let amazonLapuBalance: number | null = null;
+let amazonLapuBalanceInFlight: Promise<number | null> | null = null;
+
+/** GET https://realrobo.in/api/lapu_balance?lapu_id=… → data.balance */
+export async function fetchRealRoboLapuBalance(
+  lapuId: string,
+): Promise<number | null> {
+  const apiToken = process.env.REALROBO_API_TOKEN?.trim();
+  if (!apiToken || !lapuId) return null;
+  const url = new URL("https://realrobo.in/api/lapu_balance");
+  url.searchParams.append("api_token", apiToken);
+  url.searchParams.append("lapu_id", lapuId);
+  try {
+    const res = await fetch(url.toString(), {
+      method: "GET",
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      status?: boolean;
+      data?: { balance?: number | string };
+    };
+    const balance = Number(body?.data?.balance);
+    return body?.status && Number.isFinite(balance) ? balance : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Re-reads the Amazon lapu balance and caches it. Never throws. */
+export function refreshRealRoboAmazonLapuBalance(): Promise<number | null> {
+  if (amazonLapuBalanceInFlight) return amazonLapuBalanceInFlight;
+  const lapuId = getRealRoboLapuId(REALROBO_AMAZON_OPERATOR_ID);
+  amazonLapuBalanceInFlight = (async () => {
+    const balance = lapuId ? await fetchRealRoboLapuBalance(lapuId) : null;
+    if (balance !== null) {
+      const min = getRealRoboAmazonMinLapuBalance();
+      const wasLow = amazonLapuBalance !== null && amazonLapuBalance < min;
+      const isLow = balance < min;
+      if (isLow !== wasLow || amazonLapuBalance === null) {
+        console.log(
+          `[RealRobo] Amazon lapu ${lapuId} balance ₹${balance} (min ₹${min}) → ${
+            isLow ? "falling back to Airtel Money (11)" : "using Amazon (17)"
+          }`,
+        );
+      }
+      amazonLapuBalance = balance;
+    }
+    return balance;
+  })().finally(() => {
+    amazonLapuBalanceInFlight = null;
+  });
+  return amazonLapuBalanceInFlight;
+}
+
+/** Test hook. */
+export function setRealRoboAmazonLapuBalanceForTests(value: number | null) {
+  amazonLapuBalance = value;
+}
+
+/**
+ * Wallet to use for this recharge. If Amazon is configured but its lapu balance
+ * is under the minimum (or below this recharge amount), use Airtel Money instead.
+ * Balance unknown → check once before deciding.
+ */
+export async function resolveRealRoboWalletOperatorId(
+  amount: number,
+): Promise<RealRoboWalletOperatorId> {
+  const configured = getRealRoboWalletOperatorId();
+  if (configured !== REALROBO_AMAZON_OPERATOR_ID) return configured;
+
+  const balance = amazonLapuBalance ?? (await refreshRealRoboAmazonLapuBalance());
+  if (balance === null) return configured; // can't tell → keep Amazon
+
+  const min = getRealRoboAmazonMinLapuBalance();
+  return balance < min || balance < amount
+    ? REALROBO_AIRTEL_MONEY_OPERATOR_ID
+    : configured;
+}
+
 export async function performRealRoboRecharge(
   phoneNumber: string,
   operatorName: string,
@@ -337,7 +433,7 @@ export async function performRealRoboRecharge(
       : generateNumericRequestId();
 
 
-  const walletOperatorId = getRealRoboWalletOperatorId();
+  const walletOperatorId = await resolveRealRoboWalletOperatorId(amount);
   const lapuId = getRealRoboLapuId(walletOperatorId);
 
   const requestParams = {
@@ -353,12 +449,14 @@ export async function performRealRoboRecharge(
   );
 
   if (subOperatorId) {
-    return callRealRoboRechargeApi({
-      ...requestParams,
-      operatorId: walletOperatorId,
-      requestId: baseRequestId,
-      subOperatorId,
-    });
+    return withAmazonBalanceRefresh(
+      callRealRoboRechargeApi({
+        ...requestParams,
+        operatorId: walletOperatorId,
+        requestId: baseRequestId,
+        subOperatorId,
+      }),
+    );
   }
 
   if (isMobileWalletRouteOperator(operatorName)) {
@@ -368,10 +466,21 @@ export async function performRealRoboRecharge(
   }
 
   const operatorId = getRealRoboOperatorId(operatorName);
-  return callRealRoboRechargeApi({
-    ...requestParams,
-    operatorId,
-    requestId: baseRequestId,
+  return withAmazonBalanceRefresh(
+    callRealRoboRechargeApi({
+      ...requestParams,
+      operatorId,
+      requestId: baseRequestId,
+    }),
+  );
+}
+
+/** After every RealRobo recharge (success or not), re-check the Amazon lapu in the background. */
+function withAmazonBalanceRefresh<T>(call: Promise<T>): Promise<T> {
+  return call.finally(() => {
+    if (getRealRoboWalletOperatorId() === REALROBO_AMAZON_OPERATOR_ID) {
+      void refreshRealRoboAmazonLapuBalance();
+    }
   });
 }
 

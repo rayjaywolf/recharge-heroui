@@ -4,9 +4,12 @@ import {
   getRealRoboWalletOperatorId,
   getRealRoboWalletSubOperatorId,
   performRealRoboRecharge,
+  resolveRealRoboWalletOperatorId,
+  setRealRoboAmazonLapuBalanceForTests,
 } from "../../packages/server/src/realrobo";
 
 afterEach(() => {
+  setRealRoboAmazonLapuBalanceForTests(null);
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
@@ -86,6 +89,7 @@ describe("performRealRoboRecharge via Amazon", () => {
       new Response(JSON.stringify({ status: "success", txid: "1", message: "ok" })),
     );
     vi.stubGlobal("fetch", fetchMock);
+    setRealRoboAmazonLapuBalanceForTests(5000);
 
     await performRealRoboRecharge("9999999999", "Jio", 199, "RJ", "123456");
 
@@ -93,5 +97,86 @@ describe("performRealRoboRecharge via Amazon", () => {
     expect(url.searchParams.get("operator_id")).toBe("17");
     expect(url.searchParams.get("sub_operator_id")).toBe("2215673867");
     expect(url.searchParams.get("lapu_id")).toBe("632505");
+  });
+});
+
+describe("Amazon lapu low-balance fallback", () => {
+  const mockFetch = (lapuBalance: number) => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (u: string) => {
+        urls.push(String(u));
+        if (String(u).includes("/api/lapu_balance")) {
+          return new Response(
+            JSON.stringify({ status: true, msg: "Success.", data: { lapu_no: "+91x", balance: lapuBalance } }),
+          );
+        }
+        return new Response(JSON.stringify({ status: "success", txid: "1", message: "ok" }));
+      }),
+    );
+    return urls;
+  };
+
+  const setup = () => {
+    vi.stubEnv("REALROBO_API_TOKEN", "test-token");
+    vi.stubEnv("REALROBO_WALLET_OPERATOR_ID", "17");
+    vi.stubEnv("REALROBO_AMAZON_LAPU_ID", "632505");
+    vi.stubEnv("REALROBO_LAPU_ID", "");
+    vi.stubEnv("REALROBO_AMAZON_MIN_LAPU_BALANCE", "");
+    vi.stubEnv("REALROBO_AIRTEL_MONEY_SUB_OPERATOR_ID", "");
+  };
+
+  it("stays on Amazon when balance >= 200", async () => {
+    setup();
+    setRealRoboAmazonLapuBalanceForTests(450);
+    expect(await resolveRealRoboWalletOperatorId(50)).toBe(17);
+  });
+
+  it("falls back to Airtel Money when balance < 200", async () => {
+    setup();
+    setRealRoboAmazonLapuBalanceForTests(112);
+    expect(await resolveRealRoboWalletOperatorId(11)).toBe(11);
+  });
+
+  it("falls back when balance can't cover the amount", async () => {
+    setup();
+    setRealRoboAmazonLapuBalanceForTests(300);
+    expect(await resolveRealRoboWalletOperatorId(399)).toBe(11);
+  });
+
+  it("respects REALROBO_AMAZON_MIN_LAPU_BALANCE", async () => {
+    setup();
+    vi.stubEnv("REALROBO_AMAZON_MIN_LAPU_BALANCE", "500");
+    setRealRoboAmazonLapuBalanceForTests(450);
+    expect(await resolveRealRoboWalletOperatorId(10)).toBe(11);
+  });
+
+  it("checks the balance first when unknown, then sends via Airtel with Airtel codes", async () => {
+    setup();
+    const urls = mockFetch(112);
+    await performRealRoboRecharge("9999999999", "Jio", 11, "HP", "123");
+    expect(urls[0]).toContain("/api/lapu_balance");
+    expect(urls[0]).toContain("lapu_id=632505");
+    const rech = new URL(urls[1]);
+    expect(rech.searchParams.get("operator_id")).toBe("11");
+    expect(rech.searchParams.get("sub_operator_id")).toBe("2732468061");
+    expect(rech.searchParams.get("lapu_id")).toBeNull();
+  });
+
+  it("re-checks the Amazon balance after every recharge and switches back once topped up", async () => {
+    setup();
+    setRealRoboAmazonLapuBalanceForTests(112);
+    const urls = mockFetch(1000); // lapu topped up
+    await performRealRoboRecharge("9999999999", "Jio", 11, "HP", "124");
+    expect(new URL(urls[0]).searchParams.get("operator_id")).toBe("11");
+    await vi.waitFor(() => expect(urls.some((u) => u.includes("/api/lapu_balance"))).toBe(true));
+    await vi.waitFor(async () => expect(await resolveRealRoboWalletOperatorId(11)).toBe(17));
+  });
+
+  it("keeps Amazon if the balance check fails", async () => {
+    setup();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 500 })));
+    expect(await resolveRealRoboWalletOperatorId(11)).toBe(17);
   });
 });

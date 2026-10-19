@@ -24,6 +24,11 @@ const ENV_VARS: EnvVarConfig[] = [
     description: 'RealRobo lapu_id for the Amazon (17) route; defaults to 632505',
   },
   {
+    name: 'REALROBO_AMAZON_MIN_LAPU_BALANCE',
+    required: false,
+    description: 'Fall back from Amazon (17) to Airtel Money (11) when the Amazon lapu balance drops below this (default 200)',
+  },
+  {
     name: 'REALROBO_WALLET_OPERATOR_ID',
     required: false,
     description:
