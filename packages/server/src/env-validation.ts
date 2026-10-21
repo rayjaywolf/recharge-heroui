@@ -44,7 +44,7 @@ const ENV_VARS: EnvVarConfig[] = [
   {
     name: 'REALROBO_LAPU_ID',
     required: false,
-    description: 'RealRobo lapu_id sent on recharge requests',
+    description: 'Optional override for the Airtel Money (11) lapu_id; defaults to 615748',
   },
   { name: 'MROBOTICS_API_TOKEN', required: false, description: 'MRobotics API token' },
   { name: 'PLANAPI_USER_ID', required: false, description: 'planapi.in ApiUserID (operator/circle lookup)' },
