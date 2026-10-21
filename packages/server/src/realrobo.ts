@@ -157,9 +157,9 @@ export function validateRealRoboCircle(
   return stateId;
 }
 
-/** Amazon (17) is the default wallet route; set REALROBO_WALLET_OPERATOR_ID=11 for Airtel Money. */
+/** Airtel Money (11) is the default wallet route; set REALROBO_WALLET_OPERATOR_ID=17 for Amazon. */
 export const REALROBO_DEFAULT_WALLET_OPERATOR_ID: RealRoboWalletOperatorId =
-  REALROBO_AMAZON_OPERATOR_ID;
+  REALROBO_AIRTEL_MONEY_OPERATOR_ID;
 
 /** Default Amazon lapu (lapu no. 9993785234); override with REALROBO_AMAZON_LAPU_ID. */
 export const REALROBO_DEFAULT_AMAZON_LAPU_ID = "632505";
@@ -180,7 +180,7 @@ function isMobileWalletRouteOperator(operatorName: string): boolean {
  * Env `REALROBO_AIRTEL_MONEY_SUB_OPERATOR_ID` overrides when set.
  */
 /**
- * Wallet lapu used for sub-operator routing: 17 = Amazon (default), 11 = Airtel Money.
+ * Primary wallet lapu used for sub-operator routing: 11 = Airtel Money (default), 17 = Amazon.
  * Set REALROBO_WALLET_OPERATOR_ID to switch.
  */
 export function getRealRoboWalletOperatorId(): RealRoboWalletOperatorId {
@@ -322,22 +322,35 @@ export function generateNumericRequestId(): string {
 
 
 // ---------------------------------------------------------------------------
-// Amazon lapu balance guard: fall back to Airtel Money when Amazon runs low.
+// Lapu balance guard: when the primary wallet's lapu runs low, fall back to the
+// other wallet (Airtel Money 11 → Amazon 17 by default).
 // ---------------------------------------------------------------------------
 
-export const REALROBO_DEFAULT_AMAZON_MIN_LAPU_BALANCE = 200;
+export const REALROBO_DEFAULT_MIN_LAPU_BALANCE = 200;
 
-export function getRealRoboAmazonMinLapuBalance(): number {
-  const text = process.env.REALROBO_AMAZON_MIN_LAPU_BALANCE?.trim();
+export function getRealRoboMinLapuBalance(): number {
+  const text = (
+    process.env.REALROBO_MIN_LAPU_BALANCE ??
+    process.env.REALROBO_AMAZON_MIN_LAPU_BALANCE
+  )?.trim();
   const raw = text ? Number(text) : NaN;
   return Number.isFinite(raw) && raw >= 0
     ? raw
-    : REALROBO_DEFAULT_AMAZON_MIN_LAPU_BALANCE;
+    : REALROBO_DEFAULT_MIN_LAPU_BALANCE;
 }
 
-/** Last known Amazon lapu balance (null = not checked yet / check failed). */
-let amazonLapuBalance: number | null = null;
-let amazonLapuBalanceInFlight: Promise<number | null> | null = null;
+/** The wallet used when the primary wallet's lapu is low. */
+export function getRealRoboFallbackWalletOperatorId(
+  primary: RealRoboWalletOperatorId = getRealRoboWalletOperatorId(),
+): RealRoboWalletOperatorId {
+  return primary === REALROBO_AIRTEL_MONEY_OPERATOR_ID
+    ? REALROBO_AMAZON_OPERATOR_ID
+    : REALROBO_AIRTEL_MONEY_OPERATOR_ID;
+}
+
+/** Last known lapu balance per wallet (missing/null = not checked yet / check failed). */
+const lapuBalances = new Map<RealRoboWalletOperatorId, number | null>();
+const lapuBalanceInFlight = new Map<RealRoboWalletOperatorId, Promise<number | null>>();
 
 /** GET https://realrobo.in/api/lapu_balance?lapu_id=… → data.balance */
 export async function fetchRealRoboLapuBalance(
@@ -365,55 +378,70 @@ export async function fetchRealRoboLapuBalance(
   }
 }
 
-/** Re-reads the Amazon lapu balance and caches it. Never throws. */
-export function refreshRealRoboAmazonLapuBalance(): Promise<number | null> {
-  if (amazonLapuBalanceInFlight) return amazonLapuBalanceInFlight;
-  const lapuId = getRealRoboLapuId(REALROBO_AMAZON_OPERATOR_ID);
-  amazonLapuBalanceInFlight = (async () => {
+/** Re-reads a wallet's lapu balance and caches it. Never throws. */
+export function refreshRealRoboLapuBalance(
+  wallet: RealRoboWalletOperatorId,
+): Promise<number | null> {
+  const existing = lapuBalanceInFlight.get(wallet);
+  if (existing) return existing;
+  const lapuId = getRealRoboLapuId(wallet);
+  const fallback = getRealRoboFallbackWalletOperatorId(wallet);
+  const promise = (async () => {
     const balance = lapuId ? await fetchRealRoboLapuBalance(lapuId) : null;
     if (balance !== null) {
-      const min = getRealRoboAmazonMinLapuBalance();
-      const wasLow = amazonLapuBalance !== null && amazonLapuBalance < min;
+      const min = getRealRoboMinLapuBalance();
+      const previous = lapuBalances.get(wallet) ?? null;
+      const wasLow = previous !== null && previous < min;
       const isLow = balance < min;
-      if (isLow !== wasLow || amazonLapuBalance === null) {
+      if (isLow !== wasLow || previous === null) {
         console.log(
-          `[RealRobo] Amazon lapu ${lapuId} balance ₹${balance} (min ₹${min}) → ${
-            isLow ? "falling back to Airtel Money (11)" : "using Amazon (17)"
+          `[RealRobo] Wallet ${wallet} lapu ${lapuId} balance ₹${balance} (min ₹${min}) → ${
+            isLow ? `falling back to wallet ${fallback}` : `using wallet ${wallet}`
           }`,
         );
       }
-      amazonLapuBalance = balance;
+      lapuBalances.set(wallet, balance);
     }
     return balance;
   })().finally(() => {
-    amazonLapuBalanceInFlight = null;
+    lapuBalanceInFlight.delete(wallet);
   });
-  return amazonLapuBalanceInFlight;
+  lapuBalanceInFlight.set(wallet, promise);
+  return promise;
 }
 
 /** Test hook. */
-export function setRealRoboAmazonLapuBalanceForTests(value: number | null) {
-  amazonLapuBalance = value;
+export function setRealRoboLapuBalanceForTests(
+  wallet: RealRoboWalletOperatorId,
+  value: number | null,
+) {
+  lapuBalances.set(wallet, value);
+}
+
+/** Test hook. */
+export function resetRealRoboLapuBalancesForTests() {
+  lapuBalances.clear();
+  lapuBalanceInFlight.clear();
 }
 
 /**
- * Wallet to use for this recharge. If Amazon is configured but its lapu balance
- * is under the minimum (or below this recharge amount), use Airtel Money instead.
- * Balance unknown → check once before deciding.
+ * Wallet to use for this recharge: the primary wallet (Airtel Money by default),
+ * unless its lapu balance is under the minimum or below this recharge amount, in
+ * which case use the other wallet. Balance unknown → check once before deciding;
+ * still unknown (or no lapu_id configured) → keep the primary.
  */
 export async function resolveRealRoboWalletOperatorId(
   amount: number,
 ): Promise<RealRoboWalletOperatorId> {
-  const configured = getRealRoboWalletOperatorId();
-  if (configured !== REALROBO_AMAZON_OPERATOR_ID) return configured;
+  const primary = getRealRoboWalletOperatorId();
+  const balance =
+    lapuBalances.get(primary) ?? (await refreshRealRoboLapuBalance(primary));
+  if (balance === null) return primary; // can't tell → keep primary
 
-  const balance = amazonLapuBalance ?? (await refreshRealRoboAmazonLapuBalance());
-  if (balance === null) return configured; // can't tell → keep Amazon
-
-  const min = getRealRoboAmazonMinLapuBalance();
+  const min = getRealRoboMinLapuBalance();
   return balance < min || balance < amount
-    ? REALROBO_AIRTEL_MONEY_OPERATOR_ID
-    : configured;
+    ? getRealRoboFallbackWalletOperatorId(primary)
+    : primary;
 }
 
 export async function performRealRoboRecharge(
@@ -449,7 +477,7 @@ export async function performRealRoboRecharge(
   );
 
   if (subOperatorId) {
-    return withAmazonBalanceRefresh(
+    return withLapuBalanceRefresh(
       callRealRoboRechargeApi({
         ...requestParams,
         operatorId: walletOperatorId,
@@ -466,7 +494,7 @@ export async function performRealRoboRecharge(
   }
 
   const operatorId = getRealRoboOperatorId(operatorName);
-  return withAmazonBalanceRefresh(
+  return withLapuBalanceRefresh(
     callRealRoboRechargeApi({
       ...requestParams,
       operatorId,
@@ -475,12 +503,10 @@ export async function performRealRoboRecharge(
   );
 }
 
-/** After every RealRobo recharge (success or not), re-check the Amazon lapu in the background. */
-function withAmazonBalanceRefresh<T>(call: Promise<T>): Promise<T> {
+/** After every RealRobo recharge (success or not), re-check the primary wallet's lapu in the background. */
+function withLapuBalanceRefresh<T>(call: Promise<T>): Promise<T> {
   return call.finally(() => {
-    if (getRealRoboWalletOperatorId() === REALROBO_AMAZON_OPERATOR_ID) {
-      void refreshRealRoboAmazonLapuBalance();
-    }
+    void refreshRealRoboLapuBalance(getRealRoboWalletOperatorId());
   });
 }
 

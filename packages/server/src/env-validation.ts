@@ -24,15 +24,16 @@ const ENV_VARS: EnvVarConfig[] = [
     description: 'RealRobo lapu_id for the Amazon (17) route; defaults to 632505',
   },
   {
-    name: 'REALROBO_AMAZON_MIN_LAPU_BALANCE',
+    name: 'REALROBO_MIN_LAPU_BALANCE',
     required: false,
-    description: 'Fall back from Amazon (17) to Airtel Money (11) when the Amazon lapu balance drops below this (default 200)',
+    description:
+      'Fall back from the primary wallet (Airtel Money 11 by default) to the other wallet when its lapu balance drops below this (default 200; REALROBO_AMAZON_MIN_LAPU_BALANCE still honoured)',
   },
   {
     name: 'REALROBO_WALLET_OPERATOR_ID',
     required: false,
     description:
-      'RealRobo wallet lapu for sub-operator routing: 17 = Amazon (default), 11 = Airtel Money',
+      'RealRobo primary wallet lapu for sub-operator routing: 11 = Airtel Money (default), 17 = Amazon (used as fallback when the primary lapu is low)',
   },
   {
     name: 'REALROBO_AIRTEL_MONEY_SUB_OPERATOR_ID',
