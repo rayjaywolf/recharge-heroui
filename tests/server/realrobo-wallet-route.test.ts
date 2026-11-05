@@ -27,13 +27,17 @@ describe("RealRobo wallet operator selection", () => {
     expect(getRealRoboWalletOperatorId()).toBe(17);
   });
 
-  it("uses the default Amazon lapu 632505 when env is unset", () => {
+  it("pins no lapu (auto) when env is unset", () => {
     vi.stubEnv("REALROBO_AMAZON_LAPU_ID", "");
-    expect(getRealRoboLapuId(17)).toBe("632505");
+    vi.stubEnv("REALROBO_LAPU_ID", "");
+    expect(getRealRoboLapuId(17)).toBe("");
+    expect(getRealRoboLapuId(11)).toBe("");
   });
 
-  it("uses the default Airtel Money lapu 615748 when env is unset", () => {
-    vi.stubEnv("REALROBO_LAPU_ID", "");
+  it("pins the configured lapu per wallet", () => {
+    vi.stubEnv("REALROBO_AMAZON_LAPU_ID", "632505");
+    vi.stubEnv("REALROBO_LAPU_ID", "615748");
+    expect(getRealRoboLapuId(17)).toBe("632505");
     expect(getRealRoboLapuId(11)).toBe("615748");
   });
 
@@ -207,12 +211,58 @@ describe("Airtel Money lapu low-balance fallback to Amazon", () => {
     expect(await resolveRealRoboWalletOperatorId(11)).toBe(11);
   });
 
-  it("checks the built-in Airtel lapu 615748 when REALROBO_LAPU_ID is unset", async () => {
-    setup();
-    vi.stubEnv("REALROBO_LAPU_ID", "");
-    const urls = mockFetch(5000);
-    expect(await resolveRealRoboWalletOperatorId(11)).toBe(11);
-    expect(urls[0]).toContain("lapu_id=615748");
+  describe("auto lapu (no lapu id pinned)", () => {
+    const walletFetch = (byWallet: Record<string, Record<string, number>>) => {
+      const urls: string[] = [];
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (u: string) => {
+          urls.push(String(u));
+          const url = new URL(String(u));
+          if (url.pathname.includes("operator_lapu_balance")) {
+            const data = byWallet[url.searchParams.get("operator_id")!] ?? {};
+            return new Response(JSON.stringify({ status: true, msg: "Success.", data }));
+          }
+          return new Response(JSON.stringify({ status: "success", txid: "1", message: "ok" }));
+        }),
+      );
+      return urls;
+    };
+    const autoSetup = () => {
+      setup();
+      vi.stubEnv("REALROBO_LAPU_ID", "");
+      vi.stubEnv("REALROBO_AMAZON_LAPU_ID", "");
+    };
+
+    it("scans every lapu on the wallet and uses the richest one's balance", async () => {
+      autoSetup();
+      const urls = walletFetch({ "11": { "9000000001": 50, "9244885324": 10155.67 } });
+      expect(await resolveRealRoboWalletOperatorId(179)).toBe(11);
+      expect(urls[0]).toContain("/api/operator_lapu_balance");
+      expect(urls[0]).toContain("operator_id=11");
+    });
+
+    it("falls back to Amazon when no Airtel Money lapu can cover the amount", async () => {
+      autoSetup();
+      walletFetch({ "11": { a: 100, b: 150 }, "17": { c: 451 } });
+      expect(await resolveRealRoboWalletOperatorId(179)).toBe(17);
+    });
+
+    it("treats a wallet with no lapus as disabled", async () => {
+      autoSetup();
+      walletFetch({ "11": {}, "17": { c: 451 } });
+      expect(await resolveRealRoboWalletOperatorId(179)).toBe(17);
+      expect(isRealRoboLapuDisabled(11)).toBe(true);
+    });
+
+    it("sends the recharge without lapu_id so RealRobo picks the lapu", async () => {
+      autoSetup();
+      const urls = walletFetch({ "11": { "9244885324": 5000 } });
+      await performRealRoboRecharge("9876543210", "Airtel", 199, "MP", "123");
+      const rech = new URL(urls.find((u) => u.includes("/api/recharge"))!);
+      expect(rech.searchParams.get("operator_id")).toBe("11");
+      expect(rech.searchParams.has("lapu_id")).toBe(false);
+    });
   });
 
   it("stays on Airtel Money when neither wallet has enough balance", async () => {

@@ -162,8 +162,6 @@ export const REALROBO_DEFAULT_WALLET_OPERATOR_ID: RealRoboWalletOperatorId =
   REALROBO_AIRTEL_MONEY_OPERATOR_ID;
 
 /** Default Amazon lapu (lapu no. 9993785234); override with REALROBO_AMAZON_LAPU_ID. */
-export const REALROBO_DEFAULT_AMAZON_LAPU_ID = "632505";
-export const REALROBO_DEFAULT_AIRTEL_MONEY_LAPU_ID = "615748";
 
 function isMobileWalletRouteOperator(operatorName: string): boolean {
   try {
@@ -198,16 +196,18 @@ export function getRealRoboWalletOperatorId(): RealRoboWalletOperatorId {
   return parsed as RealRoboWalletOperatorId;
 }
 
-/** Lapu for the selected wallet: Amazon uses REALROBO_AMAZON_LAPU_ID, Airtel Money uses REALROBO_LAPU_ID. */
+/**
+ * Optional pinned lapu for a wallet: Amazon uses REALROBO_AMAZON_LAPU_ID, Airtel
+ * Money uses REALROBO_LAPU_ID. Empty (the default) means "auto": no lapu_id is
+ * sent and RealRobo picks one of that wallet's lapus itself.
+ */
 export function getRealRoboLapuId(
   walletOperatorId: RealRoboWalletOperatorId = getRealRoboWalletOperatorId(),
 ): string {
   if (walletOperatorId === REALROBO_AMAZON_OPERATOR_ID) {
-    return (
-      process.env.REALROBO_AMAZON_LAPU_ID?.trim() || REALROBO_DEFAULT_AMAZON_LAPU_ID
-    );
+    return process.env.REALROBO_AMAZON_LAPU_ID?.trim() || "";
   }
-  return process.env.REALROBO_LAPU_ID?.trim() || REALROBO_DEFAULT_AIRTEL_MONEY_LAPU_ID;
+  return process.env.REALROBO_LAPU_ID?.trim() || "";
 }
 
 function getPostpaidSubOperatorId(
@@ -375,7 +375,7 @@ export function markRealRoboLapuDisabled(
 ) {
   if (!isRealRoboLapuDisabled(wallet, now)) {
     console.warn(
-      `[RealRobo] Wallet ${wallet} lapu ${getRealRoboLapuId(wallet)} disabled (${reason}) → skipping it for ${
+      `[RealRobo] Wallet ${wallet} lapu ${getRealRoboLapuId(wallet) || "auto"} disabled (${reason}) → skipping it for ${
         REALROBO_LAPU_DISABLED_COOLDOWN_MS / 60000
       } min`,
     );
@@ -443,6 +443,47 @@ async function fetchRealRoboLapuBalanceResult(
   }
 }
 
+/**
+ * GET operator_lapu_balance?operator_id=… → data: { "<lapu_no>": balance, … }
+ * (RealRobo-cached). Lists every lapu on the wallet, so new lapus are picked up
+ * without config. The wallet's usable balance is its richest lapu, since one
+ * recharge is served by one lapu. No lapus at all → disabled.
+ */
+async function fetchRealRoboWalletLapuBalanceResult(
+  wallet: RealRoboWalletOperatorId,
+): Promise<LapuBalanceResult> {
+  const apiToken = process.env.REALROBO_API_TOKEN?.trim();
+  if (!apiToken) return { kind: "unknown" };
+  const url = new URL("https://realrobo.in/api/operator_lapu_balance");
+  url.searchParams.append("api_token", apiToken);
+  url.searchParams.append("operator_id", String(wallet));
+  try {
+    const res = await fetch(url.toString(), {
+      method: "GET",
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return { kind: "unknown" };
+    const body = (await res.json()) as {
+      status?: boolean;
+      msg?: string;
+      data?: Record<string, unknown> | null;
+    };
+    if (body?.status === false) {
+      return { kind: "disabled", reason: body.msg || "operator_lapu_balance status false" };
+    }
+    if (!body?.status) return { kind: "unknown" };
+    const balances = Object.values(body.data ?? {})
+      .map(Number)
+      .filter(Number.isFinite);
+    if (balances.length === 0) {
+      return { kind: "disabled", reason: "no lapus on this wallet" };
+    }
+    return { kind: "ok", balance: Math.max(...balances) };
+  } catch {
+    return { kind: "unknown" };
+  }
+}
+
 /** GET https://realrobo.in/api/lapu_balance?lapu_id=… → data.balance */
 export async function fetchRealRoboLapuBalance(
   lapuId: string,
@@ -460,7 +501,10 @@ export function refreshRealRoboLapuBalance(
   const lapuId = getRealRoboLapuId(wallet);
   const fallback = getRealRoboFallbackWalletOperatorId(wallet);
   const promise = (async () => {
-    const result = await fetchRealRoboLapuBalanceResult(lapuId);
+    // Pinned lapu → check that lapu; otherwise scan every lapu on the wallet.
+    const result = lapuId
+      ? await fetchRealRoboLapuBalanceResult(lapuId)
+      : await fetchRealRoboWalletLapuBalanceResult(wallet);
     if (result.kind === "disabled") {
       markRealRoboLapuDisabled(wallet, result.reason);
       return null;
@@ -473,7 +517,7 @@ export function refreshRealRoboLapuBalance(
     const isLow = balance < min;
     if (isLow !== wasLow || previous === null) {
       console.log(
-        `[RealRobo] Wallet ${wallet} lapu ${lapuId} balance ₹${balance} (min ₹${min}) → ${
+        `[RealRobo] Wallet ${wallet} lapu ${lapuId || "auto (best lapu)"} balance ₹${balance} (min ₹${min}) → ${
           isLow ? `falling back to wallet ${fallback}` : `using wallet ${wallet}`
         }`,
       );
@@ -556,7 +600,7 @@ export async function performRealRoboRecharge(
       phoneNumber,
       amount,
       stateId,
-      lapuId: getRealRoboLapuId(wallet),
+      lapuId: getRealRoboLapuId(wallet) || undefined, // unset → RealRobo picks the lapu
       requestId: baseRequestId,
     };
     const subOperatorId = getRealRoboWalletSubOperatorId(operatorName, wallet);

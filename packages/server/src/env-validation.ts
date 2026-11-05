@@ -21,7 +21,7 @@ const ENV_VARS: EnvVarConfig[] = [
   {
     name: 'REALROBO_AMAZON_LAPU_ID',
     required: false,
-    description: 'RealRobo lapu_id for the Amazon (17) route; defaults to 632505',
+    description: 'Optional: pin the Amazon (17) lapu_id. Unset = auto (scan all Amazon lapus, RealRobo picks one)',
   },
   {
     name: 'REALROBO_MIN_LAPU_BALANCE',
@@ -44,7 +44,7 @@ const ENV_VARS: EnvVarConfig[] = [
   {
     name: 'REALROBO_LAPU_ID',
     required: false,
-    description: 'Optional override for the Airtel Money (11) lapu_id; defaults to 615748',
+    description: 'Optional: pin the Airtel Money (11) lapu_id. Unset = auto (scan all Airtel Money lapus, RealRobo picks one)',
   },
   { name: 'MROBOTICS_API_TOKEN', required: false, description: 'MRobotics API token' },
   { name: 'PLANAPI_USER_ID', required: false, description: 'planapi.in ApiUserID (operator/circle lookup)' },
