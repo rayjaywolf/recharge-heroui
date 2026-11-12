@@ -625,7 +625,24 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
 
     for (let i = 0; i < providerChain.length; i++) {
       const providerId = providerChain[i];
-      if (i > 0) usedBackup = true;
+      if (i > 0) {
+        usedBackup = true;
+        // Point the PENDING row at the backup before calling it, so status
+        // polls and the primary's failure callback can't settle it as FAILED
+        // (and refund) while the backup recharge is in flight.
+        const [switched] = await db
+          .update(transaction)
+          .set({ provider: providerId })
+          .where(
+            and(
+              eq(transaction.id, result.transaction.id),
+              eq(transaction.status, "PENDING"),
+            ),
+          )
+          .returning({ id: transaction.id });
+        // Already settled elsewhere (e.g. refunded) — don't recharge again.
+        if (!switched) break;
+      }
 
       try {
         validateProviderCredentials(providerId);
