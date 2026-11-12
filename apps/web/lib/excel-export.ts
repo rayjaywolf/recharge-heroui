@@ -348,3 +348,86 @@ export function exportUserReport(
     `${fileName || `user-report-${new Date().toISOString().split('T')[0]}`}.xlsx`
   )
 }
+
+export type RetailerFundingExportRow = {
+  date: string
+  time: string
+  retailerName: string
+  retailerPhone: string
+  retailerEmail: string
+  distributorName: string
+  fundedBy: string
+  amount: number
+  openingBalance: number
+  closingBalance: number
+  remarks: string
+  status: string
+  referenceId: string
+}
+
+export const RETAILER_FUNDING_EXPORT_HEADERS = [
+  'Date',
+  'Time',
+  'Retailer',
+  'Phone',
+  'Email',
+  'Distributor',
+  'Funded By',
+  'Amount',
+  'Opening Balance',
+  'Closing Balance',
+  'Remarks',
+  'Status',
+  'Reference ID',
+] as const
+
+export function buildRetailerFundingWorksheetRows(
+  rows: RetailerFundingExportRow[],
+): string[][] {
+  const headers = [...RETAILER_FUNDING_EXPORT_HEADERS]
+  const sheetRows = rows.map((r) => [
+    r.date,
+    r.time,
+    r.retailerName,
+    r.retailerPhone,
+    r.retailerEmail,
+    r.distributorName,
+    r.fundedBy,
+    `₹${r.amount.toLocaleString('en-IN')}`,
+    `₹${r.openingBalance.toLocaleString('en-IN')}`,
+    `₹${r.closingBalance.toLocaleString('en-IN')}`,
+    r.remarks,
+    r.status,
+    r.referenceId,
+  ])
+  return [headers, ...sheetRows]
+}
+
+export function exportRetailerFundingReport(
+  rows: RetailerFundingExportRow[],
+  fileName?: string,
+) {
+  const worksheetData = buildRetailerFundingWorksheetRows(rows)
+  const workbook = XLSX.utils.book_new()
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData)
+  worksheet['!cols'] = [
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 22 },
+    { wch: 14 },
+    { wch: 24 },
+    { wch: 20 },
+    { wch: 18 },
+    { wch: 14 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 32 },
+    { wch: 10 },
+    { wch: 26 },
+  ]
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Retailer Funding')
+  XLSX.writeFile(
+    workbook,
+    `${fileName || `retailer-credits-funded-${new Date().toISOString().split('T')[0]}`}.xlsx`,
+  )
+}

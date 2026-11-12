@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Banknote,
   Clock,
   Store,
   UserCircle,
@@ -42,6 +43,13 @@ export const ADMIN_REPORT_LINKS: AdminReportLink[] = [
     description: "Per-retailer balances, distributor, and recharge volume.",
     href: "/admin/reports/retailer",
     icon: Store,
+  },
+  {
+    slug: "retailer-funding",
+    name: "Credits funded to retailers",
+    description: "Filtered audit of wallet credits and funds transferred to retailers.",
+    href: "/admin/reports/retailer-funding",
+    icon: Banknote,
   },
 ];
 
