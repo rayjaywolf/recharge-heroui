@@ -6,6 +6,7 @@ import {
 } from "./env-validation";
 import { getMRoboticsBalance } from "./mrobotics";
 import { getRealRoboBalance } from "./realrobo";
+import { getRoboticExchangeBalance } from "./roboticexchange";
 
 export type ProviderBalanceStatus = "ok" | "unconfigured" | "error";
 
@@ -20,6 +21,7 @@ export type ProviderBalanceResult = {
 const DISPLAY_ORDER: RechargeProvider[] = [
   "REALROBO",
   "MROBOTICS",
+  "ROBOTICEXCHANGE",
   "A1TOPUP",
   "TEST",
 ];
@@ -73,6 +75,16 @@ async function fetchRealRoboBalance(): Promise<number> {
   return response.data.balance;
 }
 
+async function fetchRoboticExchangeBalance(): Promise<number> {
+  const response = await getRoboticExchangeBalance();
+  if (String(response.Errorcode ?? "") !== "0") {
+    throw new Error(
+      response.Message || "Robotic Exchange balance request failed",
+    );
+  }
+  return Number(response.BuyerWalletBalance ?? 0);
+}
+
 async function fetchMRoboticsBalance(): Promise<number> {
   const response = await getMRoboticsBalance();
   if (response.error) {
@@ -114,6 +126,8 @@ async function fetchProviderBalance(
     let balance: number;
     if (provider === "REALROBO") {
       balance = await fetchRealRoboBalance();
+    } else if (provider === "ROBOTICEXCHANGE") {
+      balance = await fetchRoboticExchangeBalance();
     } else if (provider === "MROBOTICS") {
       balance = await fetchMRoboticsBalance();
     } else {

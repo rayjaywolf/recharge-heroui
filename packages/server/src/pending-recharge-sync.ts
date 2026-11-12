@@ -16,6 +16,7 @@ import {
   type ParsedRechargeResponse,
 } from "./recharge-gateway";
 import { checkMRoboticsStatus } from "./mrobotics";
+import { checkRoboticExchangeStatus } from "./roboticexchange";
 import { checkRealRoboStatus } from "./realrobo";
 
 const DEFAULT_LIMIT = 50;
@@ -226,7 +227,9 @@ async function syncPendingProviderTransactions(
           ? await checkRealRoboStatus(tx.id)
           : provider === "A1TOPUP"
             ? await checkA1TopupStatus(tx.id)
-            : await checkMRoboticsStatus(tx.id);
+            : provider === "ROBOTICEXCHANGE"
+              ? await checkRoboticExchangeStatus(tx.id)
+              : await checkMRoboticsStatus(tx.id);
 
       const parsed = parseRechargeProviderResponse(provider, apiResult, tx.id);
       const outcome = await settlePendingTransaction(tx, parsed);
@@ -261,7 +264,12 @@ export async function syncPendingRechargeTransactions(
   options?: { userId?: string; limit?: number },
 ): Promise<SyncPendingResult> {
   const configured = new Set(getAvailableProviders());
-  const providers: LiveProvider[] = ["REALROBO", "A1TOPUP", "MROBOTICS"];
+  const providers: LiveProvider[] = [
+    "REALROBO",
+    "A1TOPUP",
+    "MROBOTICS",
+    "ROBOTICEXCHANGE",
+  ];
   const results: SyncPendingResult[] = [];
 
   for (const provider of providers) {

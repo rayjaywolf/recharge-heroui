@@ -1,6 +1,11 @@
 /** Client-safe recharge provider types and constants (no Prisma/Node deps). */
 
-export type RechargeProviderId = "A1TOPUP" | "REALROBO" | "MROBOTICS" | "TEST";
+export type RechargeProviderId =
+  | "A1TOPUP"
+  | "REALROBO"
+  | "MROBOTICS"
+  | "ROBOTICEXCHANGE"
+  | "TEST";
 
 /** Select value when no backup API is configured for an operator. */
 export const BACKUP_NONE = "none";
@@ -9,6 +14,7 @@ export const RECHARGE_PROVIDER_IDS: RechargeProviderId[] = [
   "TEST",
   "REALROBO",
   "MROBOTICS",
+  "ROBOTICEXCHANGE",
   "A1TOPUP",
 ];
 

@@ -1,10 +1,16 @@
 /** Recharge gateway used for a transaction (`Transaction.provider` in Prisma). */
-export type RechargeProvider = "A1TOPUP" | "REALROBO" | "MROBOTICS" | "TEST";
+export type RechargeProvider =
+  | "A1TOPUP"
+  | "REALROBO"
+  | "MROBOTICS"
+  | "ROBOTICEXCHANGE"
+  | "TEST";
 
 const PROVIDER_LABELS: Record<RechargeProvider, string> = {
   A1TOPUP: "A1",
   REALROBO: "Real Robo",
   MROBOTICS: "MRobotics",
+  ROBOTICEXCHANGE: "Robotic Exchange",
   TEST: "Test",
 };
 

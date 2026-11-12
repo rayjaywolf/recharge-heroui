@@ -47,6 +47,8 @@ const ENV_VARS: EnvVarConfig[] = [
     description: 'Optional: pin the Airtel Money (11) lapu_id. Unset = auto (scan all Airtel Money lapus, RealRobo picks one)',
   },
   { name: 'MROBOTICS_API_TOKEN', required: false, description: 'MRobotics API token' },
+  { name: 'ROBOTICEXCHANGE_MEMBER_ID', required: false, description: 'Robotic Exchange API member ID' },
+  { name: 'ROBOTICEXCHANGE_API_PASSWORD', required: false, description: 'Robotic Exchange API password' },
   { name: 'PLANAPI_USER_ID', required: false, description: 'planapi.in ApiUserID (operator/circle lookup)' },
   { name: 'PLANAPI_API_PASSWORD', required: false, description: 'planapi.in ApiPassword (operator/circle lookup)' },
   { name: 'PLANAPI_TOKEN_ID', required: false, description: 'planapi.in TokenID (ekyc/aadhaar verification)' },
@@ -80,7 +82,7 @@ export function validateEnvironmentVariables(): void {
   }
 }
 
-export type LiveProvider = 'A1TOPUP' | 'REALROBO' | 'MROBOTICS';
+export type LiveProvider = 'A1TOPUP' | 'REALROBO' | 'MROBOTICS' | 'ROBOTICEXCHANGE';
 
 export function validateProviderCredentials(
   provider: LiveProvider | 'TEST'
@@ -105,6 +107,11 @@ export function validateProviderCredentials(
         throw new Error('MRobotics API token not configured. Set MROBOTICS_API_TOKEN environment variable.');
       }
       break;
+    case 'ROBOTICEXCHANGE':
+      if (!process.env.ROBOTICEXCHANGE_MEMBER_ID || !process.env.ROBOTICEXCHANGE_API_PASSWORD) {
+        throw new Error('Robotic Exchange credentials not configured. Set ROBOTICEXCHANGE_MEMBER_ID and ROBOTICEXCHANGE_API_PASSWORD environment variables.');
+      }
+      break;
   }
 }
 
@@ -121,6 +128,10 @@ export function getAvailableProviders(): LiveProvider[] {
   
   if (process.env.MROBOTICS_API_TOKEN) {
     providers.push('MROBOTICS');
+  }
+
+  if (process.env.ROBOTICEXCHANGE_MEMBER_ID && process.env.ROBOTICEXCHANGE_API_PASSWORD) {
+    providers.push('ROBOTICEXCHANGE');
   }
   
   return providers;

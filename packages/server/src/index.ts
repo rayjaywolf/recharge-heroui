@@ -18,6 +18,11 @@ export { checkA1TopupStatus, mapA1OperatorCode } from "./a1topup";
 export * from "./provider-balances";
 export { getMRoboticsBalance, performMRoboticsRecharge } from "./mrobotics";
 export {
+  checkRoboticExchangeStatus,
+  getRoboticExchangeBalance,
+  performRoboticExchangeRecharge,
+} from "./roboticexchange";
+export {
   generateNumericRequestId,
   getRealRoboBalance,
   performRealRoboRecharge,

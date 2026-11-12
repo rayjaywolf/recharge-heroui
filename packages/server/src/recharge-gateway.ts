@@ -2,6 +2,11 @@ import type { RechargeProviderId } from "@repo/shared/recharge-providers";
 import { mapA1CircleCode, mapA1OperatorCode } from "./a1topup";
 import { performMRoboticsRecharge } from "./mrobotics";
 import { performRealRoboRecharge } from "./realrobo";
+import {
+  classifyRoboticExchangeResponse,
+  performRoboticExchangeRecharge,
+  type RoboticExchangeRechargeResponse,
+} from "./roboticexchange";
 import { performTestRecharge } from "./test-provider";
 
 export type ParsedRechargeResponse = {
@@ -34,6 +39,16 @@ export async function callRechargeProvider(
 
   if (providerId === "REALROBO") {
     return performRealRoboRecharge(
+      phone,
+      operator,
+      amount,
+      circle,
+      transactionId
+    );
+  }
+
+  if (providerId === "ROBOTICEXCHANGE") {
+    return performRoboticExchangeRecharge(
       phone,
       operator,
       amount,
@@ -175,6 +190,35 @@ export function parseRechargeProviderResponse(
         response.remark || response.message || "Recharge status unknown",
       apiReferenceId: ref,
       shouldRefund: false,
+    };
+  }
+
+  if (providerId === "ROBOTICEXCHANGE") {
+    const response = apiResult as RoboticExchangeRechargeResponse;
+    const finalStatus = classifyRoboticExchangeResponse(response);
+    const errorCode = String(response.ERROR ?? "").trim();
+    const opTxn = response.OPTRANSID ? String(response.OPTRANSID) : "";
+    const orderId =
+      response.ORDERID && String(response.ORDERID) !== "0"
+        ? String(response.ORDERID)
+        : "";
+    const ref = `${opTxn} [ORDER_ID: ${orderId}] [TX_ID: ${transactionId}]`.trim();
+    const message = response.MESSAGE ? String(response.MESSAGE) : "";
+    const withCode =
+      finalStatus === "FAILED" && errorCode && errorCode !== "0"
+        ? `${message || "Recharge failed at provider"} (error ${errorCode})`
+        : message;
+    return {
+      finalStatus,
+      apiMessage:
+        withCode ||
+        (finalStatus === "SUCCESS"
+          ? "Recharge successful"
+          : finalStatus === "FAILED"
+            ? "Recharge failed at provider"
+            : "Recharge is pending"),
+      apiReferenceId: ref,
+      shouldRefund: finalStatus === "FAILED",
     };
   }
 

@@ -2,12 +2,18 @@ export const RECHARGE_PROVIDERS = [
   "TEST",
   "REALROBO",
   "MROBOTICS",
+  "ROBOTICEXCHANGE",
   "A1TOPUP",
 ] as const;
 export type RechargeProvider = (typeof RECHARGE_PROVIDERS)[number];
 
 /** Real gateways that need env credentials */
-export const LIVE_PROVIDERS = ["REALROBO", "MROBOTICS", "A1TOPUP"] as const;
+export const LIVE_PROVIDERS = [
+  "REALROBO",
+  "MROBOTICS",
+  "ROBOTICEXCHANGE",
+  "A1TOPUP",
+] as const;
 export type LiveRechargeProvider = (typeof LIVE_PROVIDERS)[number];
 
 export type CircleOption = {
@@ -142,10 +148,40 @@ const A1TOPUP_CODES = [
   "KO",
 ] as const;
 
+/** Circles supported by Robotic Exchange (`roboticexchange.ts` circle map). */
+const ROBOTICEXCHANGE_CODES = [
+  "AP",
+  "AS",
+  "BR",
+  "CG",
+  "CN",
+  "DL",
+  "GJ",
+  "HP",
+  "HR",
+  "JH",
+  "JK",
+  "KA",
+  "KL",
+  "KO",
+  "MH",
+  "MP",
+  "MU",
+  "NE",
+  "OR",
+  "PB",
+  "RJ",
+  "TN",
+  "UPE",
+  "UPW",
+  "WB",
+] as const;
+
 export const CIRCLES_BY_PROVIDER: Record<RechargeProvider, CircleOption[]> = {
   TEST: circles([...REALROBO_CODES]),
   REALROBO: circles([...REALROBO_CODES]),
   MROBOTICS: circles([...MROBOTICS_CODES]),
+  ROBOTICEXCHANGE: circles([...ROBOTICEXCHANGE_CODES]),
   A1TOPUP: circles([...A1TOPUP_CODES]),
 };
 
@@ -153,6 +189,7 @@ export const PROVIDER_LABELS: Record<RechargeProvider, string> = {
   TEST: "Test (simulated)",
   REALROBO: "RealRobo",
   MROBOTICS: "MRobotics",
+  ROBOTICEXCHANGE: "Robotic Exchange",
   A1TOPUP: "A1TopUp",
 };
 

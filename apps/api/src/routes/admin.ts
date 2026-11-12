@@ -43,6 +43,7 @@ import {
 } from "@repo/server/notifications";
 import { checkA1TopupStatus } from "@repo/server/a1topup";
 import { checkMRoboticsStatus } from "@repo/server/mrobotics";
+import { checkRoboticExchangeStatus } from "@repo/server/roboticexchange";
 import { getAllProviderBalances } from "@repo/server/provider-balances";
 import {
   settlePendingTransaction,
@@ -132,6 +133,28 @@ adminRoutes.post("/api/admin/transactions/:id/refresh-status", requireAdmin, asy
       return c.json({
         success: true,
         message: "Status refreshed from RealRobo.",
+        transaction: updated ?? found,
+      });
+    }
+
+    if (found.provider === "ROBOTICEXCHANGE") {
+      const statusResponse = await checkRoboticExchangeStatus(found.id);
+      const parsed = parseRechargeProviderResponse(
+        "ROBOTICEXCHANGE",
+        statusResponse,
+        found.id,
+      );
+
+      await settlePendingTransaction(found, parsed);
+      const [updated] = await db
+        .select()
+        .from(transaction)
+        .where(eq(transaction.id, found.id))
+        .limit(1);
+
+      return c.json({
+        success: true,
+        message: "Status refreshed from Robotic Exchange.",
         transaction: updated ?? found,
       });
     }

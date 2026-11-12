@@ -159,6 +159,7 @@ export function RechargeForm({
   const circleRequired =
     routedProvider === "REALROBO" ||
     routedProvider === "MROBOTICS" ||
+    routedProvider === "ROBOTICEXCHANGE" ||
     routedProvider === "A1TOPUP";
 
   useEffect(() => {
