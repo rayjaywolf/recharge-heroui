@@ -486,7 +486,10 @@ rechargeRoutes.post("/api/recharge", requireSession, async (c) => {
     const providerChain = buildProviderAttemptChain(routing);
     const primaryProvider = routing.primary;
 
-    if (providerChain.includes("REALROBO")) {
+    if (
+      providerChain.includes("REALROBO") ||
+      providerChain.includes("JIOPOSLITE")
+    ) {
       try {
         validateRealRoboCircle(circleCode);
       } catch (err) {

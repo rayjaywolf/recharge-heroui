@@ -18,6 +18,7 @@
     "./mrobotics": "./src/mrobotics.ts",
     "./roboticexchange": "./src/roboticexchange.ts",
     "./realrobo": "./src/realrobo.ts",
+    "./jioposlite": "./src/jioposlite.ts",
     "./pending-recharge-sync": "./src/pending-recharge-sync.ts",
     "./mpin": "./src/mpin.ts",
     "./notifications": "./src/notifications.ts",

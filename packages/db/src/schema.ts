@@ -24,6 +24,7 @@ export const providerEnum = pgEnum("Provider", [
   "REALROBO",
   "MROBOTICS",
   "ROBOTICEXCHANGE",
+  "JIOPOSLITE",
   "TEST",
 ]);
 export const fundRequestStatusEnum = pgEnum("FundRequestStatus", [

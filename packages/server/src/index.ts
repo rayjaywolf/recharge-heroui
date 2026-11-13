@@ -11,6 +11,8 @@ export {
   syncPendingRechargeTransactionsForUser,
   syncPendingRealRoboTransactions,
   syncPendingRealRoboTransactionsForUser,
+  syncPendingJioPosLiteTransactions,
+  syncPendingJioPosLiteTransactionsForUser,
   type SyncPendingRealRoboResult,
   type SyncPendingResult,
 } from "./pending-recharge-sync";
@@ -22,6 +24,11 @@ export {
   getRoboticExchangeBalance,
   performRoboticExchangeRecharge,
 } from "./roboticexchange";
+export {
+  checkJioPosLiteStatus,
+  getJioPosLiteBalance,
+  performJioPosLiteRecharge,
+} from "./jioposlite";
 export {
   generateNumericRequestId,
   getRealRoboBalance,

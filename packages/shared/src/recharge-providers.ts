@@ -3,6 +3,7 @@
 export type RechargeProviderId =
   | "A1TOPUP"
   | "REALROBO"
+  | "JIOPOSLITE"
   | "MROBOTICS"
   | "ROBOTICEXCHANGE"
   | "TEST";
@@ -13,6 +14,7 @@ export const BACKUP_NONE = "none";
 export const RECHARGE_PROVIDER_IDS: RechargeProviderId[] = [
   "TEST",
   "REALROBO",
+  "JIOPOSLITE",
   "MROBOTICS",
   "ROBOTICEXCHANGE",
   "A1TOPUP",

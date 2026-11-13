@@ -49,6 +49,7 @@ import {
   settlePendingTransaction,
   syncPendingRechargeTransactions,
   syncPendingRealRoboTransactionsForUser,
+  syncPendingJioPosLiteTransactionsForUser,
 } from "@repo/server/pending-recharge-sync";
 import { parseRechargeProviderResponse } from "@repo/server/recharge-gateway";
 import {
@@ -133,6 +134,21 @@ adminRoutes.post("/api/admin/transactions/:id/refresh-status", requireAdmin, asy
       return c.json({
         success: true,
         message: "Status refreshed from RealRobo.",
+        transaction: updated ?? found,
+      });
+    }
+
+    if (found.provider === "JIOPOSLITE") {
+      await syncPendingJioPosLiteTransactionsForUser(found.userId, { limit: 100 });
+      const [updated] = await db
+        .select()
+        .from(transaction)
+        .where(eq(transaction.id, id))
+        .limit(1);
+
+      return c.json({
+        success: true,
+        message: "Status refreshed from Jio Pos Lite.",
         transaction: updated ?? found,
       });
     }

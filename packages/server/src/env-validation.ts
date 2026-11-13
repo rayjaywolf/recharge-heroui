@@ -82,7 +82,7 @@ export function validateEnvironmentVariables(): void {
   }
 }
 
-export type LiveProvider = 'A1TOPUP' | 'REALROBO' | 'MROBOTICS' | 'ROBOTICEXCHANGE';
+export type LiveProvider = 'A1TOPUP' | 'REALROBO' | 'JIOPOSLITE' | 'MROBOTICS' | 'ROBOTICEXCHANGE';
 
 export function validateProviderCredentials(
   provider: LiveProvider | 'TEST'
@@ -100,6 +100,11 @@ export function validateProviderCredentials(
     case 'REALROBO':
       if (!process.env.REALROBO_API_TOKEN) {
         throw new Error('RealRobo API token not configured. Set REALROBO_API_TOKEN environment variable.');
+      }
+      break;
+    case 'JIOPOSLITE':
+      if (!process.env.JIOPOSLITE_API_TOKEN && !process.env.REALROBO_API_TOKEN) {
+        throw new Error('Jio Pos Lite credentials not configured. Set JIOPOSLITE_API_TOKEN or REALROBO_API_TOKEN environment variable.');
       }
       break;
     case 'MROBOTICS':
@@ -124,6 +129,10 @@ export function getAvailableProviders(): LiveProvider[] {
   
   if (process.env.REALROBO_API_TOKEN) {
     providers.push('REALROBO');
+  }
+
+  if (process.env.JIOPOSLITE_API_TOKEN || process.env.REALROBO_API_TOKEN) {
+    providers.push('JIOPOSLITE');
   }
   
   if (process.env.MROBOTICS_API_TOKEN) {

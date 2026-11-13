@@ -1,6 +1,7 @@
 export const RECHARGE_PROVIDERS = [
   "TEST",
   "REALROBO",
+  "JIOPOSLITE",
   "MROBOTICS",
   "ROBOTICEXCHANGE",
   "A1TOPUP",
@@ -10,6 +11,7 @@ export type RechargeProvider = (typeof RECHARGE_PROVIDERS)[number];
 /** Real gateways that need env credentials */
 export const LIVE_PROVIDERS = [
   "REALROBO",
+  "JIOPOSLITE",
   "MROBOTICS",
   "ROBOTICEXCHANGE",
   "A1TOPUP",
@@ -180,6 +182,7 @@ const ROBOTICEXCHANGE_CODES = [
 export const CIRCLES_BY_PROVIDER: Record<RechargeProvider, CircleOption[]> = {
   TEST: circles([...REALROBO_CODES]),
   REALROBO: circles([...REALROBO_CODES]),
+  JIOPOSLITE: circles([...REALROBO_CODES]),
   MROBOTICS: circles([...MROBOTICS_CODES]),
   ROBOTICEXCHANGE: circles([...ROBOTICEXCHANGE_CODES]),
   A1TOPUP: circles([...A1TOPUP_CODES]),
@@ -188,6 +191,7 @@ export const CIRCLES_BY_PROVIDER: Record<RechargeProvider, CircleOption[]> = {
 export const PROVIDER_LABELS: Record<RechargeProvider, string> = {
   TEST: "Test (simulated)",
   REALROBO: "RealRobo",
+  JIOPOSLITE: "Jio Pos Lite",
   MROBOTICS: "MRobotics",
   ROBOTICEXCHANGE: "Robotic Exchange",
   A1TOPUP: "A1TopUp",

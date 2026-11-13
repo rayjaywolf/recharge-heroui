@@ -18,6 +18,7 @@ import {
 import { checkMRoboticsStatus } from "./mrobotics";
 import { checkRoboticExchangeStatus } from "./roboticexchange";
 import { checkRealRoboStatus } from "./realrobo";
+import { checkJioPosLiteStatus } from "./jioposlite";
 
 const DEFAULT_LIMIT = 50;
 
@@ -225,11 +226,13 @@ async function syncPendingProviderTransactions(
       const apiResult =
         provider === "REALROBO"
           ? await checkRealRoboStatus(tx.id)
-          : provider === "A1TOPUP"
-            ? await checkA1TopupStatus(tx.id)
-            : provider === "ROBOTICEXCHANGE"
-              ? await checkRoboticExchangeStatus(tx.id)
-              : await checkMRoboticsStatus(tx.id);
+          : provider === "JIOPOSLITE"
+            ? await checkJioPosLiteStatus(tx.id)
+            : provider === "A1TOPUP"
+              ? await checkA1TopupStatus(tx.id)
+              : provider === "ROBOTICEXCHANGE"
+                ? await checkRoboticExchangeStatus(tx.id)
+                : await checkMRoboticsStatus(tx.id);
 
       const parsed = parseRechargeProviderResponse(provider, apiResult, tx.id);
       const outcome = await settlePendingTransaction(tx, parsed);
@@ -266,6 +269,7 @@ export async function syncPendingRechargeTransactions(
   const configured = new Set(getAvailableProviders());
   const providers: LiveProvider[] = [
     "REALROBO",
+    "JIOPOSLITE",
     "A1TOPUP",
     "MROBOTICS",
     "ROBOTICEXCHANGE",
@@ -287,6 +291,13 @@ export async function syncPendingRealRoboTransactions(
   return syncPendingProviderTransactions("REALROBO", options);
 }
 
+/** Poll Jio Pos Lite for pending recharges and update local transaction rows. */
+export async function syncPendingJioPosLiteTransactions(
+  options?: { userId?: string; limit?: number },
+): Promise<SyncPendingResult> {
+  return syncPendingProviderTransactions("JIOPOSLITE", options);
+}
+
 /** Poll A1Topup for pending recharges and update local transaction rows. */
 export async function syncPendingA1TopupTransactions(
   options?: { userId?: string; limit?: number },
@@ -299,6 +310,13 @@ export async function syncPendingRealRoboTransactionsForUser(
   options?: { limit?: number },
 ): Promise<SyncPendingResult> {
   return syncPendingRealRoboTransactions({ ...options, userId });
+}
+
+export async function syncPendingJioPosLiteTransactionsForUser(
+  userId: string,
+  options?: { limit?: number },
+): Promise<SyncPendingResult> {
+  return syncPendingJioPosLiteTransactions({ ...options, userId });
 }
 
 export async function syncPendingRechargeTransactionsForUser(

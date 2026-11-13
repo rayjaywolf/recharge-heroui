@@ -30,7 +30,7 @@ export const CARRIER_FILTER_OPTIONS = [
 
 /** Maps filter keys to transaction.operator values stored in the DB. */
 const CARRIER_FILTER_TO_OPERATORS: Record<string, readonly string[]> = {
-  JIO: ["Jio", "Jio Pos Lite"],
+  JIO: ["Jio"],
   AIRTEL: ["Airtel"],
   VI: ["Vi", "Idea"],
   BSNL: ["BSNL Recharge", "BSNL Topup"],

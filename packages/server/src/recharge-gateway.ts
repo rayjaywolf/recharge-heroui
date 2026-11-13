@@ -1,5 +1,6 @@
 import type { RechargeProviderId } from "@repo/shared/recharge-providers";
 import { mapA1CircleCode, mapA1OperatorCode } from "./a1topup";
+import { performJioPosLiteRecharge } from "./jioposlite";
 import { performMRoboticsRecharge } from "./mrobotics";
 import { performRealRoboRecharge } from "./realrobo";
 import {
@@ -39,6 +40,16 @@ export async function callRechargeProvider(
 
   if (providerId === "REALROBO") {
     return performRealRoboRecharge(
+      phone,
+      operator,
+      amount,
+      circle,
+      transactionId
+    );
+  }
+
+  if (providerId === "JIOPOSLITE") {
+    return performJioPosLiteRecharge(
       phone,
       operator,
       amount,
@@ -148,7 +159,7 @@ export function parseRechargeProviderResponse(
     };
   }
 
-  if (providerId === "REALROBO") {
+  if (providerId === "REALROBO" || providerId === "JIOPOSLITE") {
     const response = apiResult as {
       status: string;
       remark?: string;

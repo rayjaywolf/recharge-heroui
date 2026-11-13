@@ -29,6 +29,7 @@ export type OperatorProviderRow = {
 
 const PROVIDER_OPTIONS: { id: RechargeProvider; label: string }[] = [
   { id: "REALROBO", label: PROVIDER_LABELS.REALROBO },
+  { id: "JIOPOSLITE", label: PROVIDER_LABELS.JIOPOSLITE },
   { id: "MROBOTICS", label: PROVIDER_LABELS.MROBOTICS },
   { id: "ROBOTICEXCHANGE", label: PROVIDER_LABELS.ROBOTICEXCHANGE },
   { id: "A1TOPUP", label: PROVIDER_LABELS.A1TOPUP },

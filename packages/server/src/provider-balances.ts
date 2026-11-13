@@ -7,6 +7,7 @@ import {
 import { getMRoboticsBalance } from "./mrobotics";
 import { getRealRoboBalance } from "./realrobo";
 import { getRoboticExchangeBalance } from "./roboticexchange";
+import { getJioPosLiteBalance } from "./jioposlite";
 
 export type ProviderBalanceStatus = "ok" | "unconfigured" | "error";
 
@@ -20,6 +21,7 @@ export type ProviderBalanceResult = {
 
 const DISPLAY_ORDER: RechargeProvider[] = [
   "REALROBO",
+  "JIOPOSLITE",
   "MROBOTICS",
   "ROBOTICEXCHANGE",
   "A1TOPUP",
@@ -75,6 +77,14 @@ async function fetchRealRoboBalance(): Promise<number> {
   return response.data.balance;
 }
 
+async function fetchJioPosLiteBalance(): Promise<number> {
+  const response = await getJioPosLiteBalance();
+  if (!response.status) {
+    throw new Error(response.msg || "Jio Pos Lite balance request failed");
+  }
+  return response.data.balance;
+}
+
 async function fetchRoboticExchangeBalance(): Promise<number> {
   const response = await getRoboticExchangeBalance();
   if (String(response.Errorcode ?? "") !== "0") {
@@ -126,6 +136,8 @@ async function fetchProviderBalance(
     let balance: number;
     if (provider === "REALROBO") {
       balance = await fetchRealRoboBalance();
+    } else if (provider === "JIOPOSLITE") {
+      balance = await fetchJioPosLiteBalance();
     } else if (provider === "ROBOTICEXCHANGE") {
       balance = await fetchRoboticExchangeBalance();
     } else if (provider === "MROBOTICS") {
