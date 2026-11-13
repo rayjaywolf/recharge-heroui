@@ -109,13 +109,15 @@ const CIRCLE_MAP: Record<string, string> = {
 /** App circle codes that map to a Robotic Exchange circle. */
 export const ROBOTICEXCHANGE_CIRCLE_CODES = Object.keys(CIRCLE_MAP);
 
+/**
+ * App circle code → Robotic Exchange circle code.
+ * Robotic Exchange routes all operators reliably using circle code "50" (All India),
+ * preventing circle-specific route failures (such as error 6 on regional lapus).
+ */
 export function getRoboticExchangeCircleCode(
-  circleCode: string | undefined,
+  _circleCode?: string | undefined,
 ): string {
-  if (!circleCode) return "50"; // "All"
-  const normalized = circleCode.toUpperCase().trim();
-  if (/^\d{2}$/.test(normalized)) return normalized;
-  return CIRCLE_MAP[normalized] ?? "50";
+  return "50";
 }
 
 /**

@@ -29,18 +29,14 @@ describe("Robotic Exchange operator mapping", () => {
 });
 
 describe("Robotic Exchange circle mapping", () => {
-  it.each([
-    ["DL", "10"],
-    ["HP", "03"],
-    ["UPE", "54"],
-    ["UPW", "97"],
-    ["CN", "40"],
-    ["03", "03"],
-  ])("%s → %s", (circle, code) => {
-    expect(getRoboticExchangeCircleCode(circle)).toBe(code);
-  });
-
-  it("falls back to All (50) when missing or unknown", () => {
+  it("always returns 50 (All India) for any circle or operator", () => {
+    expect(getRoboticExchangeCircleCode("DL")).toBe("50");
+    expect(getRoboticExchangeCircleCode("MP")).toBe("50");
+    expect(getRoboticExchangeCircleCode("HP")).toBe("50");
+    expect(getRoboticExchangeCircleCode("UPE")).toBe("50");
+    expect(getRoboticExchangeCircleCode("UPW")).toBe("50");
+    expect(getRoboticExchangeCircleCode("CN")).toBe("50");
+    expect(getRoboticExchangeCircleCode("03")).toBe("50");
     expect(getRoboticExchangeCircleCode(undefined)).toBe("50");
     expect(getRoboticExchangeCircleCode("XX")).toBe("50");
   });
