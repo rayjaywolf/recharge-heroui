@@ -1,5 +1,5 @@
 import { RetailerFundingReportView } from "@/components/admin/retailer-funding-report-view";
-import { fetchRetailerFundingReportData } from "@/lib/retailer-funding-report";
+import { fetchRetailerFundingReportData } from "@/lib/retailer-funding-report-query";
 
 export const metadata = {
   title: "Credits Funded to Retailers | Admin Reports",
