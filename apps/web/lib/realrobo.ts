@@ -55,32 +55,43 @@ export interface RealRoboStatusResponse {
 export function getRealRoboOperatorId(operatorName: string): number {
   const normalized = operatorName.toLowerCase();
   
-  // Mobile Operators
-  if (normalized.includes('airtel') && !normalized.includes('dth') && !normalized.includes('money') && !normalized.includes('thanks')) return 1;
-  if (normalized.includes('bsnl') && !normalized.includes('stv') && !normalized.includes('bill')) return 2;
-  if (normalized.includes('jio') || normalized.includes('reliance')) return 3;
-  if (normalized.includes('vodafone') || normalized.includes('vi') || normalized.includes('idea')) return 4;
-  if (normalized.includes('aerovoyce')) return 10;
-  
   // DTH Operators
-  if (normalized.includes('airtel') && normalized.includes('dth')) return 5;
+  const isAirtelDth =
+    normalized.includes('airtel') &&
+    (normalized.includes('dth') || normalized.includes('digital tv') || normalized.includes('xstream'));
+  if (isAirtelDth) return 5;
   if (normalized.includes('dish') || normalized.includes('dishtv')) return 6;
   if (normalized.includes('sun') && normalized.includes('direct')) return 7;
   if (normalized.includes('tata') || normalized.includes('tatasky') || normalized.includes('tata play')) return 8;
   if (normalized.includes('videocon') || normalized.includes('d2h')) return 9;
-  if (normalized.includes('airtel') && normalized.includes('mitra')) return 14;
-  if (normalized.includes('nxt') || normalized.includes('digital')) return 19;
-  
-  // Digital Wallet & Payment Services
+
+  // Digital Wallet & Payment Services (matched before generic mobile carriers)
   if (normalized.includes('airtel') && normalized.includes('money')) return 11;
   if (normalized.includes('airtel') && normalized.includes('thanks')) return 12;
-  if (normalized.includes('jio') && normalized.includes('pos') && normalized.includes('lite')) return 13;
+  if (
+    normalized.includes('jio') &&
+    (normalized.includes('pos') || normalized.includes('lite'))
+  ) return 13;
+  if (normalized.includes('airtel') && normalized.includes('mitra')) return 14;
   if (normalized.includes('mobikwik') && !normalized.includes('business')) return 15;
   if (normalized.includes('paytm')) return 16;
   if (normalized.includes('amazon')) return 17;
   if (normalized.includes('freecharge')) return 18;
+  if (normalized.includes('nxt') || normalized.includes('digital')) return 19;
   if (normalized.includes('myjio')) return 20;
   if (normalized.includes('mobikwik') && normalized.includes('business')) return 21;
+
+  // Mobile Operators
+  if (normalized.includes('airtel')) return 1;
+  if (normalized.includes('bsnl') && !normalized.includes('stv') && !normalized.includes('bill')) return 2;
+  if (
+    (normalized.includes('jio') || normalized.includes('reliance')) &&
+    !normalized.includes('pos') &&
+    !normalized.includes('lite') &&
+    !normalized.includes('myjio')
+  ) return 3;
+  if (normalized.includes('vodafone') || /\bvi\b/.test(normalized) || normalized.includes('idea')) return 4;
+  if (normalized.includes('aerovoyce')) return 10;
   
   // Other Services
   if (normalized.includes('du') || normalized.includes('uae')) return 22;

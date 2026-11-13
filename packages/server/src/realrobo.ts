@@ -73,26 +73,33 @@ export function getRealRoboOperatorId(operatorName: string): number {
   if (normalized.includes('tata') || normalized.includes('tatasky') || normalized.includes('tata play')) return 8;
   if (normalized.includes('videocon') || normalized.includes('d2h')) return 9;
 
-  // Mobile Operators
-  if (normalized.includes('airtel') && !normalized.includes('money') && !normalized.includes('thanks') && !normalized.includes('mitra')) return 1;
-  if (normalized.includes('bsnl') && !normalized.includes('stv') && !normalized.includes('bill')) return 2;
-  if (normalized.includes('jio') || normalized.includes('reliance')) return 3;
-  if (normalized.includes('vodafone') || /\bvi\b/.test(normalized) || normalized.includes('idea')) return 4;
-  if (normalized.includes('aerovoyce')) return 10;
-
-  if (normalized.includes('airtel') && normalized.includes('mitra')) return 14;
-  if (normalized.includes('nxt') || normalized.includes('digital')) return 19;
-  
-  // Digital Wallet & Payment Services
+  // Digital Wallet & Payment Services (matched before generic mobile carriers)
   if (normalized.includes('airtel') && normalized.includes('money')) return 11;
   if (normalized.includes('airtel') && normalized.includes('thanks')) return 12;
-  if (normalized.includes('jio') && normalized.includes('pos') && normalized.includes('lite')) return 13;
+  if (
+    normalized.includes('jio') &&
+    (normalized.includes('pos') || normalized.includes('lite'))
+  ) return 13;
+  if (normalized.includes('airtel') && normalized.includes('mitra')) return 14;
   if (normalized.includes('mobikwik') && !normalized.includes('business')) return 15;
   if (normalized.includes('paytm')) return 16;
   if (normalized.includes('amazon')) return 17;
   if (normalized.includes('freecharge')) return 18;
+  if (normalized.includes('nxt') || normalized.includes('digital')) return 19;
   if (normalized.includes('myjio')) return 20;
   if (normalized.includes('mobikwik') && normalized.includes('business')) return 21;
+
+  // Mobile Operators
+  if (normalized.includes('airtel')) return 1;
+  if (normalized.includes('bsnl') && !normalized.includes('stv') && !normalized.includes('bill')) return 2;
+  if (
+    (normalized.includes('jio') || normalized.includes('reliance')) &&
+    !normalized.includes('pos') &&
+    !normalized.includes('lite') &&
+    !normalized.includes('myjio')
+  ) return 3;
+  if (normalized.includes('vodafone') || /\bvi\b/.test(normalized) || normalized.includes('idea')) return 4;
+  if (normalized.includes('aerovoyce')) return 10;
   
   // Other Services
   if (normalized.includes('du') || normalized.includes('uae')) return 22;
@@ -160,6 +167,17 @@ export function validateRealRoboCircle(
 /** Airtel Money (11) is the default wallet route; set REALROBO_WALLET_OPERATOR_ID=17 for Amazon. */
 export const REALROBO_DEFAULT_WALLET_OPERATOR_ID: RealRoboWalletOperatorId =
   REALROBO_AIRTEL_MONEY_OPERATOR_ID;
+
+export const REALROBO_JIO_POS_LITE_OPERATOR_ID = 13;
+export const REALROBO_DEFAULT_JIO_POS_LITE_LAPU_ID = "641942";
+
+/** Lapu ID for Jio Pos Lite (operator 13). Defaults to 641942. */
+export function getRealRoboJioPosLiteLapuId(): string {
+  return (
+    process.env.REALROBO_JIO_POS_LITE_LAPU_ID?.trim() ||
+    REALROBO_DEFAULT_JIO_POS_LITE_LAPU_ID
+  );
+}
 
 /** Default Amazon lapu (lapu no. 9993785234); override with REALROBO_AMAZON_LAPU_ID. */
 
@@ -593,6 +611,22 @@ export async function performRealRoboRecharge(
     transactionId && /^\d+$/.test(transactionId)
       ? transactionId
       : generateNumericRequestId();
+
+  const operatorId = getRealRoboOperatorId(operatorName);
+
+  // Jio Pos Lite (13) uses its own dedicated Lapu (641942 by default)
+  if (operatorId === REALROBO_JIO_POS_LITE_OPERATOR_ID) {
+    const lapuId = getRealRoboJioPosLiteLapuId();
+    return callRealRoboRechargeApi({
+      apiToken,
+      phoneNumber,
+      amount,
+      operatorId,
+      requestId: baseRequestId,
+      stateId,
+      lapuId: lapuId || undefined,
+    });
+  }
 
   const sendVia = (wallet: RealRoboWalletOperatorId) => {
     const requestParams = {

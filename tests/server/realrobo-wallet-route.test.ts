@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  getRealRoboJioPosLiteLapuId,
   getRealRoboLapuId,
+  getRealRoboOperatorId,
   getRealRoboWalletOperatorId,
   getRealRoboWalletSubOperatorId,
   isRealRoboLapuDisabled,
   performRealRoboRecharge,
+  REALROBO_DEFAULT_JIO_POS_LITE_LAPU_ID,
+  REALROBO_JIO_POS_LITE_OPERATOR_ID,
   resetRealRoboLapuBalancesForTests,
   resolveRealRoboWalletOperatorId,
   setRealRoboLapuBalanceForTests,
@@ -103,6 +107,54 @@ describe("performRealRoboRecharge via Amazon", () => {
     expect(url.searchParams.get("operator_id")).toBe("17");
     expect(url.searchParams.get("sub_operator_id")).toBe("2215673867");
     expect(url.searchParams.get("lapu_id")).toBe("632505");
+  });
+});
+
+describe("RealRobo Jio Pos Lite operator (13)", () => {
+  it("resolves operator_id=13 for Jio Pos Lite and operator_id=3 for regular Jio", () => {
+    expect(getRealRoboOperatorId("Jio Pos Lite")).toBe(REALROBO_JIO_POS_LITE_OPERATOR_ID);
+    expect(getRealRoboOperatorId("jio pos lite")).toBe(13);
+    expect(getRealRoboOperatorId("Jio")).toBe(3);
+    expect(getRealRoboOperatorId("JIO")).toBe(3);
+  });
+
+  it("defaults lapu to 641942 and allows env override", () => {
+    vi.stubEnv("REALROBO_JIO_POS_LITE_LAPU_ID", "");
+    expect(getRealRoboJioPosLiteLapuId()).toBe(REALROBO_DEFAULT_JIO_POS_LITE_LAPU_ID);
+    expect(getRealRoboJioPosLiteLapuId()).toBe("641942");
+
+    vi.stubEnv("REALROBO_JIO_POS_LITE_LAPU_ID", "999888");
+    expect(getRealRoboJioPosLiteLapuId()).toBe("999888");
+  });
+
+  it("sends operator_id=13 with lapu_id=641942 and without sub_operator_id", async () => {
+    vi.stubEnv("REALROBO_API_TOKEN", "test-token");
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ status: "success", txid: "tx-jio-1", message: "ok" })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await performRealRoboRecharge(
+      "9876543210",
+      "Jio Pos Lite",
+      239,
+      "MP",
+      "179456099999",
+    );
+
+    expect(res.status).toBe("success");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const calledUrl = new URL(String((fetchMock.mock.calls[0] as unknown[])[0]));
+    expect(calledUrl.origin + calledUrl.pathname).toBe("https://realrobo.in/api/recharge");
+    expect(calledUrl.searchParams.get("api_token")).toBe("test-token");
+    expect(calledUrl.searchParams.get("number")).toBe("9876543210");
+    expect(calledUrl.searchParams.get("amount")).toBe("239");
+    expect(calledUrl.searchParams.get("operator_id")).toBe("13");
+    expect(calledUrl.searchParams.get("state_id")).toBe("14"); // MP
+    expect(calledUrl.searchParams.get("lapu_id")).toBe("641942");
+    expect(calledUrl.searchParams.get("req_id")).toBe("179456099999");
+    expect(calledUrl.searchParams.has("sub_operator_id")).toBe(false);
   });
 });
 

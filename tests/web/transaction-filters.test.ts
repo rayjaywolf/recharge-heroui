@@ -7,8 +7,8 @@ describe("resolveCarrierFilterOperators", () => {
     expect(resolveCarrierFilterOperators("ALL")).toEqual([]);
   });
 
-  it("maps JIO to Jio", () => {
-    expect(resolveCarrierFilterOperators("JIO")).toEqual(["Jio"]);
+  it("maps JIO to Jio and Jio Pos Lite", () => {
+    expect(resolveCarrierFilterOperators("JIO")).toEqual(["Jio", "Jio Pos Lite"]);
   });
 
   it("maps AIRTEL to Airtel", () => {
